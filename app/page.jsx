@@ -1,17 +1,31 @@
 export default function HomePage() {
   return (
-    <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#f6f8fb', padding: 24 }}>
-      <div style={{ maxWidth: 720, width: '100%', background: 'white', borderRadius: 24, padding: 32, boxShadow: '0 10px 30px rgba(16,32,51,.08)' }}>
-        <p style={{ marginTop: 0, color: '#536273', fontWeight: 700 }}>Secure agency portal starter</p>
-        <h1 style={{ marginTop: 0, fontSize: 42, lineHeight: 1.1 }}>Strategic Insurance Planning System</h1>
-        <p style={{ color: '#536273', fontSize: 18 }}>
-          Private login, client intake, secure data foundation, and deploy-ready structure for your insurance agency.
-        </p>
-        <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-          <a href="/login" style={{ padding: '12px 18px', borderRadius: 12, background: '#12233d', color: 'white', textDecoration: 'none' }}>Secure sign in</a>
-          <a href="/app" style={{ padding: '12px 18px', borderRadius: 12, border: '1px solid #cbd5e1', textDecoration: 'none' }}>Open app</a>
+    <main style={{ padding: "32px", fontFamily: "Arial, sans-serif" }}>
+      <h1>Strategic Insurance Planning System</h1>
+      <p>Private login, client intake, secure data foundation, and deploy-ready structure for your insurance agency.</p>
+
+      <div style={{ marginTop: "24px", display: "grid", gap: "12px", maxWidth: "520px" }}>
+        <div style={{ padding: "14px 16px", border: "1px solid #ccc", borderRadius: "8px" }}>
+          <strong>System status:</strong> Live and deployed
         </div>
+
+        <div style={{ padding: "14px 16px", border: "1px solid #ccc", borderRadius: "8px" }}>
+          <strong>Next step:</strong> Create your first user in Supabase Authentication
+        </div>
+
+        <a
+          href="https://supabase.com/dashboard/project/jqcqbmwjhghdnmwanztj/auth/users"
+          style={{
+            padding: "12px 16px",
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+            textDecoration: "none",
+            display: "inline-block"
+          }}
+        >
+          Open Supabase Users
+        </a>
       </div>
-    </div>
+    </main>
   );
 }
