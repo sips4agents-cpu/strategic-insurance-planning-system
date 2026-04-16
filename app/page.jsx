@@ -1,3 +1,12 @@
+"use client";
+
+import { useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 export default function HomePage() {
   const [email, setEmail] = useState("");
@@ -22,11 +31,21 @@ export default function HomePage() {
   }
 
   return (
-    <main style={{ padding: "32px", fontFamily: "Arial, sans-serif", maxWidth: "480px", margin: "0 auto" }}>
+    <main
+      style={{
+        padding: "32px",
+        fontFamily: "Arial, sans-serif",
+        maxWidth: "480px",
+        margin: "0 auto",
+      }}
+    >
       <h1>Strategic Insurance Planning System</h1>
       <p>Secure sign in for your agency system.</p>
 
-      <form onSubmit={handleLogin} style={{ display: "grid", gap: "12px", marginTop: "24px" }}>
+      <form
+        onSubmit={handleLogin}
+        style={{ display: "grid", gap: "12px", marginTop: "24px" }}
+      >
         <input
           type="email"
           placeholder="Email"
@@ -55,3 +74,4 @@ export default function HomePage() {
     </main>
   );
 }
+
