@@ -1,31 +1,57 @@
+
 export default function HomePage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    setMessage("Signing in...");
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    window.location.href = "/dashboard";
+  }
+
   return (
-    <main style={{ padding: "32px", fontFamily: "Arial, sans-serif" }}>
+    <main style={{ padding: "32px", fontFamily: "Arial, sans-serif", maxWidth: "480px", margin: "0 auto" }}>
       <h1>Strategic Insurance Planning System</h1>
-      <p>Private login, client intake, secure data foundation, and deploy-ready structure for your insurance agency.</p>
+      <p>Secure sign in for your agency system.</p>
 
-      <div style={{ marginTop: "24px", display: "grid", gap: "12px", maxWidth: "520px" }}>
-        <div style={{ padding: "14px 16px", border: "1px solid #ccc", borderRadius: "8px" }}>
-          <strong>System status:</strong> Live and deployed
-        </div>
-
-        <div style={{ padding: "14px 16px", border: "1px solid #ccc", borderRadius: "8px" }}>
-          <strong>Next step:</strong> Create your first user in Supabase Authentication
-        </div>
-
-        <a
-          href="https://supabase.com/dashboard/project/jqcqbmwjhghdnmwanztj/auth/users"
-          style={{
-            padding: "12px 16px",
-            border: "1px solid #ccc",
-            borderRadius: "8px",
-            textDecoration: "none",
-            display: "inline-block"
-          }}
+      <form onSubmit={handleLogin} style={{ display: "grid", gap: "12px", marginTop: "24px" }}>
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={{ padding: "12px", border: "1px solid #ccc", borderRadius: "8px" }}
+          required
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={{ padding: "12px", border: "1px solid #ccc", borderRadius: "8px" }}
+          required
+        />
+        <button
+          type="submit"
+          style={{ padding: "12px", border: "none", borderRadius: "8px", cursor: "pointer" }}
         >
-          Open Supabase Users
-        </a>
-      </div>
+          Sign In
+        </button>
+      </form>
+
+      {message && <p style={{ marginTop: "16px" }}>{message}</p>}
     </main>
   );
 }
