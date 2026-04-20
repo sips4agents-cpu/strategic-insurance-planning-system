@@ -13,25 +13,20 @@ export default function HomePage() {
       <h1>Strategic Insurance Planning System</h1>
       <p>Secure sign in for your agency system.</p>
 
-      <div style={{ display: "grid", gap: "12px", marginTop: "24px" }}>
+      <div style={{ marginTop: "24px" }}>
         <a
           href="/dashboard"
           style={{
-            padding: "12px",
+            padding: "12px 16px",
             border: "1px solid #ccc",
             borderRadius: "8px",
             textDecoration: "none",
-            textAlign: "center",
+            display: "inline-block",
           }}
         >
           Open Dashboard
         </a>
       </div>
-    </main>
-  );
-}
-
-      {message && <p style={{ marginTop: "16px" }}>{message}</p>}
     </main>
   );
 }
