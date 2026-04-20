@@ -39,7 +39,7 @@ export default function HomePage() {
         margin: "0 auto",
       }}
     >
-    <h1>LOGIN TEST PAGE 123</h1>
+    <h1>Strategic Insurance Planning System</h1>
       <p>Secure sign in for your agency system.</p>
 
       <form
