@@ -27,7 +27,7 @@ export default function HomePage() {
       return;
     }
 
-    window.location.href = "/dashboard";
+    window.location.replace("/dashboard");
   }
 
   return (
