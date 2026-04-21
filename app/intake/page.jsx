@@ -41,19 +41,23 @@ function formatDate(value) {
 function calculateAge(dateString) {
   const digits = dateString.replace(/\D/g, "");
   if (digits.length !== 8) return "";
+
   const month = parseInt(digits.slice(0, 2), 10);
   const day = parseInt(digits.slice(2, 4), 10);
   const year = parseInt(digits.slice(4, 8), 10);
+
   if (!month || !day || !year) return "";
 
   const today = new Date();
   let age = today.getFullYear() - year;
+
   const hadBirthday =
     today.getMonth() + 1 > month ||
     (today.getMonth() + 1 === month && today.getDate() >= day);
 
   if (!hadBirthday) age -= 1;
   if (age < 0 || age > 120) return "";
+
   return String(age);
 }
 
@@ -199,7 +203,11 @@ function PersonSection({ title, data, age, onUpdate }) {
           style={inputStyle}
         >
           <option value="">Sex</option>
-          {sexOptions.map((x) => <option key={x} value={x}>{x}</option>)}
+          {sexOptions.map((x) => (
+            <option key={x} value={x}>
+              {x}
+            </option>
+          ))}
         </select>
 
         <select
@@ -208,7 +216,11 @@ function PersonSection({ title, data, age, onUpdate }) {
           style={inputStyle}
         >
           <option value="">Tobacco</option>
-          {tobaccoOptions.map((x) => <option key={x} value={x}>{x}</option>)}
+          {tobaccoOptions.map((x) => (
+            <option key={x} value={x}>
+              {x}
+            </option>
+          ))}
         </select>
 
         <select
@@ -217,7 +229,11 @@ function PersonSection({ title, data, age, onUpdate }) {
           style={inputStyle}
         >
           <option value="">Coverage Type</option>
-          {coverageTypeOptions.map((x) => <option key={x} value={x}>{x}</option>)}
+          {coverageTypeOptions.map((x) => (
+            <option key={x} value={x}>
+              {x}
+            </option>
+          ))}
         </select>
       </div>
     </section>
@@ -258,6 +274,23 @@ export default function IntakePage() {
     setSpouse((prev) => ({ ...prev, [field]: next }));
   }
 
+  function spouseHasData() {
+    return Boolean(
+      spouse.firstName ||
+        spouse.lastName ||
+        spouse.phone ||
+        spouse.email ||
+        spouse.birthdate ||
+        spouse.address ||
+        spouse.city ||
+        spouse.state ||
+        spouse.zip ||
+        spouse.sex ||
+        spouse.tobacco ||
+        spouse.coverageType
+    );
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
 
@@ -269,44 +302,84 @@ export default function IntakePage() {
     setSaving(true);
     setMessage("");
 
-    const payload = {
-      user_id: userId,
-      agent,
-      notes,
+    const { data: householdData, error: householdError } = await supabase
+      .from("households")
+      .insert([
+        {
+          owner_user_id: userId,
+          assigned_agent: agent,
+          notes,
+        },
+      ])
+      .select()
+      .single();
 
-      client_first_name: client.firstName,
-      client_last_name: client.lastName,
-      client_phone: client.phone,
-      client_email: client.email,
-      client_birthdate: client.birthdate,
-      client_age: clientAge,
-      client_address: client.address,
-      client_city: client.city,
-      client_state: client.state,
-      client_zip: client.zip,
-      client_sex: client.sex,
-      client_tobacco: client.tobacco,
-      client_coverage_type: client.coverageType,
+    if (householdError) {
+      setMessage(householdError.message);
+      setSaving(false);
+      return;
+    }
 
-      spouse_first_name: spouse.firstName,
-      spouse_last_name: spouse.lastName,
-      spouse_phone: spouse.phone,
-      spouse_email: spouse.email,
-      spouse_birthdate: spouse.birthdate,
-      spouse_age: spouseAge,
-      spouse_address: spouse.address,
-      spouse_city: spouse.city,
-      spouse_state: spouse.state,
-      spouse_zip: spouse.zip,
-      spouse_sex: spouse.sex,
-      spouse_tobacco: spouse.tobacco,
-      spouse_coverage_type: spouse.coverageType,
-    };
+    const householdId = householdData.id;
 
-    const { error } = await supabase.from("clients").insert([payload]);
+    const peopleToInsert = [
+      {
+        household_id: householdId,
+        person_type: "client",
+        first_name: client.firstName,
+        last_name: client.lastName,
+        phone: client.phone,
+        email: client.email,
+        birthdate: client.birthdate,
+        age: clientAge,
+        address: client.address,
+        city: client.city,
+        state: client.state,
+        zip: client.zip,
+        sex: client.sex,
+        tobacco: client.tobacco,
+        coverage_type: client.coverageType,
+      },
+    ];
 
-    if (error) {
-      setMessage(error.message);
+    if (spouseHasData()) {
+      peopleToInsert.push({
+        household_id: householdId,
+        person_type: "spouse",
+        first_name: spouse.firstName,
+        last_name: spouse.lastName,
+        phone: spouse.phone,
+        email: spouse.email,
+        birthdate: spouse.birthdate,
+        age: spouseAge,
+        address: spouse.address,
+        city: spouse.city,
+        state: spouse.state,
+        zip: spouse.zip,
+        sex: spouse.sex,
+        tobacco: spouse.tobacco,
+        coverage_type: spouse.coverageType,
+      });
+    }
+
+    const { error: peopleError } = await supabase.from("people").insert(peopleToInsert);
+
+    if (peopleError) {
+      setMessage(peopleError.message);
+      setSaving(false);
+      return;
+    }
+
+    const { error: intakeError } = await supabase.from("intakes").insert([
+      {
+        household_id: householdId,
+        created_by: userId,
+        notes,
+      },
+    ]);
+
+    if (intakeError) {
+      setMessage(intakeError.message);
       setSaving(false);
       return;
     }
@@ -320,7 +393,14 @@ export default function IntakePage() {
   }
 
   return (
-    <main style={{ padding: "32px", fontFamily: "Arial, sans-serif", maxWidth: "1100px", margin: "0 auto" }}>
+    <main
+      style={{
+        padding: "32px",
+        fontFamily: "Arial, sans-serif",
+        maxWidth: "1100px",
+        margin: "0 auto",
+      }}
+    >
       <h1>New Intake</h1>
       <p>Client and spouse intake form.</p>
 
@@ -334,7 +414,11 @@ export default function IntakePage() {
           <div style={grid2}>
             <select value={agent} onChange={(e) => setAgent(e.target.value)} style={inputStyle}>
               <option value="">Assign Agent</option>
-              {agentOptions.map((x) => <option key={x} value={x}>{x}</option>)}
+              {agentOptions.map((x) => (
+                <option key={x} value={x}>
+                  {x}
+                </option>
+              ))}
             </select>
 
             <input
@@ -350,7 +434,9 @@ export default function IntakePage() {
           <button type="submit" style={buttonStyle} disabled={saving}>
             {saving ? "Saving..." : "Save Intake"}
           </button>
-          <a href="/dashboard" style={linkStyle}>Return to Dashboard</a>
+          <a href="/dashboard" style={linkStyle}>
+            Return to Dashboard
+          </a>
         </div>
 
         {message ? <p>{message}</p> : null}
