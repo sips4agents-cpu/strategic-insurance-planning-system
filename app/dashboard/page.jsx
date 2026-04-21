@@ -1,3 +1,36 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+export default function DashboardPage() {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    async function loadUser() {
+      const { data } = await supabase.auth.getUser();
+      setUser(data?.user || null);
+    }
+    loadUser();
+  }, []);
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    window.location.replace("/");
+  }
+
+  if (!user) {
+    return (
+      <main style={{ padding: "32px", fontFamily: "Arial, sans-serif" }}>
+        <h1>Dashboard</h1>
+        <p>You are not signed in.</p>
+        <a href="/" style={linkStyle}>Go to Login</a>
+      </main>
     );
   }
 
