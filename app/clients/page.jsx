@@ -81,11 +81,27 @@ export default function ClientsPage() {
               <div>Email: {client?.email || "-"}</div>
               <div>Coverage Type: {client?.coverage_type || "-"}</div>
               <div>Agent: {household.assigned_agent || "-"}</div>
+
               {spouse ? (
                 <div style={{ marginTop: "8px" }}>
                   <strong>Spouse:</strong> {spouse.first_name || "-"} {spouse.last_name || ""}
                 </div>
               ) : null}
+
+              <div style={{ marginTop: "12px" }}>
+                <a
+                  href={`/households/${household.id}`}
+                  style={{
+                    padding: "10px 14px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    textDecoration: "none",
+                    display: "inline-block",
+                  }}
+                >
+                  Open Household Detail
+                </a>
+              </div>
             </div>
           );
         })}
