@@ -1,6 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 const agentOptions = [
   "Loyd Richardson",
@@ -35,23 +41,19 @@ function formatDate(value) {
 function calculateAge(dateString) {
   const digits = dateString.replace(/\D/g, "");
   if (digits.length !== 8) return "";
-
   const month = parseInt(digits.slice(0, 2), 10);
   const day = parseInt(digits.slice(2, 4), 10);
   const year = parseInt(digits.slice(4, 8), 10);
-
   if (!month || !day || !year) return "";
 
   const today = new Date();
   let age = today.getFullYear() - year;
-
   const hadBirthday =
     today.getMonth() + 1 > month ||
     (today.getMonth() + 1 === month && today.getDate() >= day);
 
   if (!hadBirthday) age -= 1;
   if (age < 0 || age > 120) return "";
-
   return String(age);
 }
 
@@ -197,11 +199,7 @@ function PersonSection({ title, data, age, onUpdate }) {
           style={inputStyle}
         >
           <option value="">Sex</option>
-          {sexOptions.map((x) => (
-            <option key={x} value={x}>
-              {x}
-            </option>
-          ))}
+          {sexOptions.map((x) => <option key={x} value={x}>{x}</option>)}
         </select>
 
         <select
@@ -210,11 +208,7 @@ function PersonSection({ title, data, age, onUpdate }) {
           style={inputStyle}
         >
           <option value="">Tobacco</option>
-          {tobaccoOptions.map((x) => (
-            <option key={x} value={x}>
-              {x}
-            </option>
-          ))}
+          {tobaccoOptions.map((x) => <option key={x} value={x}>{x}</option>)}
         </select>
 
         <select
@@ -223,11 +217,7 @@ function PersonSection({ title, data, age, onUpdate }) {
           style={inputStyle}
         >
           <option value="">Coverage Type</option>
-          {coverageTypeOptions.map((x) => (
-            <option key={x} value={x}>
-              {x}
-            </option>
-          ))}
+          {coverageTypeOptions.map((x) => <option key={x} value={x}>{x}</option>)}
         </select>
       </div>
     </section>
@@ -240,9 +230,19 @@ export default function IntakePage() {
   const [agent, setAgent] = useState("");
   const [notes, setNotes] = useState("");
   const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [userId, setUserId] = useState(null);
 
   const clientAge = useMemo(() => calculateAge(client.birthdate), [client.birthdate]);
   const spouseAge = useMemo(() => calculateAge(spouse.birthdate), [spouse.birthdate]);
+
+  useEffect(() => {
+    async function loadUser() {
+      const { data } = await supabase.auth.getUser();
+      setUserId(data?.user?.id || null);
+    }
+    loadUser();
+  }, []);
 
   function updateClient(field, value) {
     let next = value;
@@ -258,43 +258,75 @@ export default function IntakePage() {
     setSpouse((prev) => ({ ...prev, [field]: next }));
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    setMessage("Intake saved locally for now.");
-    console.log({
-      client: { ...client, age: clientAge },
-      spouse: { ...spouse, age: spouseAge },
+
+    if (!userId) {
+      setMessage("You must be signed in before saving intake.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+
+    const payload = {
+      user_id: userId,
       agent,
       notes,
-    });
+
+      client_first_name: client.firstName,
+      client_last_name: client.lastName,
+      client_phone: client.phone,
+      client_email: client.email,
+      client_birthdate: client.birthdate,
+      client_age: clientAge,
+      client_address: client.address,
+      client_city: client.city,
+      client_state: client.state,
+      client_zip: client.zip,
+      client_sex: client.sex,
+      client_tobacco: client.tobacco,
+      client_coverage_type: client.coverageType,
+
+      spouse_first_name: spouse.firstName,
+      spouse_last_name: spouse.lastName,
+      spouse_phone: spouse.phone,
+      spouse_email: spouse.email,
+      spouse_birthdate: spouse.birthdate,
+      spouse_age: spouseAge,
+      spouse_address: spouse.address,
+      spouse_city: spouse.city,
+      spouse_state: spouse.state,
+      spouse_zip: spouse.zip,
+      spouse_sex: spouse.sex,
+      spouse_tobacco: spouse.tobacco,
+      spouse_coverage_type: spouse.coverageType,
+    };
+
+    const { error } = await supabase.from("clients").insert([payload]);
+
+    if (error) {
+      setMessage(error.message);
+      setSaving(false);
+      return;
+    }
+
+    setMessage("Intake saved successfully.");
+    setClient({ ...blankPerson });
+    setSpouse({ ...blankPerson });
+    setAgent("");
+    setNotes("");
+    setSaving(false);
   }
 
   return (
-    <main
-      style={{
-        padding: "32px",
-        fontFamily: "Arial, sans-serif",
-        maxWidth: "1100px",
-        margin: "0 auto",
-      }}
-    >
+    <main style={{ padding: "32px", fontFamily: "Arial, sans-serif", maxWidth: "1100px", margin: "0 auto" }}>
       <h1>New Intake</h1>
       <p>Client and spouse intake form.</p>
 
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: "24px", marginTop: "24px" }}>
-        <PersonSection
-          title="Client"
-          data={client}
-          age={clientAge}
-          onUpdate={updateClient}
-        />
-
-        <PersonSection
-          title="Spouse"
-          data={spouse}
-          age={spouseAge}
-          onUpdate={updateSpouse}
-        />
+        <PersonSection title="Client" data={client} age={clientAge} onUpdate={updateClient} />
+        <PersonSection title="Spouse" data={spouse} age={spouseAge} onUpdate={updateSpouse} />
 
         <section style={boxStyle}>
           <h2 style={{ marginTop: 0 }}>Admin</h2>
@@ -302,11 +334,7 @@ export default function IntakePage() {
           <div style={grid2}>
             <select value={agent} onChange={(e) => setAgent(e.target.value)} style={inputStyle}>
               <option value="">Assign Agent</option>
-              {agentOptions.map((x) => (
-                <option key={x} value={x}>
-                  {x}
-                </option>
-              ))}
+              {agentOptions.map((x) => <option key={x} value={x}>{x}</option>)}
             </select>
 
             <input
@@ -319,16 +347,14 @@ export default function IntakePage() {
         </section>
 
         <div style={{ display: "flex", gap: "12px" }}>
-          <button type="submit" style={buttonStyle}>
-            Save Intake
+          <button type="submit" style={buttonStyle} disabled={saving}>
+            {saving ? "Saving..." : "Save Intake"}
           </button>
-          <a href="/dashboard" style={linkStyle}>
-            Return to Dashboard
-          </a>
+          <a href="/dashboard" style={linkStyle}>Return to Dashboard</a>
         </div>
 
         {message ? <p>{message}</p> : null}
       </form>
     </main>
   );
-} 
+}
