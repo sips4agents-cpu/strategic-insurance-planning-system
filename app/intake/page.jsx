@@ -65,6 +65,7 @@ const blankPerson = {
   firstName: "",
   lastName: "",
   phone: "",
+  phoneConfirm: "",
   email: "",
   birthdate: "",
   address: "",
@@ -121,7 +122,7 @@ const linkStyle = {
   display: "inline-block",
 };
 
-function PersonSection({ title, data, age, onUpdate }) {
+function PersonSection({ title, data, age, onUpdate, phoneMatches }) {
   return (
     <section style={boxStyle}>
       <h2 style={{ marginTop: 0 }}>{title}</h2>
@@ -155,6 +156,24 @@ function PersonSection({ title, data, age, onUpdate }) {
           style={inputStyle}
         />
       </div>
+
+      {data.phone ? (
+        <div>
+          <input
+            value={data.phoneConfirm}
+            onChange={(e) => onUpdate("phoneConfirm", e.target.value)}
+            placeholder={`Re-enter ${title} Phone to verify`}
+            style={inputStyle}
+          />
+          <div style={{ marginTop: "6px", fontSize: "13px" }}>
+            {data.phoneConfirm
+              ? phoneMatches
+                ? "Phone verified"
+                : "Phone numbers do not match"
+              : "Please re-enter phone number"}
+          </div>
+        </div>
+      ) : null}
 
       <div style={grid2}>
         <input
@@ -252,6 +271,16 @@ export default function IntakePage() {
   const clientAge = useMemo(() => calculateAge(client.birthdate), [client.birthdate]);
   const spouseAge = useMemo(() => calculateAge(spouse.birthdate), [spouse.birthdate]);
 
+  const clientPhoneMatches =
+    !client.phone && !client.phoneConfirm
+      ? true
+      : client.phone === client.phoneConfirm;
+
+  const spousePhoneMatches =
+    !spouse.phone && !spouse.phoneConfirm
+      ? true
+      : spouse.phone === spouse.phoneConfirm;
+
   useEffect(() => {
     async function loadUser() {
       const { data } = await supabase.auth.getUser();
@@ -262,14 +291,14 @@ export default function IntakePage() {
 
   function updateClient(field, value) {
     let next = value;
-    if (field === "phone") next = formatPhone(value);
+    if (field === "phone" || field === "phoneConfirm") next = formatPhone(value);
     if (field === "birthdate") next = formatDate(value);
     setClient((prev) => ({ ...prev, [field]: next }));
   }
 
   function updateSpouse(field, value) {
     let next = value;
-    if (field === "phone") next = formatPhone(value);
+    if (field === "phone" || field === "phoneConfirm") next = formatPhone(value);
     if (field === "birthdate") next = formatDate(value);
     setSpouse((prev) => ({ ...prev, [field]: next }));
   }
@@ -296,6 +325,16 @@ export default function IntakePage() {
 
     if (!userId) {
       setMessage("You must be signed in before saving intake.");
+      return;
+    }
+
+    if (!clientPhoneMatches) {
+      setMessage("Client phone numbers do not match.");
+      return;
+    }
+
+    if (spouseHasData() && !spousePhoneMatches) {
+      setMessage("Spouse phone numbers do not match.");
       return;
     }
 
@@ -405,8 +444,21 @@ export default function IntakePage() {
       <p>Client and spouse intake form.</p>
 
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: "24px", marginTop: "24px" }}>
-        <PersonSection title="Client" data={client} age={clientAge} onUpdate={updateClient} />
-        <PersonSection title="Spouse" data={spouse} age={spouseAge} onUpdate={updateSpouse} />
+        <PersonSection
+          title="Client"
+          data={client}
+          age={clientAge}
+          onUpdate={updateClient}
+          phoneMatches={clientPhoneMatches}
+        />
+
+        <PersonSection
+          title="Spouse"
+          data={spouse}
+          age={spouseAge}
+          onUpdate={updateSpouse}
+          phoneMatches={spousePhoneMatches}
+        />
 
         <section style={boxStyle}>
           <h2 style={{ marginTop: 0 }}>Admin</h2>
