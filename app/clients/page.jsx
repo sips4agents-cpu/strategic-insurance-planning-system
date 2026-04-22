@@ -26,9 +26,7 @@ export default function ClientsPage() {
         .from("households")
         .select(`
           id,
-          created_at,
           assigned_agent,
-          notes,
           people (
             id,
             person_type,
@@ -60,7 +58,7 @@ export default function ClientsPage() {
 
       {message ? <p>{message}</p> : null}
 
-      <div style={{ display: "grid", gap: "12px", marginTop: "24px" }}>
+      <div style={{ display: "grid", gap: "16px", marginTop: "24px" }}>
         {households.map((household) => {
           const client = household.people?.find((p) => p.person_type === "client");
           const spouse = household.people?.find((p) => p.person_type === "spouse");
@@ -72,11 +70,10 @@ export default function ClientsPage() {
                 border: "1px solid #d0d7de",
                 borderRadius: "10px",
                 padding: "16px",
+                background: "#fff",
               }}
             >
-              <strong>
-                {client?.first_name || "-"} {client?.last_name || ""}
-              </strong>
+              <div><strong>{client?.first_name || "-"} {client?.last_name || ""}</strong></div>
               <div>Phone: {client?.phone || "-"}</div>
               <div>Email: {client?.email || "-"}</div>
               <div>Coverage Type: {client?.coverage_type || "-"}</div>
@@ -88,15 +85,18 @@ export default function ClientsPage() {
                 </div>
               ) : null}
 
-              <div style={{ marginTop: "12px" }}>
+              <div style={{ marginTop: "16px" }}>
                 <a
                   href={`/households/${household.id}`}
                   style={{
-                    padding: "10px 14px",
-                    border: "1px solid #ccc",
+                    background: "#f5f5f5",
+                    border: "1px solid #999",
                     borderRadius: "8px",
+                    padding: "10px 14px",
                     textDecoration: "none",
+                    color: "#000",
                     display: "inline-block",
+                    fontWeight: "bold",
                   }}
                 >
                   Open Household Detail
