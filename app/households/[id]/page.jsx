@@ -87,7 +87,14 @@ export default function HouseholdDetailPage() {
   return (
     <main style={{ padding: "32px", fontFamily: "Arial" }}>
       <h1>Household Detail</h1>
-
+<div style={{ marginTop: "16px", marginBottom: "20px", display: "grid", gap: "8px" }}>
+  <div>
+    <strong>Assigned Agent:</strong> {household?.assigned_agent || "-"}
+  </div>
+  <div>
+    <strong>Notes:</strong> {household?.notes || "-"}
+  </div>
+</div>
       <h2>Client</h2>
       <div>{client?.first_name} {client?.last_name}</div>
       <div>{client?.phone}</div>
