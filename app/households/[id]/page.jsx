@@ -37,16 +37,21 @@ export default function HouseholdDetailPage() {
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase
-        .from("households")
-        .select(`
-          id,
-          assigned_agent,
-          notes,
-          people (*)
-        `)
-        .eq("id", id)
-        .single();
+     const { data } = await supabase
+  .from("households")
+  .select(`
+    id,
+    assigned_agent,
+    notes,
+    people (*),
+    intakes (
+      id,
+      created_at,
+      notes
+    )
+  `)
+  .eq("id", id)
+  .single();
 
       setHousehold(data);
     }
