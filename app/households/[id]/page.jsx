@@ -42,6 +42,15 @@ const healthOptions = [
   "Surgeries pending",
 ];
 
+const statusOptions = [
+  "New Lead",
+  "Intake Complete",
+  "Presented",
+  "Submitted",
+  "Approved",
+  "Follow Up",
+];
+
 const cardStyle = {
   border: "1px solid #d0d7de",
   borderRadius: "10px",
@@ -94,9 +103,11 @@ export default function HouseholdDetailPage() {
   const [household, setHousehold] = useState(null);
   const [selectedForm, setSelectedForm] = useState("");
   const [health, setHealth] = useState([]);
+  const [status, setStatus] = useState("New Lead");
   const [message, setMessage] = useState("Loading...");
   const [workingNotes, setWorkingNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+  const [savingWorkflow, setSavingWorkflow] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   async function loadHousehold() {
@@ -107,6 +118,9 @@ export default function HouseholdDetailPage() {
         created_at,
         assigned_agent,
         notes,
+        reason_for_call,
+        status,
+        health_flags,
         people (*),
         intakes (
           id,
@@ -124,6 +138,8 @@ export default function HouseholdDetailPage() {
 
     setHousehold(data);
     setWorkingNotes(data?.notes || "");
+    setStatus(data?.status || "New Lead");
+    setHealth(data?.health_flags || []);
     setMessage("");
   }
 
@@ -191,6 +207,28 @@ export default function HouseholdDetailPage() {
     alert("Working notes saved.");
   }
 
+  async function saveWorkflow() {
+    setSavingWorkflow(true);
+
+    const { error } = await supabase
+      .from("households")
+      .update({
+        status,
+        health_flags: health,
+      })
+      .eq("id", id);
+
+    if (error) {
+      alert(error.message);
+      setSavingWorkflow(false);
+      return;
+    }
+
+    await loadHousehold();
+    setSavingWorkflow(false);
+    alert("Status and health flags saved.");
+  }
+
   async function deleteHousehold() {
     const confirmed = window.confirm(
       "Delete this contact/household? This will also remove linked people and intake history."
@@ -223,14 +261,27 @@ export default function HouseholdDetailPage() {
       <h1>Household Detail</h1>
 
       <section style={{ ...cardStyle, marginBottom: "20px" }}>
+        <div><strong>Assigned Agent:</strong> {household?.assigned_agent || "-"}</div>
+        <div><strong>Reason for Call:</strong> {household?.reason_for_call || "-"}</div>
+
         <div>
-          <strong>Assigned Agent:</strong> {household?.assigned_agent || "-"}
+          <strong>Workflow Status</strong>
         </div>
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          style={inputStyle}
+        >
+          {statusOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
 
         <div>
           <strong>Current Working Notes</strong>
         </div>
-
         <textarea
           value={workingNotes}
           onChange={(e) => setWorkingNotes(e.target.value)}
@@ -312,6 +363,10 @@ export default function HouseholdDetailPage() {
         <div style={{ marginTop: "12px" }}>
           <strong>Selected:</strong> {health.length ? health.join(", ") : "None"}
         </div>
+
+        <button onClick={saveWorkflow} style={buttonStyle} disabled={savingWorkflow}>
+          {savingWorkflow ? "Saving..." : "Save Status & Health Flags"}
+        </button>
       </section>
 
       <section style={{ ...cardStyle, marginTop: "20px" }}>
