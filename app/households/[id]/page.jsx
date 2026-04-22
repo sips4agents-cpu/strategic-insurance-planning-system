@@ -68,7 +68,13 @@ export default function HouseholdDetailPage() {
     () => household?.people?.find(p => p.person_type === "spouse"),
     [household]
   );
-
+const latestIntakeNote = useMemo(() => {
+  if (!household?.intakes || household.intakes.length === 0) return "";
+  const sorted = [...household.intakes].sort(
+    (a, b) => new Date(b.created_at) - new Date(a.created_at)
+  );
+  return sorted[0]?.notes || "";
+}, [household]);
   function toggleHealth(option) {
     setHealth(prev =>
       prev.includes(option)
