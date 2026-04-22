@@ -10,11 +10,26 @@ const supabase = createClient(
 );
 
 const formOptions = [
-  { label: "Form L564", url: "https://www.cms.gov/medicare/cms-forms/cms-forms/downloads/cms-l564e.pdf" },
-  { label: "Form Part B Enrollment", url: "https://www.cms.gov/medicare/cms-forms/cms-forms/downloads/cms40b-e.pdf" },
-  { label: "IRMAA Link", url: "https://www.medicare.gov/publications/11579-medicare-costs.pdf" },
-  { label: "HSA Guideline", url: "https://www.irs.gov/publications/p969" },
-  { label: "Quick Rater", url: "/rate-summary" },
+  {
+    label: "Form L564",
+    url: "https://www.cms.gov/medicare/cms-forms/cms-forms/downloads/cms-l564e.pdf",
+  },
+  {
+    label: "Form Part B Enrollment",
+    url: "https://www.cms.gov/medicare/cms-forms/cms-forms/downloads/cms40b-e.pdf",
+  },
+  {
+    label: "IRMAA Link",
+    url: "https://www.medicare.gov/publications/11579-medicare-costs.pdf",
+  },
+  {
+    label: "HSA Guideline",
+    url: "https://www.irs.gov/publications/p969",
+  },
+  {
+    label: "Quick Rater",
+    url: "/rate-summary",
+  },
 ];
 
 const healthOptions = [
@@ -27,6 +42,51 @@ const healthOptions = [
   "Surgeries pending",
 ];
 
+const cardStyle = {
+  border: "1px solid #d0d7de",
+  borderRadius: "10px",
+  padding: "20px",
+  display: "grid",
+  gap: "12px",
+};
+
+const inputStyle = {
+  padding: "12px",
+  border: "1px solid #c9d1d9",
+  borderRadius: "8px",
+  fontSize: "14px",
+  width: "100%",
+  boxSizing: "border-box",
+};
+
+const buttonStyle = {
+  padding: "12px 16px",
+  borderRadius: "8px",
+  border: "1px solid #c9d1d9",
+  background: "#fff",
+  cursor: "pointer",
+};
+
+function PersonCard({ title, person }) {
+  return (
+    <section style={cardStyle}>
+      <h2 style={{ marginTop: 0 }}>{title}</h2>
+      <div><strong>Name:</strong> {person ? `${person.first_name || ""} ${person.last_name || ""}`.trim() || "-" : "-"}</div>
+      <div><strong>Phone:</strong> {person?.phone || "-"}</div>
+      <div><strong>Email:</strong> {person?.email || "-"}</div>
+      <div><strong>Birthdate:</strong> {person?.birthdate || "-"}</div>
+      <div><strong>Age:</strong> {person?.age || "-"}</div>
+      <div><strong>Sex:</strong> {person?.sex || "-"}</div>
+      <div><strong>Tobacco:</strong> {person?.tobacco || "-"}</div>
+      <div><strong>Coverage Type:</strong> {person?.coverage_type || "-"}</div>
+      <div><strong>Address:</strong> {person?.address || "-"}</div>
+      <div><strong>City:</strong> {person?.city || "-"}</div>
+      <div><strong>State:</strong> {person?.state || "-"}</div>
+      <div><strong>ZIP:</strong> {person?.zip || "-"}</div>
+    </section>
+  );
+}
+
 export default function HouseholdDetailPage() {
   const params = useParams();
   const id = params?.id;
@@ -34,118 +94,185 @@ export default function HouseholdDetailPage() {
   const [household, setHousehold] = useState(null);
   const [selectedForm, setSelectedForm] = useState("");
   const [health, setHealth] = useState([]);
+  const [message, setMessage] = useState("Loading...");
 
   useEffect(() => {
     async function load() {
-     const { data } = await supabase
-  .from("households")
-  .select(`
-    id,
-    assigned_agent,
-    notes,
-    people (*),
-    intakes (
-      id,
-      created_at,
-      notes
-    )
-  `)
-  .eq("id", id)
-  .single();
+      const { data, error } = await supabase
+        .from("households")
+        .select(`
+          id,
+          created_at,
+          assigned_agent,
+          notes,
+          people (*),
+          intakes (
+            id,
+            created_at,
+            notes
+          )
+        `)
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        setMessage(error.message);
+        return;
+      }
 
       setHousehold(data);
+      setMessage("");
     }
 
     if (id) load();
   }, [id]);
 
   const client = useMemo(
-    () => household?.people?.find(p => p.person_type === "client"),
+    () => household?.people?.find((p) => p.person_type === "client"),
     [household]
   );
 
   const spouse = useMemo(
-    () => household?.people?.find(p => p.person_type === "spouse"),
+    () => household?.people?.find((p) => p.person_type === "spouse"),
     [household]
   );
-const latestIntakeNote = useMemo(() => {
-  if (!household?.intakes || household.intakes.length === 0) return "";
-  const sorted = [...household.intakes].sort(
-    (a, b) => new Date(b.created_at) - new Date(a.created_at)
-  );
-  return sorted[0]?.notes || "";
-}, [household]);
+
+  const intakeHistory = useMemo(() => {
+    if (!household?.intakes) return [];
+    return [...household.intakes].sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    );
+  }, [household]);
+
   function toggleHealth(option) {
-    setHealth(prev =>
+    setHealth((prev) =>
       prev.includes(option)
-        ? prev.filter(x => x !== option)
+        ? prev.filter((x) => x !== option)
         : [...prev, option]
     );
   }
 
   function sendEmail(link) {
     const email = client?.email;
-    if (!email) return alert("No email");
+    if (!email) {
+      alert("No client email found.");
+      return;
+    }
+    if (!link) {
+      alert("Please select a form first.");
+      return;
+    }
 
-    window.location.href =
-      `mailto:${email}?subject=Info&body=${encodeURIComponent(link)}`;
+    window.location.href = `mailto:${email}?subject=${encodeURIComponent(
+      "Requested Form / Link"
+    )}&body=${encodeURIComponent(link)}`;
   }
 
-  if (!household) {
-    return <p style={{ padding: "32px" }}>Loading...</p>;
+  if (message) {
+    return <p style={{ padding: "32px", fontFamily: "Arial" }}>{message}</p>;
   }
 
   return (
-    <main style={{ padding: "32px", fontFamily: "Arial" }}>
+    <main style={{ padding: "32px", fontFamily: "Arial", maxWidth: "1200px", margin: "0 auto" }}>
       <h1>Household Detail</h1>
-<div style={{ marginTop: "16px", marginBottom: "20px", display: "grid", gap: "8px" }}>
-  <div>
-    <strong>Assigned Agent:</strong> {household?.assigned_agent || "-"}
-  </div>
-  <div>
-    <strong>Notes:</strong> {household?.notes || "-"}
-  </div>
-</div>
-      <h2>Client</h2>
-      <div>{client?.first_name} {client?.last_name}</div>
-      <div>{client?.phone}</div>
-      <div>{client?.email}</div>
 
-      <h2 style={{ marginTop: "20px" }}>Spouse</h2>
-      <div>{spouse?.first_name || "-"}</div>
+      <section style={{ ...cardStyle, marginBottom: "20px" }}>
+        <div>
+          <strong>Assigned Agent:</strong> {household?.assigned_agent || "-"}
+        </div>
+        <div>
+          <strong>Current Working Notes:</strong> {household?.notes || "-"}
+        </div>
+      </section>
 
-      <h2 style={{ marginTop: "20px" }}>Forms</h2>
-      <select onChange={(e) => setSelectedForm(e.target.value)}>
-        <option>Select Form</option>
-        {formOptions.map((f, i) => (
-          <option key={i} value={f.url}>{f.label}</option>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+        <PersonCard title="Client" person={client} />
+        <PersonCard title="Spouse" person={spouse} />
+      </div>
+
+      <section style={{ ...cardStyle, marginTop: "20px" }}>
+        <h2 style={{ marginTop: 0 }}>Forms & Quote Actions</h2>
+
+        <select
+          value={selectedForm}
+          onChange={(e) => setSelectedForm(e.target.value)}
+          style={inputStyle}
+        >
+          <option value="">Select Form</option>
+          {formOptions.map((form, index) => (
+            <option key={index} value={form.url}>
+              {form.label}
+            </option>
+          ))}
+        </select>
+
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+          <button onClick={() => sendEmail(selectedForm)} style={buttonStyle}>
+            Email Form
+          </button>
+
+          <button
+            onClick={() => {
+              if (!selectedForm) {
+                alert("Please select a form first.");
+                return;
+              }
+              window.open(selectedForm, "_blank");
+            }}
+            style={buttonStyle}
+          >
+            Open Form
+          </button>
+        </div>
+      </section>
+
+      <section style={{ ...cardStyle, marginTop: "20px" }}>
+        <h2 style={{ marginTop: 0 }}>Health Status</h2>
+
+        {healthOptions.map((option) => (
+          <label key={option} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <input
+              type="checkbox"
+              checked={health.includes(option)}
+              onChange={() => toggleHealth(option)}
+            />
+            {option}
+          </label>
         ))}
-      </select>
 
-      <div style={{ marginTop: "10px" }}>
-        <button onClick={() => sendEmail(selectedForm)}>
-          Email Form
-        </button>
-        <button onClick={() => window.open(selectedForm)}>
-          Open Form
-        </button>
-      </div>
+        <div style={{ marginTop: "12px" }}>
+          <strong>Selected:</strong> {health.length ? health.join(", ") : "None"}
+        </div>
+      </section>
 
-      <h2 style={{ marginTop: "20px" }}>Health Status</h2>
-      {healthOptions.map(option => (
-        <label key={option} style={{ display: "block" }}>
-          <input
-            type="checkbox"
-            checked={health.includes(option)}
-            onChange={() => toggleHealth(option)}
-          />
-          {option}
-        </label>
-      ))}
+      <section style={{ ...cardStyle, marginTop: "20px" }}>
+        <h2 style={{ marginTop: 0 }}>Intake History</h2>
 
-      <div style={{ marginTop: "20px" }}>
-        <strong>Selected:</strong> {health.join(", ") || "None"}
-      </div>
+        {intakeHistory.length === 0 ? (
+          <div>No intake history found.</div>
+        ) : (
+          intakeHistory.map((entry) => (
+            <div
+              key={entry.id}
+              style={{
+                border: "1px solid #e5e7eb",
+                borderRadius: "8px",
+                padding: "12px",
+              }}
+            >
+              <div>
+                <strong>Date:</strong>{" "}
+                {entry.created_at
+                  ? new Date(entry.created_at).toLocaleString()
+                  : "-"}
+              </div>
+              <div>
+                <strong>Notes:</strong> {entry.notes || "-"}
+              </div>
+            </div>
+          ))
+        )}
+      </section>
     </main>
   );
 }
