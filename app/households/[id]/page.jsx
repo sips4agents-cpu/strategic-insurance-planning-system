@@ -95,36 +95,40 @@ export default function HouseholdDetailPage() {
   const [selectedForm, setSelectedForm] = useState("");
   const [health, setHealth] = useState([]);
   const [message, setMessage] = useState("Loading...");
+  const [workingNotes, setWorkingNotes] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      const { data, error } = await supabase
-        .from("households")
-        .select(`
+  async function loadHousehold() {
+    const { data, error } = await supabase
+      .from("households")
+      .select(`
+        id,
+        created_at,
+        assigned_agent,
+        notes,
+        people (*),
+        intakes (
           id,
           created_at,
-          assigned_agent,
-          notes,
-          people (*),
-          intakes (
-            id,
-            created_at,
-            notes
-          )
-        `)
-        .eq("id", id)
-        .single();
+          notes
+        )
+      `)
+      .eq("id", id)
+      .single();
 
-      if (error) {
-        setMessage(error.message);
-        return;
-      }
-
-      setHousehold(data);
-      setMessage("");
+    if (error) {
+      setMessage(error.message);
+      return;
     }
 
-    if (id) load();
+    setHousehold(data);
+    setWorkingNotes(data?.notes || "");
+    setMessage("");
+  }
+
+  useEffect(() => {
+    if (id) loadHousehold();
   }, [id]);
 
   const client = useMemo(
@@ -168,6 +172,48 @@ export default function HouseholdDetailPage() {
     )}&body=${encodeURIComponent(link)}`;
   }
 
+  async function saveWorkingNotes() {
+    setSavingNotes(true);
+
+    const { error } = await supabase
+      .from("households")
+      .update({ notes: workingNotes })
+      .eq("id", id);
+
+    if (error) {
+      alert(error.message);
+      setSavingNotes(false);
+      return;
+    }
+
+    await loadHousehold();
+    setSavingNotes(false);
+    alert("Working notes saved.");
+  }
+
+  async function deleteHousehold() {
+    const confirmed = window.confirm(
+      "Delete this contact/household? This will also remove linked people and intake history."
+    );
+
+    if (!confirmed) return;
+
+    setDeleting(true);
+
+    const { error } = await supabase
+      .from("households")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      alert(error.message);
+      setDeleting(false);
+      return;
+    }
+
+    window.location.replace("/clients");
+  }
+
   if (message) {
     return <p style={{ padding: "32px", fontFamily: "Arial" }}>{message}</p>;
   }
@@ -180,8 +226,31 @@ export default function HouseholdDetailPage() {
         <div>
           <strong>Assigned Agent:</strong> {household?.assigned_agent || "-"}
         </div>
+
         <div>
-          <strong>Current Working Notes:</strong> {household?.notes || "-"}
+          <strong>Current Working Notes</strong>
+        </div>
+
+        <textarea
+          value={workingNotes}
+          onChange={(e) => setWorkingNotes(e.target.value)}
+          rows={5}
+          style={inputStyle}
+          placeholder="Add or update current working notes here"
+        />
+
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+          <button onClick={saveWorkingNotes} style={buttonStyle} disabled={savingNotes}>
+            {savingNotes ? "Saving..." : "Save Working Notes"}
+          </button>
+
+          <button
+            onClick={deleteHousehold}
+            style={{ ...buttonStyle, borderColor: "#c00", color: "#c00" }}
+            disabled={deleting}
+          >
+            {deleting ? "Deleting..." : "Delete Contact"}
+          </button>
         </div>
       </section>
 
