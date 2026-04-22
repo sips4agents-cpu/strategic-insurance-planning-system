@@ -15,6 +15,17 @@ const agentOptions = [
   "Blake Richardson",
 ];
 
+const reasonOptions = [
+  "Phone appointment",
+  "Office appointment",
+  "Service",
+  "Follow up",
+  "Claims issue",
+  "Prescription drug plan",
+  "Referral",
+  "Business/HR director",
+];
+
 const sexOptions = ["Male", "Female"];
 const tobaccoOptions = ["Yes", "No"];
 const coverageTypeOptions = [
@@ -77,192 +88,11 @@ const blankPerson = {
   coverageType: "",
 };
 
-const inputStyle = {
-  padding: "12px",
-  border: "1px solid #c9d1d9",
-  borderRadius: "8px",
-  fontSize: "14px",
-  width: "100%",
-  boxSizing: "border-box",
-};
-
-const boxStyle = {
-  border: "1px solid #d0d7de",
-  borderRadius: "10px",
-  padding: "20px",
-  display: "grid",
-  gap: "12px",
-};
-
-const grid2 = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: "12px",
-};
-
-const grid3 = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr 1fr",
-  gap: "12px",
-};
-
-const buttonStyle = {
-  padding: "12px 16px",
-  borderRadius: "8px",
-  border: "none",
-  cursor: "pointer",
-};
-
-const linkStyle = {
-  padding: "12px 16px",
-  borderRadius: "8px",
-  border: "1px solid #c9d1d9",
-  textDecoration: "none",
-  color: "inherit",
-  display: "inline-block",
-};
-
-function PersonSection({ title, data, age, onUpdate, phoneMatches }) {
-  return (
-    <section style={boxStyle}>
-      <h2 style={{ marginTop: 0 }}>{title}</h2>
-
-      <div style={grid2}>
-        <input
-          value={data.firstName}
-          onChange={(e) => onUpdate("firstName", e.target.value)}
-          placeholder={`${title} First Name`}
-          style={inputStyle}
-        />
-        <input
-          value={data.lastName}
-          onChange={(e) => onUpdate("lastName", e.target.value)}
-          placeholder={`${title} Last Name`}
-          style={inputStyle}
-        />
-      </div>
-
-      <div style={grid2}>
-        <input
-          value={data.phone}
-          onChange={(e) => onUpdate("phone", e.target.value)}
-          placeholder={`${title} Phone`}
-          style={inputStyle}
-        />
-        <input
-          value={data.email}
-          onChange={(e) => onUpdate("email", e.target.value)}
-          placeholder={`${title} Email`}
-          style={inputStyle}
-        />
-      </div>
-
-      {data.phone ? (
-        <div>
-          <input
-            value={data.phoneConfirm}
-            onChange={(e) => onUpdate("phoneConfirm", e.target.value)}
-            placeholder={`Re-enter ${title} Phone to verify`}
-            style={inputStyle}
-          />
-          <div style={{ marginTop: "6px", fontSize: "13px" }}>
-            {data.phoneConfirm
-              ? phoneMatches
-                ? "Phone verified"
-                : "Phone numbers do not match"
-              : "Please re-enter phone number"}
-          </div>
-        </div>
-      ) : null}
-
-      <div style={grid2}>
-        <input
-          value={data.birthdate}
-          onChange={(e) => onUpdate("birthdate", e.target.value)}
-          placeholder={`${title} Birthdate`}
-          style={inputStyle}
-        />
-        <input value={age} readOnly placeholder={`${title} Age`} style={inputStyle} />
-      </div>
-
-      <div style={grid2}>
-        <input
-          value={data.address}
-          onChange={(e) => onUpdate("address", e.target.value)}
-          placeholder={`${title} Address`}
-          style={inputStyle}
-        />
-        <input
-          value={data.city}
-          onChange={(e) => onUpdate("city", e.target.value)}
-          placeholder={`${title} City`}
-          style={inputStyle}
-        />
-      </div>
-
-      <div style={grid2}>
-        <input
-          value={data.state}
-          onChange={(e) => onUpdate("state", e.target.value)}
-          placeholder={`${title} State`}
-          style={inputStyle}
-        />
-        <input
-          value={data.zip}
-          onChange={(e) => onUpdate("zip", e.target.value)}
-          placeholder={`${title} ZIP`}
-          style={inputStyle}
-        />
-      </div>
-
-      <div style={grid3}>
-        <select
-          value={data.sex}
-          onChange={(e) => onUpdate("sex", e.target.value)}
-          style={inputStyle}
-        >
-          <option value="">Sex</option>
-          {sexOptions.map((x) => (
-            <option key={x} value={x}>
-              {x}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={data.tobacco}
-          onChange={(e) => onUpdate("tobacco", e.target.value)}
-          style={inputStyle}
-        >
-          <option value="">Tobacco</option>
-          {tobaccoOptions.map((x) => (
-            <option key={x} value={x}>
-              {x}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={data.coverageType}
-          onChange={(e) => onUpdate("coverageType", e.target.value)}
-          style={inputStyle}
-        >
-          <option value="">Coverage Type</option>
-          {coverageTypeOptions.map((x) => (
-            <option key={x} value={x}>
-              {x}
-            </option>
-          ))}
-        </select>
-      </div>
-    </section>
-  );
-}
-
 export default function IntakePage() {
   const [client, setClient] = useState({ ...blankPerson });
   const [spouse, setSpouse] = useState({ ...blankPerson });
   const [agent, setAgent] = useState("");
+  const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
@@ -271,15 +101,8 @@ export default function IntakePage() {
   const clientAge = useMemo(() => calculateAge(client.birthdate), [client.birthdate]);
   const spouseAge = useMemo(() => calculateAge(spouse.birthdate), [spouse.birthdate]);
 
-  const clientPhoneMatches =
-    !client.phone && !client.phoneConfirm
-      ? true
-      : client.phone === client.phoneConfirm;
-
-  const spousePhoneMatches =
-    !spouse.phone && !spouse.phoneConfirm
-      ? true
-      : spouse.phone === spouse.phoneConfirm;
+  const clientPhoneMatches = client.phone === client.phoneConfirm;
+  const spousePhoneMatches = spouse.phone === spouse.phoneConfirm;
 
   useEffect(() => {
     async function loadUser() {
@@ -304,29 +127,11 @@ export default function IntakePage() {
   }
 
   function spouseHasData() {
-    return Boolean(
-      spouse.firstName ||
-        spouse.lastName ||
-        spouse.phone ||
-        spouse.email ||
-        spouse.birthdate ||
-        spouse.address ||
-        spouse.city ||
-        spouse.state ||
-        spouse.zip ||
-        spouse.sex ||
-        spouse.tobacco ||
-        spouse.coverageType
-    );
+    return Boolean(spouse.firstName || spouse.lastName);
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-
-    if (!userId) {
-      setMessage("You must be signed in before saving intake.");
-      return;
-    }
 
     if (!clientPhoneMatches) {
       setMessage("Client phone numbers do not match.");
@@ -341,27 +146,28 @@ export default function IntakePage() {
     setSaving(true);
     setMessage("");
 
-    const { data: householdData, error: householdError } = await supabase
+    const { data: householdData, error } = await supabase
       .from("households")
       .insert([
         {
           owner_user_id: userId,
           assigned_agent: agent,
           notes,
+          reason_for_call: reason,
         },
       ])
       .select()
       .single();
 
-    if (householdError) {
-      setMessage(householdError.message);
+    if (error) {
+      setMessage(error.message);
       setSaving(false);
       return;
     }
 
     const householdId = householdData.id;
 
-    const peopleToInsert = [
+    await supabase.from("people").insert([
       {
         household_id: householdId,
         person_type: "client",
@@ -379,37 +185,31 @@ export default function IntakePage() {
         tobacco: client.tobacco,
         coverage_type: client.coverageType,
       },
-    ];
+    ]);
 
     if (spouseHasData()) {
-      peopleToInsert.push({
-        household_id: householdId,
-        person_type: "spouse",
-        first_name: spouse.firstName,
-        last_name: spouse.lastName,
-        phone: spouse.phone,
-        email: spouse.email,
-        birthdate: spouse.birthdate,
-        age: spouseAge,
-        address: spouse.address,
-        city: spouse.city,
-        state: spouse.state,
-        zip: spouse.zip,
-        sex: spouse.sex,
-        tobacco: spouse.tobacco,
-        coverage_type: spouse.coverageType,
-      });
+      await supabase.from("people").insert([
+        {
+          household_id: householdId,
+          person_type: "spouse",
+          first_name: spouse.firstName,
+          last_name: spouse.lastName,
+          phone: spouse.phone,
+          email: spouse.email,
+          birthdate: spouse.birthdate,
+          age: spouseAge,
+          address: spouse.address,
+          city: spouse.city,
+          state: spouse.state,
+          zip: spouse.zip,
+          sex: spouse.sex,
+          tobacco: spouse.tobacco,
+          coverage_type: spouse.coverageType,
+        },
+      ]);
     }
 
-    const { error: peopleError } = await supabase.from("people").insert(peopleToInsert);
-
-    if (peopleError) {
-      setMessage(peopleError.message);
-      setSaving(false);
-      return;
-    }
-
-    const { error: intakeError } = await supabase.from("intakes").insert([
+    await supabase.from("intakes").insert([
       {
         household_id: householdId,
         created_by: userId,
@@ -417,82 +217,41 @@ export default function IntakePage() {
       },
     ]);
 
-    if (intakeError) {
-      setMessage(intakeError.message);
-      setSaving(false);
-      return;
-    }
-
     setMessage("Intake saved successfully.");
-    setClient({ ...blankPerson });
-    setSpouse({ ...blankPerson });
-    setAgent("");
-    setNotes("");
     setSaving(false);
   }
 
   return (
-    <main
-      style={{
-        padding: "32px",
-        fontFamily: "Arial, sans-serif",
-        maxWidth: "1100px",
-        margin: "0 auto",
-      }}
-    >
+    <main style={{ padding: "32px", fontFamily: "Arial" }}>
       <h1>New Intake</h1>
-      <p>Client and spouse intake form.</p>
 
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: "24px", marginTop: "24px" }}>
-        <PersonSection
-          title="Client"
-          data={client}
-          age={clientAge}
-          onUpdate={updateClient}
-          phoneMatches={clientPhoneMatches}
-        />
+      <h2>Admin</h2>
 
-        <PersonSection
-          title="Spouse"
-          data={spouse}
-          age={spouseAge}
-          onUpdate={updateSpouse}
-          phoneMatches={spousePhoneMatches}
-        />
+      <select value={agent} onChange={(e) => setAgent(e.target.value)}>
+        <option value="">Assign Agent</option>
+        {agentOptions.map((a) => (
+          <option key={a}>{a}</option>
+        ))}
+      </select>
 
-        <section style={boxStyle}>
-          <h2 style={{ marginTop: 0 }}>Admin</h2>
+      <select value={reason} onChange={(e) => setReason(e.target.value)}>
+        <option value="">Reason for Call</option>
+        {reasonOptions.map((r) => (
+          <option key={r}>{r}</option>
+        ))}
+      </select>
 
-          <div style={grid2}>
-            <select value={agent} onChange={(e) => setAgent(e.target.value)} style={inputStyle}>
-              <option value="">Assign Agent</option>
-              {agentOptions.map((x) => (
-                <option key={x} value={x}>
-                  {x}
-                </option>
-              ))}
-            </select>
+      <textarea
+        placeholder="Notes"
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+      />
 
-            <input
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Notes"
-              style={inputStyle}
-            />
-          </div>
-        </section>
+      <button onClick={handleSubmit} disabled={saving}>
+        {saving ? "Saving..." : "Save Intake"}
+      </button>
 
-        <div style={{ display: "flex", gap: "12px" }}>
-          <button type="submit" style={buttonStyle} disabled={saving}>
-            {saving ? "Saving..." : "Save Intake"}
-          </button>
-          <a href="/dashboard" style={linkStyle}>
-            Return to Dashboard
-          </a>
-        </div>
-
-        {message ? <p>{message}</p> : null}
-      </form>
+      {message && <p>{message}</p>}
     </main>
   );
 }
