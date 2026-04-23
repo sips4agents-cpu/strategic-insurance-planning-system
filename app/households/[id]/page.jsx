@@ -87,7 +87,12 @@ function PersonCard({ title, person }) {
   return (
     <section style={cardStyle}>
       <h2 style={{ margin: 0 }}>{title}</h2>
-      <div><strong>Name:</strong> {person ? `${person.first_name || ""} ${person.last_name || ""}`.trim() || "-" : "-"}</div>
+      <div>
+        <strong>Name:</strong>{" "}
+        {person
+          ? `${person.first_name || ""} ${person.last_name || ""}`.trim() || "-"
+          : "-"}
+      </div>
       <div><strong>Phone:</strong> {person?.phone || "-"}</div>
       <div><strong>Email:</strong> {person?.email || "-"}</div>
       <div><strong>Birthdate:</strong> {person?.birthdate || "-"}</div>
@@ -109,10 +114,10 @@ export default function HouseholdDetailPage() {
 
   const [household, setHousehold] = useState(null);
   const [message, setMessage] = useState("Loading...");
-  const [selectedForm, setSelectedForm] = useState("");
   const [workingNotes, setWorkingNotes] = useState("");
   const [status, setStatus] = useState("New Lead");
   const [health, setHealth] = useState([]);
+  const [selectedForms, setSelectedForms] = useState([]);
   const [savingNotes, setSavingNotes] = useState(false);
   const [savingWorkflow, setSavingWorkflow] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -176,6 +181,14 @@ export default function HouseholdDetailPage() {
       prev.includes(option)
         ? prev.filter((x) => x !== option)
         : [...prev, option]
+    );
+  }
+
+  function toggleForm(url) {
+    setSelectedForms((prev) =>
+      prev.includes(url)
+        ? prev.filter((x) => x !== url)
+        : [...prev, url]
     );
   }
 
@@ -243,19 +256,35 @@ export default function HouseholdDetailPage() {
     window.location.replace("/clients");
   }
 
-  function sendEmail(link) {
+  function emailSelectedForms() {
     const email = client?.email;
     if (!email) {
       alert("No client email found.");
       return;
     }
-    if (!link) {
-      alert("Please select a form first.");
+
+    if (selectedForms.length === 0) {
+      alert("Please select at least one form.");
       return;
     }
 
+    const body = selectedForms.join("\n\n");
+
     window.location.href =
-      `mailto:${email}?subject=${encodeURIComponent("Requested Form / Link")}&body=${encodeURIComponent(link)}`;
+      `mailto:${email}?subject=${encodeURIComponent(
+        "Requested Forms / Links"
+      )}&body=${encodeURIComponent(body)}`;
+  }
+
+  function openSelectedForms() {
+    if (selectedForms.length === 0) {
+      alert("Please select at least one form.");
+      return;
+    }
+
+    selectedForms.forEach((url) => {
+      window.open(url, "_blank");
+    });
   }
 
   if (message) {
@@ -344,35 +373,36 @@ export default function HouseholdDetailPage() {
       <section style={{ ...cardStyle, marginTop: "20px" }}>
         <h2 style={{ margin: 0 }}>Forms</h2>
 
-        <select
-          value={selectedForm}
-          onChange={(e) => setSelectedForm(e.target.value)}
-          style={inputStyle}
-        >
-          <option value="">Select Form</option>
+        <div style={{ display: "grid", gap: "8px" }}>
           {formOptions.map((form, index) => (
-            <option key={index} value={form.url}>
+            <label key={index} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <input
+                type="checkbox"
+                checked={selectedForms.includes(form.url)}
+                onChange={() => toggleForm(form.url)}
+              />
               {form.label}
-            </option>
+            </label>
           ))}
-        </select>
+        </div>
+
+        <div>
+          <strong>Selected:</strong>{" "}
+          {selectedForms.length
+            ? formOptions
+                .filter((form) => selectedForms.includes(form.url))
+                .map((form) => form.label)
+                .join(", ")
+            : "None"}
+        </div>
 
         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-          <button onClick={() => sendEmail(selectedForm)} style={buttonStyle}>
-            Email
+          <button onClick={emailSelectedForms} style={buttonStyle}>
+            Email Selected Forms
           </button>
 
-          <button
-            onClick={() => {
-              if (!selectedForm) {
-                alert("Please select a form first.");
-                return;
-              }
-              window.open(selectedForm, "_blank");
-            }}
-            style={buttonStyle}
-          >
-            Open
+          <button onClick={openSelectedForms} style={buttonStyle}>
+            Open Selected Forms
           </button>
         </div>
       </section>
