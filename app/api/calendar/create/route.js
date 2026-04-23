@@ -3,19 +3,26 @@ import { google } from "googleapis";
 export async function POST(req) {
   try {
     const body = await req.json();
+    const { title, description, start, end, location } = body;
 
-    const {
-      title,
-      description,
-      start,
-      end,
-      location
-    } = body;
+    if (!process.env.GOOGLE_CLIENT_EMAIL) {
+      return Response.json({ success: false, error: "Missing GOOGLE_CLIENT_EMAIL" });
+    }
+
+    if (!process.env.GOOGLE_PRIVATE_KEY) {
+      return Response.json({ success: false, error: "Missing GOOGLE_PRIVATE_KEY" });
+    }
+
+    if (!process.env.GOOGLE_CALENDAR_ID) {
+      return Response.json({ success: false, error: "Missing GOOGLE_CALENDAR_ID" });
+    }
+
+    const privateKey = process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n");
 
     const auth = new google.auth.JWT(
       process.env.GOOGLE_CLIENT_EMAIL,
       null,
-      process.env.GOOGLE_PRIVATE_KEY,
+      privateKey,
       ["https://www.googleapis.com/auth/calendar"]
     );
 
@@ -23,26 +30,25 @@ export async function POST(req) {
 
     const event = {
       summary: title,
-      description: description,
-      location: location,
+      description,
+      location,
       start: {
         dateTime: start,
-        timeZone: "America/Chicago"
+        timeZone: "America/Chicago",
       },
       end: {
         dateTime: end,
-        timeZone: "America/Chicago"
-      }
+        timeZone: "America/Chicago",
+      },
     };
 
     const response = await calendar.events.insert({
       calendarId: process.env.GOOGLE_CALENDAR_ID,
-      resource: event
+      resource: event,
     });
 
     return Response.json({ success: true, event: response.data });
   } catch (error) {
-    console.error(error);
     return Response.json({ success: false, error: error.message });
   }
 }
