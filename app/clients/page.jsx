@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -8,9 +8,29 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
+const statusOptions = [
+  "All",
+  "New Lead",
+  "Intake Complete",
+  "Presented",
+  "Submitted",
+  "Approved",
+  "Follow Up",
+];
+
+const inputStyle = {
+  padding: "12px",
+  border: "1px solid #c9d1d9",
+  borderRadius: "8px",
+  fontSize: "14px",
+  width: "100%",
+  boxSizing: "border-box",
+};
+
 export default function ClientsPage() {
   const [households, setHouseholds] = useState([]);
   const [message, setMessage] = useState("Loading...");
+  const [statusFilter, setStatusFilter] = useState("All");
 
   useEffect(() => {
     async function loadHouseholds() {
@@ -26,7 +46,11 @@ export default function ClientsPage() {
         .from("households")
         .select(`
           id,
+          created_at,
           assigned_agent,
+          notes,
+          reason_for_call,
+          status,
           people (
             id,
             person_type,
@@ -52,14 +76,42 @@ export default function ClientsPage() {
     loadHouseholds();
   }, []);
 
+  const filteredHouseholds = useMemo(() => {
+    if (statusFilter === "All") return households;
+    return households.filter(
+      (household) => (household.status || "New Lead") === statusFilter
+    );
+  }, [households, statusFilter]);
+
   return (
     <main style={{ padding: "32px", fontFamily: "Arial, sans-serif" }}>
       <h1>Clients</h1>
 
+      <div style={{ marginTop: "16px", marginBottom: "20px", maxWidth: "320px" }}>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          style={inputStyle}
+        >
+          {statusOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {message ? <p>{message}</p> : null}
 
+      {!message ? (
+        <p style={{ marginBottom: "20px" }}>
+          Showing {filteredHouseholds.length} household
+          {filteredHouseholds.length === 1 ? "" : "s"}.
+        </p>
+      ) : null}
+
       <div style={{ display: "grid", gap: "16px", marginTop: "24px" }}>
-        {households.map((household) => {
+        {filteredHouseholds.map((household) => {
           const client = household.people?.find((p) => p.person_type === "client");
           const spouse = household.people?.find((p) => p.person_type === "spouse");
 
@@ -73,11 +125,18 @@ export default function ClientsPage() {
                 background: "#fff",
               }}
             >
-              <div><strong>{client?.first_name || "-"} {client?.last_name || ""}</strong></div>
+              <div>
+                <strong>
+                  {client?.first_name || "-"} {client?.last_name || ""}
+                </strong>
+              </div>
+
               <div>Phone: {client?.phone || "-"}</div>
               <div>Email: {client?.email || "-"}</div>
               <div>Coverage Type: {client?.coverage_type || "-"}</div>
               <div>Agent: {household.assigned_agent || "-"}</div>
+              <div>Reason for Call: {household.reason_for_call || "-"}</div>
+              <div>Status: {household.status || "New Lead"}</div>
 
               {spouse ? (
                 <div style={{ marginTop: "8px" }}>
@@ -106,7 +165,9 @@ export default function ClientsPage() {
           );
         })}
 
-        {!message && households.length === 0 ? <p>No clients saved yet.</p> : null}
+        {!message && filteredHouseholds.length === 0 ? (
+          <p>No households found for this status.</p>
+        ) : null}
       </div>
     </main>
   );
