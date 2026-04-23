@@ -287,6 +287,33 @@ export default function HouseholdDetailPage() {
     });
   }
 
+  async function createCalendarEvent() {
+    const start = new Date();
+    const end = new Date(start.getTime() + 30 * 60000);
+
+    const res = await fetch("/api/calendar/create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        title: `${client?.first_name || ""} ${client?.last_name || ""} Appointment`,
+        description: workingNotes || "Client appointment",
+        location: household?.appointment_location || "Office",
+        start: start.toISOString(),
+        end: end.toISOString()
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert("Calendar event created!");
+    } else {
+      alert("Error: " + data.error);
+    }
+  }
+
   if (message) {
     return <p style={pageStyle}>{message}</p>;
   }
@@ -340,6 +367,10 @@ export default function HouseholdDetailPage() {
             disabled={deleting}
           >
             {deleting ? "Deleting..." : "Delete Contact"}
+          </button>
+
+          <button onClick={createCalendarEvent} style={buttonStyle}>
+            Create Calendar Event
           </button>
         </div>
       </section>
