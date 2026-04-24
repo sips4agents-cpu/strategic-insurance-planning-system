@@ -5,8 +5,11 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   return Response.json({
-    success: true,
-    message: "Calendar route is live",
+    route: "calendar route live",
+    hasClientEmail: Boolean(process.env.GOOGLE_CLIENT_EMAIL),
+    clientEmail: process.env.GOOGLE_CLIENT_EMAIL || null,
+    hasPrivateKey: Boolean(process.env.GOOGLE_PRIVATE_KEY),
+    calendarId: process.env.GOOGLE_CALENDAR_ID || null,
   });
 }
 
@@ -16,8 +19,8 @@ export async function POST(req) {
     const { title, description, start, end, location } = body;
 
     const privateKey = process.env.GOOGLE_PRIVATE_KEY
-      .replace(/\\n/g, "\n")
-      .replace(/^"|"$/g, "");
+      ?.replace(/\\n/g, "\n")
+      ?.replace(/^"|"$/g, "");
 
     const auth = new google.auth.JWT({
       email: process.env.GOOGLE_CLIENT_EMAIL,
@@ -26,6 +29,10 @@ export async function POST(req) {
     });
 
     const calendar = google.calendar({ version: "v3", auth });
+
+    await calendar.calendars.get({
+      calendarId: process.env.GOOGLE_CALENDAR_ID,
+    });
 
     const response = await calendar.events.insert({
       calendarId: process.env.GOOGLE_CALENDAR_ID,
@@ -42,7 +49,10 @@ export async function POST(req) {
   } catch (error) {
     return Response.json({
       success: false,
-      error: error.message || "Unknown calendar error",
+      error: error.message,
+      code: error.code || null,
+      calendarId: process.env.GOOGLE_CALENDAR_ID || null,
+      clientEmail: process.env.GOOGLE_CLIENT_EMAIL || null,
     });
   }
 }
