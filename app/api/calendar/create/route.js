@@ -1,121 +1,76 @@
-import { google } from "googleapis";
+async function createCalendarEvent() {
+  const times = buildAppointmentTimes();
+  if (!times) return;
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+  if (schedulerAgents.length === 0) {
+    alert("Please select at least one agent.");
+    return;
+  }
 
-const agentColorMap = {
-  Admin: "3",
-  "Loyd Richardson": "10",
-  "Blake Richardson": "6",
-  "William Sykes": "9",
-  "Jimmie Bassett": "11",
-  "Christiana Grant": "3",
-};
+  const clientName =
+    `${client?.first_name || ""} ${client?.last_name || ""}`.trim() || "Client";
 
-function getAuth() {
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY
-    ?.replace(/\\n/g, "\n")
-    ?.replace(/^"|"$/g, "");
+  const typeCode = appointmentCodeMap[appointmentType] || appointmentType;
 
-  return new google.auth.JWT({
-    email: process.env.GOOGLE_CLIENT_EMAIL,
-    key: privateKey,
-    scopes: ["https://www.googleapis.com/auth/calendar"],
-  });
-}
+  const agentCodes = schedulerAgents
+    .map((agent) => agentInitialsMap[agent] || agent)
+    .join("/");
 
-export async function GET() {
-  return Response.json({
-    success: true,
-    message: "Calendar route ready",
-    calendarId: process.env.GOOGLE_CALENDAR_ID || null,
-  });
-}
+  const aorCode = agentInitialsMap[household?.assigned_agent] || household?.assigned_agent || "-";
 
-export async function POST(req) {
-  try {
-    const body = await req.json();
+  const healthSummary = health.length ? health.join(", ") : "None";
 
-    const {
+  const title = `[${typeCode}] ${clientName} | ${agentCodes}`;
+
+  const description =
+    `Reason for Call: ${household?.reason_for_call || appointmentType || "-"}\n` +
+    `Client: ${clientName}\n` +
+    `Phone: ${client?.phone || "-"}\n` +
+    `Email: ${client?.email || "-"}\n` +
+    `Age: ${client?.age || "-"}\n` +
+    `ZIP: ${client?.zip || "-"}\n` +
+    `Assigned Agent: ${schedulerAgents.join(", ")}\n` +
+    `Assigned Agent Initials: ${agentCodes}\n` +
+    `AOR: ${aorCode}\n\n` +
+    `Premiums:\n` +
+    `Current Premium: ${household?.current_premium || "-"}\n` +
+    `Proposed Premium: ${household?.proposed_premium || "-"}\n\n` +
+    `Health Conditions:\n` +
+    `${healthSummary}\n\n` +
+    `Notes:\n` +
+    `${workingNotes || "-"}`;
+
+  const res = await fetch("/api/calendar/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      agents: schedulerAgents,
       title,
       description,
-      start,
-      end,
-      location,
-      agents = [],
-      checkOnly,
-    } = body;
+      location: appointmentLocation || "Office",
+      start: times.start.toISOString(),
+      end: times.end.toISOString(),
+    }),
+  });
 
-    const selectedAgents = Array.isArray(agents) ? agents : [agents];
+  const data = await res.json();
 
-    const calendar = google.calendar({ version: "v3", auth: getAuth() });
+  if (data.success) {
+    await supabase
+      .from("households")
+      .update({
+        appointment_type: appointmentType,
+        appointment_date: appointmentDate,
+        appointment_time: appointmentTime,
+        appointment_duration: times.durationMinutes,
+        appointment_location: appointmentLocation,
+      })
+      .eq("id", id);
 
-    const eventsResponse = await calendar.events.list({
-      calendarId: process.env.GOOGLE_CALENDAR_ID,
-      timeMin: start,
-      timeMax: end,
-      singleEvents: true,
-      orderBy: "startTime",
-    });
-
-    const existingEvents = eventsResponse.data.items || [];
-
-    const conflictingEvents = existingEvents.filter((event) => {
-      const eventDescription = event.description || "";
-      return selectedAgents.some((agent) =>
-        eventDescription.includes(`Assigned Agent: ${agent}`)
-      );
-    });
-
-    if (checkOnly) {
-      return Response.json({
-        success: true,
-        available: conflictingEvents.length === 0,
-        conflicts: conflictingEvents.map((event) => ({
-          summary: event.summary,
-          start: event.start,
-          end: event.end,
-          description: event.description,
-        })),
-      });
-    }
-
-    if (conflictingEvents.length > 0) {
-      return Response.json({
-        success: false,
-        error: "One or more selected agents already has an appointment at this time.",
-        conflicts: conflictingEvents.map((event) => event.summary),
-      });
-    }
-
-    const primaryAgent = selectedAgents[0] || "Admin";
-
-    const response = await calendar.events.insert({
-      calendarId: process.env.GOOGLE_CALENDAR_ID,
-      resource: {
-        summary: title || "Client Appointment",
-        description: description || "",
-        location: location || "Office",
-        colorId: agentColorMap[primaryAgent] || "3",
-        start: {
-          dateTime: start,
-          timeZone: "America/Chicago",
-        },
-        end: {
-          dateTime: end,
-          timeZone: "America/Chicago",
-        },
-      },
-    });
-
-    return Response.json({
-      success: true,
-      event: response.data,
-    });
-  } catch (error) {
-    return Response.json({
-      success: false,
-      error: error.message || "Unknown calendar error",
-    });
+    setAvailabilityMessage("Calendar event created.");
+    alert("Calendar event created!");
+  } else {
+    setAvailabilityMessage("Error: " + data.error);
+    alert("Error: " + data.error);
   }
 }
