@@ -4,20 +4,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return Response.json({
-    route: "calendar route live",
-    hasClientEmail: Boolean(process.env.GOOGLE_CLIENT_EMAIL),
-    clientEmail: process.env.GOOGLE_CLIENT_EMAIL || null,
-    hasPrivateKey: Boolean(process.env.GOOGLE_PRIVATE_KEY),
-    calendarId: process.env.GOOGLE_CALENDAR_ID || null,
-  });
-}
-
-export async function POST(req) {
   try {
-    const body = await req.json();
-    const { title, description, start, end, location } = body;
-
     const privateKey = process.env.GOOGLE_PRIVATE_KEY
       ?.replace(/\\n/g, "\n")
       ?.replace(/^"|"$/g, "");
@@ -30,29 +17,16 @@ export async function POST(req) {
 
     const calendar = google.calendar({ version: "v3", auth });
 
-    await calendar.calendars.get({
-      calendarId: process.env.GOOGLE_CALENDAR_ID,
-    });
+    const list = await calendar.calendarList.list();
 
-    const response = await calendar.events.insert({
-      calendarId: process.env.GOOGLE_CALENDAR_ID,
-      resource: {
-        summary: title || "Client Appointment",
-        description: description || "",
-        location: location || "Office",
-        start: { dateTime: start, timeZone: "America/Chicago" },
-        end: { dateTime: end, timeZone: "America/Chicago" },
-      },
+    return Response.json({
+      success: true,
+      calendars: list.data.items,
     });
-
-    return Response.json({ success: true, event: response.data });
   } catch (error) {
     return Response.json({
       success: false,
       error: error.message,
-      code: error.code || null,
-      calendarId: process.env.GOOGLE_CALENDAR_ID || null,
-      clientEmail: process.env.GOOGLE_CLIENT_EMAIL || null,
     });
   }
 }
