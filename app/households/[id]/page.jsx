@@ -10,26 +10,11 @@ const supabase = createClient(
 );
 
 const formOptions = [
-  {
-    label: "Form L564",
-    url: "https://www.cms.gov/medicare/cms-forms/cms-forms/downloads/cms-l564e.pdf",
-  },
-  {
-    label: "Form Part B Enrollment",
-    url: "https://www.cms.gov/medicare/cms-forms/cms-forms/downloads/cms40b-e.pdf",
-  },
-  {
-    label: "IRMAA Link",
-    url: "https://www.medicare.gov/publications/11579-medicare-costs.pdf",
-  },
-  {
-    label: "HSA Guideline",
-    url: "https://www.irs.gov/publications/p969",
-  },
-  {
-    label: "Quick Rater",
-    url: "/rate-summary",
-  },
+  { label: "Form L564", url: "https://www.cms.gov/medicare/cms-forms/cms-forms/downloads/cms-l564e.pdf" },
+  { label: "Form Part B Enrollment", url: "https://www.cms.gov/medicare/cms-forms/cms-forms/downloads/cms40b-e.pdf" },
+  { label: "IRMAA Link", url: "https://www.medicare.gov/publications/11579-medicare-costs.pdf" },
+  { label: "HSA Guideline", url: "https://www.irs.gov/publications/p969" },
+  { label: "Quick Rater", url: "/rate-summary" },
 ];
 
 const healthOptions = [
@@ -126,12 +111,7 @@ function PersonCard({ title, person }) {
   return (
     <section style={cardStyle}>
       <h2 style={{ margin: 0 }}>{title}</h2>
-      <div>
-        <strong>Name:</strong>{" "}
-        {person
-          ? `${person.first_name || ""} ${person.last_name || ""}`.trim() || "-"
-          : "-"}
-      </div>
+      <div><strong>Name:</strong> {person ? `${person.first_name || ""} ${person.last_name || ""}`.trim() || "-" : "-"}</div>
       <div><strong>Phone:</strong> {person?.phone || "-"}</div>
       <div><strong>Email:</strong> {person?.email || "-"}</div>
       <div><strong>Birthdate:</strong> {person?.birthdate || "-"}</div>
@@ -161,7 +141,7 @@ export default function HouseholdDetailPage() {
   const [savingWorkflow, setSavingWorkflow] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const [schedulerAgent, setSchedulerAgent] = useState("Admin");
+  const [schedulerAgents, setSchedulerAgents] = useState(["Admin"]);
   const [appointmentType, setAppointmentType] = useState("Phone appointment");
   const [appointmentDate, setAppointmentDate] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("");
@@ -204,13 +184,11 @@ export default function HouseholdDetailPage() {
     setWorkingNotes(data?.notes || "");
     setStatus(data?.status || "New Lead");
     setHealth(data?.health_flags || []);
-
     setAppointmentType(data?.appointment_type || data?.reason_for_call || "Phone appointment");
     setAppointmentDate(data?.appointment_date || "");
     setAppointmentTime(data?.appointment_time || "");
     setAppointmentDuration(String(data?.appointment_duration || 30));
     setAppointmentLocation(data?.appointment_location || "Office");
-
     setMessage("");
   }
 
@@ -237,17 +215,19 @@ export default function HouseholdDetailPage() {
 
   function toggleHealth(option) {
     setHealth((prev) =>
-      prev.includes(option)
-        ? prev.filter((x) => x !== option)
-        : [...prev, option]
+      prev.includes(option) ? prev.filter((x) => x !== option) : [...prev, option]
     );
   }
 
   function toggleForm(url) {
     setSelectedForms((prev) =>
-      prev.includes(url)
-        ? prev.filter((x) => x !== url)
-        : [...prev, url]
+      prev.includes(url) ? prev.filter((x) => x !== url) : [...prev, url]
+    );
+  }
+
+  function toggleSchedulerAgent(agent) {
+    setSchedulerAgents((prev) =>
+      prev.includes(agent) ? prev.filter((x) => x !== agent) : [...prev, agent]
     );
   }
 
@@ -268,6 +248,11 @@ export default function HouseholdDetailPage() {
     const times = buildAppointmentTimes();
     if (!times) return;
 
+    if (schedulerAgents.length === 0) {
+      alert("Please select at least one agent.");
+      return;
+    }
+
     setAvailabilityMessage("Checking availability...");
 
     const res = await fetch("/api/calendar/create", {
@@ -275,6 +260,7 @@ export default function HouseholdDetailPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         checkOnly: true,
+        agents: schedulerAgents,
         start: times.start.toISOString(),
         end: times.end.toISOString(),
       }),
@@ -289,8 +275,8 @@ export default function HouseholdDetailPage() {
 
     setAvailabilityMessage(
       data.available
-        ? "This time appears available."
-        : "This time is already booked on the shared calendar."
+        ? "Selected agent(s) appear available."
+        : "Conflict: one or more selected agents are already booked."
     );
   }
 
@@ -298,25 +284,36 @@ export default function HouseholdDetailPage() {
     const times = buildAppointmentTimes();
     if (!times) return;
 
+    if (schedulerAgents.length === 0) {
+      alert("Please select at least one agent.");
+      return;
+    }
+
     const clientName =
       `${client?.first_name || ""} ${client?.last_name || ""}`.trim() || "Client";
 
     const typeCode = appointmentCodeMap[appointmentType] || appointmentType;
-    const agentCode = agentInitialsMap[schedulerAgent] || schedulerAgent;
-    const healthSummary = health.length ? health.join(", ") : "None";
 
-    const title = `[${typeCode}] ${clientName} | ${agentCode}`;
+    const agentCodes = schedulerAgents
+      .map((agent) => agentInitialsMap[agent] || agent)
+      .join("/");
+
+    const aorCode =
+      agentInitialsMap[household?.assigned_agent] || household?.assigned_agent || "-";
+
+    const healthSummary = health.length ? health.join(", ") : "None";
+    const title = `[${typeCode}] ${clientName} | ${agentCodes}`;
 
     const description =
-      `Appointment Type: ${appointmentType}\n` +
+      `Reason for Call: ${household?.reason_for_call || appointmentType || "-"}\n` +
       `Client: ${clientName}\n` +
       `Phone: ${client?.phone || "-"}\n` +
       `Email: ${client?.email || "-"}\n` +
       `Age: ${client?.age || "-"}\n` +
       `ZIP: ${client?.zip || "-"}\n` +
-      `Assigned Agent: ${schedulerAgent}\n` +
-      `Reason for Call: ${household?.reason_for_call || "-"}\n` +
-      `Household Agent: ${household?.assigned_agent || "-"}\n\n` +
+      `Assigned Agent: ${schedulerAgents.join(", ")}\n` +
+      `Assigned Agent Initials: ${agentCodes}\n` +
+      `AOR: ${aorCode}\n\n` +
       `Premiums:\n` +
       `Current Premium: ${household?.current_premium || "-"}\n` +
       `Proposed Premium: ${household?.proposed_premium || "-"}\n\n` +
@@ -329,7 +326,7 @@ export default function HouseholdDetailPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        agent: schedulerAgent,
+        agents: schedulerAgents,
         title,
         description,
         location: appointmentLocation || "Office",
@@ -410,10 +407,7 @@ export default function HouseholdDetailPage() {
 
     setDeleting(true);
 
-    const { error } = await supabase
-      .from("households")
-      .delete()
-      .eq("id", id);
+    const { error } = await supabase.from("households").delete().eq("id", id);
 
     if (error) {
       alert("Delete failed: " + error.message);
@@ -439,9 +433,7 @@ export default function HouseholdDetailPage() {
     const body = selectedForms.join("\n\n");
 
     window.location.href =
-      `mailto:${email}?subject=${encodeURIComponent(
-        "Requested Forms / Links"
-      )}&body=${encodeURIComponent(body)}`;
+      `mailto:${email}?subject=${encodeURIComponent("Requested Forms / Links")}&body=${encodeURIComponent(body)}`;
   }
 
   function openSelectedForms() {
@@ -450,9 +442,7 @@ export default function HouseholdDetailPage() {
       return;
     }
 
-    selectedForms.forEach((url) => {
-      window.open(url, "_blank");
-    });
+    selectedForms.forEach((url) => window.open(url, "_blank"));
   }
 
   if (message) {
@@ -468,15 +458,9 @@ export default function HouseholdDetailPage() {
         <div><strong>Reason for Call:</strong> {household?.reason_for_call || "-"}</div>
 
         <div><strong>Status</strong></div>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          style={inputStyle}
-        >
+        <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
           {statusOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
+            <option key={option} value={option}>{option}</option>
           ))}
         </select>
 
@@ -516,17 +500,20 @@ export default function HouseholdDetailPage() {
       <section style={{ ...cardStyle, marginTop: "20px" }}>
         <h2 style={{ margin: 0 }}>Appointment Scheduler</h2>
 
-        <select
-          value={schedulerAgent}
-          onChange={(e) => setSchedulerAgent(e.target.value)}
-          style={inputStyle}
-        >
+        <div style={{ display: "grid", gap: "8px" }}>
+          <strong>Select Agent(s)</strong>
+
           {schedulerAgentOptions.map((agent) => (
-            <option key={agent} value={agent}>
-              {agent} — {agentColorLabels[agent]}
-            </option>
+            <label key={agent} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <input
+                type="checkbox"
+                checked={schedulerAgents.includes(agent)}
+                onChange={() => toggleSchedulerAgent(agent)}
+              />
+              {agent} — {agentInitialsMap[agent]} — {agentColorLabels[agent]}
+            </label>
           ))}
-        </select>
+        </div>
 
         <select
           value={appointmentType}
@@ -545,27 +532,12 @@ export default function HouseholdDetailPage() {
         </select>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-          <input
-            type="date"
-            value={appointmentDate}
-            onChange={(e) => setAppointmentDate(e.target.value)}
-            style={inputStyle}
-          />
-
-          <input
-            type="time"
-            value={appointmentTime}
-            onChange={(e) => setAppointmentTime(e.target.value)}
-            style={inputStyle}
-          />
+          <input type="date" value={appointmentDate} onChange={(e) => setAppointmentDate(e.target.value)} style={inputStyle} />
+          <input type="time" value={appointmentTime} onChange={(e) => setAppointmentTime(e.target.value)} style={inputStyle} />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-          <select
-            value={appointmentDuration}
-            onChange={(e) => setAppointmentDuration(e.target.value)}
-            style={inputStyle}
-          >
+          <select value={appointmentDuration} onChange={(e) => setAppointmentDuration(e.target.value)} style={inputStyle}>
             <option value="15">15 minutes</option>
             <option value="30">30 minutes</option>
             <option value="45">45 minutes</option>
@@ -573,11 +545,7 @@ export default function HouseholdDetailPage() {
             <option value="90">1.5 hours</option>
           </select>
 
-          <select
-            value={appointmentLocation}
-            onChange={(e) => setAppointmentLocation(e.target.value)}
-            style={inputStyle}
-          >
+          <select value={appointmentLocation} onChange={(e) => setAppointmentLocation(e.target.value)} style={inputStyle}>
             <option value="Office">Office</option>
             <option value="Phone Call">Phone Call</option>
             <option value="Client Home">Client Home</option>
@@ -587,13 +555,8 @@ export default function HouseholdDetailPage() {
         </div>
 
         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-          <button onClick={checkAvailability} style={buttonStyle}>
-            Check Availability
-          </button>
-
-          <button onClick={createCalendarEvent} style={buttonStyle}>
-            Create Calendar Event
-          </button>
+          <button onClick={checkAvailability} style={buttonStyle}>Check Availability</button>
+          <button onClick={createCalendarEvent} style={buttonStyle}>Create Calendar Event</button>
         </div>
 
         {availabilityMessage ? <p>{availabilityMessage}</p> : null}
@@ -605,19 +568,13 @@ export default function HouseholdDetailPage() {
         <div style={{ display: "grid", gap: "8px" }}>
           {healthOptions.map((option) => (
             <label key={option} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <input
-                type="checkbox"
-                checked={health.includes(option)}
-                onChange={() => toggleHealth(option)}
-              />
+              <input type="checkbox" checked={health.includes(option)} onChange={() => toggleHealth(option)} />
               {option}
             </label>
           ))}
         </div>
 
-        <div>
-          <strong>Selected:</strong> {health.length ? health.join(", ") : "None"}
-        </div>
+        <div><strong>Selected:</strong> {health.length ? health.join(", ") : "None"}</div>
       </section>
 
       <section style={{ ...cardStyle, marginTop: "20px" }}>
@@ -626,11 +583,7 @@ export default function HouseholdDetailPage() {
         <div style={{ display: "grid", gap: "8px" }}>
           {formOptions.map((form, index) => (
             <label key={index} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <input
-                type="checkbox"
-                checked={selectedForms.includes(form.url)}
-                onChange={() => toggleForm(form.url)}
-              />
+              <input type="checkbox" checked={selectedForms.includes(form.url)} onChange={() => toggleForm(form.url)} />
               {form.label}
             </label>
           ))}
@@ -639,21 +592,13 @@ export default function HouseholdDetailPage() {
         <div>
           <strong>Selected:</strong>{" "}
           {selectedForms.length
-            ? formOptions
-                .filter((form) => selectedForms.includes(form.url))
-                .map((form) => form.label)
-                .join(", ")
+            ? formOptions.filter((form) => selectedForms.includes(form.url)).map((form) => form.label).join(", ")
             : "None"}
         </div>
 
         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-          <button onClick={emailSelectedForms} style={buttonStyle}>
-            Email Selected Forms
-          </button>
-
-          <button onClick={openSelectedForms} style={buttonStyle}>
-            Open Selected Forms
-          </button>
+          <button onClick={emailSelectedForms} style={buttonStyle}>Email Selected Forms</button>
+          <button onClick={openSelectedForms} style={buttonStyle}>Open Selected Forms</button>
         </div>
       </section>
 
@@ -664,21 +609,9 @@ export default function HouseholdDetailPage() {
           <div>No intake history found.</div>
         ) : (
           intakeHistory.map((entry) => (
-            <div
-              key={entry.id}
-              style={{
-                border: "1px solid #e5e7eb",
-                borderRadius: "8px",
-                padding: "12px",
-              }}
-            >
-              <div>
-                <strong>Date:</strong>{" "}
-                {entry.created_at ? new Date(entry.created_at).toLocaleString() : "-"}
-              </div>
-              <div>
-                <strong>Notes:</strong> {entry.notes || "-"}
-              </div>
+            <div key={entry.id} style={{ border: "1px solid #e5e7eb", borderRadius: "8px", padding: "12px" }}>
+              <div><strong>Date:</strong> {entry.created_at ? new Date(entry.created_at).toLocaleString() : "-"}</div>
+              <div><strong>Notes:</strong> {entry.notes || "-"}</div>
             </div>
           ))
         )}
