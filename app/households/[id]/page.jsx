@@ -141,7 +141,7 @@ export default function HouseholdDetailPage() {
   const [savingWorkflow, setSavingWorkflow] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const [schedulerAgents, setSchedulerAgents] = useState(["Admin"]);
+  const [schedulerAgent, setSchedulerAgent] = useState("Admin");
   const [appointmentType, setAppointmentType] = useState("Phone appointment");
   const [appointmentDate, setAppointmentDate] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("");
@@ -225,12 +225,6 @@ export default function HouseholdDetailPage() {
     );
   }
 
-  function toggleSchedulerAgent(agent) {
-    setSchedulerAgents((prev) =>
-      prev.includes(agent) ? prev.filter((x) => x !== agent) : [...prev, agent]
-    );
-  }
-
   function buildAppointmentTimes() {
     if (!appointmentDate || !appointmentTime) {
       alert("Please choose an appointment date and time.");
@@ -248,11 +242,6 @@ export default function HouseholdDetailPage() {
     const times = buildAppointmentTimes();
     if (!times) return;
 
-    if (schedulerAgents.length === 0) {
-      alert("Please select at least one agent.");
-      return;
-    }
-
     setAvailabilityMessage("Checking availability...");
 
     const res = await fetch("/api/calendar/create", {
@@ -260,7 +249,7 @@ export default function HouseholdDetailPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         checkOnly: true,
-        agents: schedulerAgents,
+        agents: [schedulerAgent],
         start: times.start.toISOString(),
         end: times.end.toISOString(),
       }),
@@ -275,8 +264,8 @@ export default function HouseholdDetailPage() {
 
     setAvailabilityMessage(
       data.available
-        ? "Selected agent(s) appear available."
-        : "Conflict: one or more selected agents are already booked."
+        ? `${schedulerAgent} appears available.`
+        : `${schedulerAgent} is already booked at this time.`
     );
   }
 
@@ -284,35 +273,25 @@ export default function HouseholdDetailPage() {
     const times = buildAppointmentTimes();
     if (!times) return;
 
-    if (schedulerAgents.length === 0) {
-      alert("Please select at least one agent.");
-      return;
-    }
-
     const clientName =
       `${client?.first_name || ""} ${client?.last_name || ""}`.trim() || "Client";
 
     const typeCode = appointmentCodeMap[appointmentType] || appointmentType;
-
-    const agentCodes = schedulerAgents
-      .map((agent) => agentInitialsMap[agent] || agent)
-      .join("/");
-
+    const agentCode = agentInitialsMap[schedulerAgent] || schedulerAgent;
     const aorCode =
       agentInitialsMap[household?.assigned_agent] || household?.assigned_agent || "-";
 
     const healthSummary = health.length ? health.join(", ") : "None";
-    const title = `[${typeCode}] ${clientName} | ${agentCodes}`;
+    const title = `[${typeCode}] ${clientName} | ${agentCode}`;
 
     const description =
       `Reason for Call: ${household?.reason_for_call || appointmentType || "-"}\n` +
+      `Assigned Agent: ${schedulerAgent}\n` +
       `Client: ${clientName}\n` +
       `Phone: ${client?.phone || "-"}\n` +
       `Email: ${client?.email || "-"}\n` +
       `Age: ${client?.age || "-"}\n` +
       `ZIP: ${client?.zip || "-"}\n` +
-      `Assigned Agent: ${schedulerAgents.join(", ")}\n` +
-      `Assigned Agent Initials: ${agentCodes}\n` +
       `AOR: ${aorCode}\n\n` +
       `Premiums:\n` +
       `Current Premium: ${household?.current_premium || "-"}\n` +
@@ -326,7 +305,7 @@ export default function HouseholdDetailPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        agents: schedulerAgents,
+        agents: [schedulerAgent],
         title,
         description,
         location: appointmentLocation || "Office",
@@ -500,20 +479,17 @@ export default function HouseholdDetailPage() {
       <section style={{ ...cardStyle, marginTop: "20px" }}>
         <h2 style={{ margin: 0 }}>Appointment Scheduler</h2>
 
-        <div style={{ display: "grid", gap: "8px" }}>
-          <strong>Select Agent(s)</strong>
-
+        <select
+          value={schedulerAgent}
+          onChange={(e) => setSchedulerAgent(e.target.value)}
+          style={inputStyle}
+        >
           {schedulerAgentOptions.map((agent) => (
-            <label key={agent} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <input
-                type="checkbox"
-                checked={schedulerAgents.includes(agent)}
-                onChange={() => toggleSchedulerAgent(agent)}
-              />
+            <option key={agent} value={agent}>
               {agent} — {agentInitialsMap[agent]} — {agentColorLabels[agent]}
-            </label>
+            </option>
           ))}
-        </div>
+        </select>
 
         <select
           value={appointmentType}
