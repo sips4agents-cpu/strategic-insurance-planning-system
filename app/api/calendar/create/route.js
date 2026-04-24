@@ -23,14 +23,8 @@ export async function POST(req) {
         summary: title,
         description,
         location,
-        start: {
-          dateTime: start,
-          timeZone: "America/Chicago",
-        },
-        end: {
-          dateTime: end,
-          timeZone: "America/Chicago",
-        },
+        start: { dateTime: start, timeZone: "America/Chicago" },
+        end: { dateTime: end, timeZone: "America/Chicago" },
       },
     });
 
