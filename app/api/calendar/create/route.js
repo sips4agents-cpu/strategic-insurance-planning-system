@@ -1,21 +1,19 @@
 import { google } from "googleapis";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+  return Response.json({
+    success: true,
+    message: "Calendar route is live",
+  });
+}
+
 export async function POST(req) {
   try {
     const body = await req.json();
     const { title, description, start, end, location } = body;
-
-    if (!process.env.GOOGLE_CLIENT_EMAIL) {
-      return Response.json({ success: false, error: "Missing GOOGLE_CLIENT_EMAIL" });
-    }
-
-    if (!process.env.GOOGLE_PRIVATE_KEY) {
-      return Response.json({ success: false, error: "Missing GOOGLE_PRIVATE_KEY" });
-    }
-
-    if (!process.env.GOOGLE_CALENDAR_ID) {
-      return Response.json({ success: false, error: "Missing GOOGLE_CALENDAR_ID" });
-    }
 
     const privateKey = process.env.GOOGLE_PRIVATE_KEY
       .replace(/\\n/g, "\n")
@@ -35,14 +33,8 @@ export async function POST(req) {
         summary: title || "Client Appointment",
         description: description || "",
         location: location || "Office",
-        start: {
-          dateTime: start,
-          timeZone: "America/Chicago",
-        },
-        end: {
-          dateTime: end,
-          timeZone: "America/Chicago",
-        },
+        start: { dateTime: start, timeZone: "America/Chicago" },
+        end: { dateTime: end, timeZone: "America/Chicago" },
       },
     });
 
