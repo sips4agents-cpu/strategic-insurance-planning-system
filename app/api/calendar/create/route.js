@@ -4,11 +4,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const agentColorMap = {
-  Admin: "3", // purple
-  "Loyd Richardson": "10", // green
-  "Blake Richardson": "6", // orange
-  "William Sykes": "9", // blue
-  "Jimmie Bassett": "11", // red
+  Admin: "3",
+  "Loyd Richardson": "10",
+  "Blake Richardson": "6",
+  "William Sykes": "9",
+  "Jimmie Bassett": "11",
+  "Christiana Grant": "3",
 };
 
 function getAuth() {
@@ -26,7 +27,7 @@ function getAuth() {
 export async function GET() {
   return Response.json({
     success: true,
-    message: "Calendar route is ready",
+    message: "Calendar route ready",
     calendarId: process.env.GOOGLE_CALENDAR_ID || null,
   });
 }
@@ -41,45 +42,53 @@ export async function POST(req) {
       start,
       end,
       location,
-      agent,
+      agents = [],
       checkOnly,
     } = body;
 
-    if (!process.env.GOOGLE_CALENDAR_ID) {
-      return Response.json({ success: false, error: "Missing GOOGLE_CALENDAR_ID" });
-    }
+    const selectedAgents = Array.isArray(agents) ? agents : [agents];
 
     const calendar = google.calendar({ version: "v3", auth: getAuth() });
 
-    const freeBusy = await calendar.freebusy.query({
-      resource: {
-        timeMin: start,
-        timeMax: end,
-        timeZone: "America/Chicago",
-        items: [{ id: process.env.GOOGLE_CALENDAR_ID }],
-      },
+    const eventsResponse = await calendar.events.list({
+      calendarId: process.env.GOOGLE_CALENDAR_ID,
+      timeMin: start,
+      timeMax: end,
+      singleEvents: true,
+      orderBy: "startTime",
     });
 
-    const busyTimes =
-      freeBusy.data.calendars?.[process.env.GOOGLE_CALENDAR_ID]?.busy || [];
+    const existingEvents = eventsResponse.data.items || [];
 
-    const hasConflict = busyTimes.length > 0;
+    const conflictingEvents = existingEvents.filter((event) => {
+      const eventDescription = event.description || "";
+      return selectedAgents.some((agent) =>
+        eventDescription.includes(`Assigned Agent: ${agent}`)
+      );
+    });
 
     if (checkOnly) {
       return Response.json({
         success: true,
-        available: !hasConflict,
-        busyTimes,
+        available: conflictingEvents.length === 0,
+        conflicts: conflictingEvents.map((event) => ({
+          summary: event.summary,
+          start: event.start,
+          end: event.end,
+          description: event.description,
+        })),
       });
     }
 
-    if (hasConflict) {
+    if (conflictingEvents.length > 0) {
       return Response.json({
         success: false,
-        error: "This time is already booked on the shared calendar.",
-        busyTimes,
+        error: "One or more selected agents already has an appointment at this time.",
+        conflicts: conflictingEvents.map((event) => event.summary),
       });
     }
+
+    const primaryAgent = selectedAgents[0] || "Admin";
 
     const response = await calendar.events.insert({
       calendarId: process.env.GOOGLE_CALENDAR_ID,
@@ -87,7 +96,7 @@ export async function POST(req) {
         summary: title || "Client Appointment",
         description: description || "",
         location: location || "Office",
-        colorId: agentColorMap[agent] || "3",
+        colorId: agentColorMap[primaryAgent] || "3",
         start: {
           dateTime: start,
           timeZone: "America/Chicago",
