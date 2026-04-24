@@ -57,6 +57,7 @@ const schedulerAgentOptions = [
   "Blake Richardson",
   "William Sykes",
   "Jimmie Bassett",
+  "Christiana Grant",
 ];
 
 const agentColorLabels = {
@@ -65,6 +66,28 @@ const agentColorLabels = {
   "Blake Richardson": "Orange",
   "William Sykes": "Blue",
   "Jimmie Bassett": "Red",
+  "Christiana Grant": "Purple",
+};
+
+const appointmentCodeMap = {
+  "Phone appointment": "P/A",
+  "Office appointment": "O/A",
+  Service: "S",
+  "Follow up": "F/U",
+  "Urgent call": "ASAP",
+  "Claims issue": "ASAP",
+  "Prescription drug plan": "PDP",
+  Referral: "REF",
+  "Business/HR director": "HR",
+};
+
+const agentInitialsMap = {
+  "Loyd Richardson": "LR",
+  "Blake Richardson": "BR",
+  "William Sykes": "WS",
+  "Jimmie Bassett": "JB",
+  "Christiana Grant": "CG",
+  Admin: "ADMIN",
 };
 
 const pageStyle = {
@@ -275,16 +298,32 @@ export default function HouseholdDetailPage() {
     const times = buildAppointmentTimes();
     if (!times) return;
 
-    const title = `${client?.first_name || ""} ${client?.last_name || ""} - ${appointmentType} - ${schedulerAgent}`.trim();
+    const clientName =
+      `${client?.first_name || ""} ${client?.last_name || ""}`.trim() || "Client";
+
+    const typeCode = appointmentCodeMap[appointmentType] || appointmentType;
+    const agentCode = agentInitialsMap[schedulerAgent] || schedulerAgent;
+    const healthSummary = health.length ? health.join(", ") : "None";
+
+    const title = `[${typeCode}] ${clientName} | ${agentCode}`;
 
     const description =
-      `Assigned Scheduler/Agent: ${schedulerAgent}\n` +
-      `Event Color: ${agentColorLabels[schedulerAgent]}\n` +
-      `Reason for Call: ${household?.reason_for_call || "-"}\n` +
-      `Household Agent: ${household?.assigned_agent || "-"}\n` +
+      `Appointment Type: ${appointmentType}\n` +
+      `Client: ${clientName}\n` +
       `Phone: ${client?.phone || "-"}\n` +
-      `Email: ${client?.email || "-"}\n\n` +
-      `Notes:\n${workingNotes || "-"}`;
+      `Email: ${client?.email || "-"}\n` +
+      `Age: ${client?.age || "-"}\n` +
+      `ZIP: ${client?.zip || "-"}\n` +
+      `Assigned Agent: ${schedulerAgent}\n` +
+      `Reason for Call: ${household?.reason_for_call || "-"}\n` +
+      `Household Agent: ${household?.assigned_agent || "-"}\n\n` +
+      `Premiums:\n` +
+      `Current Premium: ${household?.current_premium || "-"}\n` +
+      `Proposed Premium: ${household?.proposed_premium || "-"}\n\n` +
+      `Health Conditions:\n` +
+      `${healthSummary}\n\n` +
+      `Notes:\n` +
+      `${workingNotes || "-"}`;
 
     const res = await fetch("/api/calendar/create", {
       method: "POST",
@@ -496,8 +535,9 @@ export default function HouseholdDetailPage() {
         >
           <option value="Phone appointment">Phone appointment</option>
           <option value="Office appointment">Office appointment</option>
-          <option value="Follow up">Follow up</option>
           <option value="Service">Service</option>
+          <option value="Follow up">Follow up</option>
+          <option value="Urgent call">Urgent call</option>
           <option value="Claims issue">Claims issue</option>
           <option value="Prescription drug plan">Prescription drug plan</option>
           <option value="Referral">Referral</option>
