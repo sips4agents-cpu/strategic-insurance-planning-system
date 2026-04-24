@@ -51,6 +51,22 @@ const statusOptions = [
   "Follow Up",
 ];
 
+const schedulerAgentOptions = [
+  "Admin",
+  "Loyd Richardson",
+  "Blake Richardson",
+  "William Sykes",
+  "Jimmie Bassett",
+];
+
+const agentColorLabels = {
+  Admin: "Purple",
+  "Loyd Richardson": "Green",
+  "Blake Richardson": "Orange",
+  "William Sykes": "Blue",
+  "Jimmie Bassett": "Red",
+};
+
 const pageStyle = {
   padding: "32px",
   fontFamily: "Arial, sans-serif",
@@ -122,6 +138,14 @@ export default function HouseholdDetailPage() {
   const [savingWorkflow, setSavingWorkflow] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const [schedulerAgent, setSchedulerAgent] = useState("Admin");
+  const [appointmentType, setAppointmentType] = useState("Phone appointment");
+  const [appointmentDate, setAppointmentDate] = useState("");
+  const [appointmentTime, setAppointmentTime] = useState("");
+  const [appointmentDuration, setAppointmentDuration] = useState("30");
+  const [appointmentLocation, setAppointmentLocation] = useState("Office");
+  const [availabilityMessage, setAvailabilityMessage] = useState("");
+
   async function loadHousehold() {
     const { data, error } = await supabase
       .from("households")
@@ -133,6 +157,11 @@ export default function HouseholdDetailPage() {
         reason_for_call,
         status,
         health_flags,
+        appointment_type,
+        appointment_date,
+        appointment_time,
+        appointment_duration,
+        appointment_location,
         people (*),
         intakes (
           id,
@@ -152,6 +181,13 @@ export default function HouseholdDetailPage() {
     setWorkingNotes(data?.notes || "");
     setStatus(data?.status || "New Lead");
     setHealth(data?.health_flags || []);
+
+    setAppointmentType(data?.appointment_type || data?.reason_for_call || "Phone appointment");
+    setAppointmentDate(data?.appointment_date || "");
+    setAppointmentTime(data?.appointment_time || "");
+    setAppointmentDuration(String(data?.appointment_duration || 30));
+    setAppointmentLocation(data?.appointment_location || "Office");
+
     setMessage("");
   }
 
@@ -192,6 +228,99 @@ export default function HouseholdDetailPage() {
     );
   }
 
+  function buildAppointmentTimes() {
+    if (!appointmentDate || !appointmentTime) {
+      alert("Please choose an appointment date and time.");
+      return null;
+    }
+
+    const start = new Date(`${appointmentDate}T${appointmentTime}:00`);
+    const durationMinutes = Number(appointmentDuration || 30);
+    const end = new Date(start.getTime() + durationMinutes * 60000);
+
+    return { start, end, durationMinutes };
+  }
+
+  async function checkAvailability() {
+    const times = buildAppointmentTimes();
+    if (!times) return;
+
+    setAvailabilityMessage("Checking availability...");
+
+    const res = await fetch("/api/calendar/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        checkOnly: true,
+        start: times.start.toISOString(),
+        end: times.end.toISOString(),
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      setAvailabilityMessage("Error: " + data.error);
+      return;
+    }
+
+    setAvailabilityMessage(
+      data.available
+        ? "This time appears available."
+        : "This time is already booked on the shared calendar."
+    );
+  }
+
+  async function createCalendarEvent() {
+    const times = buildAppointmentTimes();
+    if (!times) return;
+
+    const title = `${client?.first_name || ""} ${client?.last_name || ""} - ${appointmentType} - ${schedulerAgent}`.trim();
+
+    const description =
+      `Assigned Scheduler/Agent: ${schedulerAgent}\n` +
+      `Event Color: ${agentColorLabels[schedulerAgent]}\n` +
+      `Reason for Call: ${household?.reason_for_call || "-"}\n` +
+      `Household Agent: ${household?.assigned_agent || "-"}\n` +
+      `Phone: ${client?.phone || "-"}\n` +
+      `Email: ${client?.email || "-"}\n\n` +
+      `Notes:\n${workingNotes || "-"}`;
+
+    const res = await fetch("/api/calendar/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        agent: schedulerAgent,
+        title,
+        description,
+        location: appointmentLocation || "Office",
+        start: times.start.toISOString(),
+        end: times.end.toISOString(),
+      }),
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      await supabase
+        .from("households")
+        .update({
+          appointment_type: appointmentType,
+          appointment_date: appointmentDate,
+          appointment_time: appointmentTime,
+          appointment_duration: times.durationMinutes,
+          appointment_location: appointmentLocation,
+        })
+        .eq("id", id);
+
+      setAvailabilityMessage("Calendar event created.");
+      alert("Calendar event created!");
+    } else {
+      setAvailabilityMessage("Error: " + data.error);
+      alert("Error: " + data.error);
+    }
+  }
+
   async function saveWorkingNotes() {
     setSavingNotes(true);
 
@@ -217,7 +346,7 @@ export default function HouseholdDetailPage() {
     const { error } = await supabase
       .from("households")
       .update({
-        status: status,
+        status,
         health_flags: health,
       })
       .eq("id", id);
@@ -287,33 +416,6 @@ export default function HouseholdDetailPage() {
     });
   }
 
-  async function createCalendarEvent() {
-    const start = new Date();
-    const end = new Date(start.getTime() + 30 * 60000);
-
-    const res = await fetch("/api/calendar/create", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        title: `${client?.first_name || ""} ${client?.last_name || ""} Appointment`,
-        description: workingNotes || "Client appointment",
-        location: household?.appointment_location || "Office",
-        start: start.toISOString(),
-        end: end.toISOString()
-      })
-    });
-
-    const data = await res.json();
-
-    if (data.success) {
-      alert("Calendar event created!");
-    } else {
-      alert("Error: " + data.error);
-    }
-  }
-
   if (message) {
     return <p style={pageStyle}>{message}</p>;
   }
@@ -326,9 +428,7 @@ export default function HouseholdDetailPage() {
         <div><strong>Agent:</strong> {household?.assigned_agent || "-"}</div>
         <div><strong>Reason for Call:</strong> {household?.reason_for_call || "-"}</div>
 
-        <div>
-          <strong>Status</strong>
-        </div>
+        <div><strong>Status</strong></div>
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
@@ -341,9 +441,7 @@ export default function HouseholdDetailPage() {
           ))}
         </select>
 
-        <div>
-          <strong>Current Working Notes</strong>
-        </div>
+        <div><strong>Current Working Notes</strong></div>
         <textarea
           value={workingNotes}
           onChange={(e) => setWorkingNotes(e.target.value)}
@@ -368,10 +466,6 @@ export default function HouseholdDetailPage() {
           >
             {deleting ? "Deleting..." : "Delete Contact"}
           </button>
-
-          <button onClick={createCalendarEvent} style={buttonStyle}>
-            Create Calendar Event
-          </button>
         </div>
       </section>
 
@@ -379,6 +473,91 @@ export default function HouseholdDetailPage() {
         <PersonCard title="Client" person={client} />
         <PersonCard title="Spouse" person={spouse} />
       </div>
+
+      <section style={{ ...cardStyle, marginTop: "20px" }}>
+        <h2 style={{ margin: 0 }}>Appointment Scheduler</h2>
+
+        <select
+          value={schedulerAgent}
+          onChange={(e) => setSchedulerAgent(e.target.value)}
+          style={inputStyle}
+        >
+          {schedulerAgentOptions.map((agent) => (
+            <option key={agent} value={agent}>
+              {agent} — {agentColorLabels[agent]}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={appointmentType}
+          onChange={(e) => setAppointmentType(e.target.value)}
+          style={inputStyle}
+        >
+          <option value="Phone appointment">Phone appointment</option>
+          <option value="Office appointment">Office appointment</option>
+          <option value="Follow up">Follow up</option>
+          <option value="Service">Service</option>
+          <option value="Claims issue">Claims issue</option>
+          <option value="Prescription drug plan">Prescription drug plan</option>
+          <option value="Referral">Referral</option>
+          <option value="Business/HR director">Business/HR director</option>
+        </select>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <input
+            type="date"
+            value={appointmentDate}
+            onChange={(e) => setAppointmentDate(e.target.value)}
+            style={inputStyle}
+          />
+
+          <input
+            type="time"
+            value={appointmentTime}
+            onChange={(e) => setAppointmentTime(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <select
+            value={appointmentDuration}
+            onChange={(e) => setAppointmentDuration(e.target.value)}
+            style={inputStyle}
+          >
+            <option value="15">15 minutes</option>
+            <option value="30">30 minutes</option>
+            <option value="45">45 minutes</option>
+            <option value="60">1 hour</option>
+            <option value="90">1.5 hours</option>
+          </select>
+
+          <select
+            value={appointmentLocation}
+            onChange={(e) => setAppointmentLocation(e.target.value)}
+            style={inputStyle}
+          >
+            <option value="Office">Office</option>
+            <option value="Phone Call">Phone Call</option>
+            <option value="Client Home">Client Home</option>
+            <option value="Zoom / Virtual">Zoom / Virtual</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+          <button onClick={checkAvailability} style={buttonStyle}>
+            Check Availability
+          </button>
+
+          <button onClick={createCalendarEvent} style={buttonStyle}>
+            Create Calendar Event
+          </button>
+        </div>
+
+        {availabilityMessage ? <p>{availabilityMessage}</p> : null}
+      </section>
 
       <section style={{ ...cardStyle, marginTop: "20px" }}>
         <h2 style={{ margin: 0 }}>Health Status</h2>
