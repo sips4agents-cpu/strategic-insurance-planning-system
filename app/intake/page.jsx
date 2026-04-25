@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";;
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
@@ -232,7 +232,7 @@ function PersonSection({ title, data, age, onUpdate, phoneMatches }) {
   );
 }
 
-export default function IntakePage() {
+function IntakePageContent() {
   const searchParams = useSearchParams();
 
   const [client, setClient] = useState({ ...blankPerson });
@@ -274,7 +274,45 @@ export default function IntakePage() {
 
     loadUser();
   }, []);
+useEffect(() => {
+    const firstName = searchParams.get("firstName") || "";
+    const lastName = searchParams.get("lastName") || "";
+    const phone = searchParams.get("phone") || "";
+    const email = searchParams.get("email") || "";
+    const zip = searchParams.get("zip") || "";
 
+    const agentParam = searchParams.get("agent") || "";
+    const appointmentTypeParam =
+      searchParams.get("appointmentType") || searchParams.get("reason") || "";
+    const referredByParam = searchParams.get("referredBy") || "";
+    const currentCoverageParam = searchParams.get("currentCoverage") || "";
+    const currentPremiumParam = searchParams.get("currentPremium") || "";
+    const appointmentDateParam = searchParams.get("appointmentDate") || "";
+    const appointmentTimeParam = searchParams.get("appointmentTime") || "";
+    const appointmentLocationParam = searchParams.get("appointmentLocation") || "";
+
+    // CLIENT PREFILL
+    if (firstName || lastName || phone || email || zip) {
+      setClient((prev) => ({
+        ...prev,
+        firstName: firstName || prev.firstName,
+        lastName: lastName || prev.lastName,
+        phone: phone ? formatPhone(phone) : prev.phone,
+        email: email || prev.email,
+        zip: zip || prev.zip,
+      }));
+    }
+
+    // SCHEDULER + DETAILS PREFILL
+    if (agentParam) setSchedulerAgent(agentParam);
+    if (appointmentTypeParam) setAppointmentType(appointmentTypeParam);
+    if (referredByParam) setReferredBy(referredByParam);
+    if (currentCoverageParam) setCurrentCoverage(currentCoverageParam);
+    if (currentPremiumParam) setCurrentPremium(currentPremiumParam);
+    if (appointmentDateParam) setAppointmentDate(appointmentDateParam);
+    if (appointmentTimeParam) setAppointmentTime(appointmentTimeParam);
+    if (appointmentLocationParam) setAppointmentLocation(appointmentLocationParam);
+  }, [searchParams]);
   useEffect(() => {
     const firstName = searchParams.get("firstName") || "";
     const lastName = searchParams.get("lastName") || "";
