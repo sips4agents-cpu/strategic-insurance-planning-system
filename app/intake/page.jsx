@@ -8,14 +8,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-const agentOptions = [
-  "Loyd Richardson",
-  "Jimmie Bassett",
-  "William Sykes",
-  "Blake Richardson",
-  "Christiana Grant",
-];
-
 const schedulerAgentOptions = [
   "Admin",
   "Loyd Richardson",
@@ -55,17 +47,6 @@ const appointmentCodeMap = {
   "Business/HR director": "HR",
 };
 
-const reasonOptions = [
-  "Phone appointment",
-  "Office appointment",
-  "Service",
-  "Follow up",
-  "Claims issue",
-  "Prescription drug plan",
-  "Referral",
-  "Business/HR director",
-];
-
 const appointmentOptions = [
   "Phone appointment",
   "Office appointment",
@@ -79,6 +60,10 @@ const appointmentOptions = [
 ];
 
 const healthOptions = [
+  "C-PAP",
+  "Receiving therapy",
+  "Neuropathy",
+  "COPD",
   "Cognitive impairment",
   "Heart",
   "Stroke or TIA",
@@ -163,8 +148,6 @@ function calculateAge(dateString) {
   const month = parseInt(digits.slice(0, 2), 10);
   const day = parseInt(digits.slice(2, 4), 10);
   const year = parseInt(digits.slice(4, 8), 10);
-
-  if (!month || !day || !year) return "";
 
   const today = new Date();
   let age = today.getFullYear() - year;
@@ -252,8 +235,9 @@ export default function IntakePage() {
   const [client, setClient] = useState({ ...blankPerson });
   const [spouse, setSpouse] = useState({ ...blankPerson });
 
-  const [agent, setAgent] = useState("");
-  const [reason, setReason] = useState("");
+  const [referredBy, setReferredBy] = useState("");
+  const [currentCoverage, setCurrentCoverage] = useState("");
+  const [currentPremium, setCurrentPremium] = useState("");
   const [notes, setNotes] = useState("");
 
   const [schedulerAgent, setSchedulerAgent] = useState("Admin");
@@ -304,17 +288,17 @@ export default function IntakePage() {
   function spouseHasData() {
     return Boolean(
       spouse.firstName ||
-        spouse.lastName ||
-        spouse.phone ||
-        spouse.email ||
-        spouse.birthdate ||
-        spouse.address ||
-        spouse.city ||
-        spouse.state ||
-        spouse.zip ||
-        spouse.sex ||
-        spouse.tobacco ||
-        spouse.coverageType
+      spouse.lastName ||
+      spouse.phone ||
+      spouse.email ||
+      spouse.birthdate ||
+      spouse.address ||
+      spouse.city ||
+      spouse.state ||
+      spouse.zip ||
+      spouse.sex ||
+      spouse.tobacco ||
+      spouse.coverageType
     );
   }
 
@@ -347,15 +331,12 @@ export default function IntakePage() {
 
     const data = await res.json();
 
-    if (!data.success) {
-      setAvailabilityMessage("Error: " + data.error);
-      return;
-    }
-
     setAvailabilityMessage(
-      data.available
-        ? `${schedulerAgent} appears available.`
-        : `${schedulerAgent} is already booked at this time.`
+      data.success
+        ? data.available
+          ? `${schedulerAgent} appears available.`
+          : `${schedulerAgent} is already booked at this time.`
+        : "Error: " + data.error
     );
   }
 
@@ -372,18 +353,19 @@ export default function IntakePage() {
 
     const typeCode = appointmentCodeMap[appointmentType] || appointmentType;
     const agentCode = agentInitialsMap[schedulerAgent] || schedulerAgent;
-    const aorCode = agentInitialsMap[agent] || agent || "-";
     const healthSummary = health.length ? health.join(", ") : "None";
 
     const description =
-      `Reason for Call: ${reason || appointmentType || "-"}\n` +
+      `Reason for Call: ${appointmentType || "-"}\n` +
       `Assigned Agent: ${schedulerAgent}\n` +
       `Client: ${clientName}\n` +
       `Phone: ${client.phone || "-"}\n` +
       `Email: ${client.email || "-"}\n` +
       `Age: ${clientAge || "-"}\n` +
       `ZIP: ${client.zip || "-"}\n` +
-      `AOR: ${aorCode}\n\n` +
+      `Referred By: ${referredBy || "-"}\n` +
+      `Current Coverage: ${currentCoverage || "-"}\n` +
+      `Current Premium: ${currentPremium || "-"}\n\n` +
       `Health Conditions:\n${healthSummary}\n\n` +
       `Notes:\n${notes || "-"}`;
 
@@ -437,9 +419,12 @@ export default function IntakePage() {
       .insert([
         {
           owner_user_id: userId,
-          assigned_agent: agent,
+          assigned_agent: schedulerAgent,
           notes,
-          reason_for_call: reason,
+          reason_for_call: appointmentType,
+          referred_by: referredBy,
+          current_coverage: currentCoverage,
+          current_premium: currentPremium,
           health_flags: health,
           appointment_type: appointmentType,
           appointment_date: appointmentDate,
@@ -519,30 +504,23 @@ export default function IntakePage() {
       const clientName = `${client.firstName || ""} ${client.lastName || ""}`.trim() || "Client";
       const typeCode = appointmentCodeMap[appointmentType] || appointmentType;
       const agentCode = agentInitialsMap[schedulerAgent] || schedulerAgent;
-      const aorCode = agentInitialsMap[agent] || agent || "-";
       const healthSummary = health.length ? health.join(", ") : "None";
       const householdLink = `${window.location.origin}/households/${householdId}`;
 
       const description =
         `OPEN CLIENT FILE:\n${householdLink}\n\n` +
-        `Reason for Call: ${reason || appointmentType || "-"}\n` +
+        `Reason for Call: ${appointmentType || "-"}\n` +
         `Assigned Agent: ${schedulerAgent}\n` +
         `Client: ${clientName}\n` +
         `Phone: ${client.phone || "-"}\n` +
         `Email: ${client.email || "-"}\n` +
         `Age: ${clientAge || "-"}\n` +
         `ZIP: ${client.zip || "-"}\n` +
-        `AOR: ${aorCode}\n\n` +
-        `Premiums:\n` +
-        `Current Premium: -\n` +
-        `Proposed Premium: -\n` +
-        `Recommended Carrier: -\n` +
-        `Recommended Plan: -\n` +
-        `Effective Date: -\n\n` +
-        `Health Conditions:\n` +
-        `${healthSummary}\n\n` +
-        `Notes:\n` +
-        `${notes || "-"}`;
+        `Referred By: ${referredBy || "-"}\n` +
+        `Current Coverage: ${currentCoverage || "-"}\n` +
+        `Current Premium: ${currentPremium || "-"}\n\n` +
+        `Health Conditions:\n${healthSummary}\n\n` +
+        `Notes:\n${notes || "-"}`;
 
       const calendarRes = await fetch("/api/calendar/create", {
         method: "POST",
@@ -569,8 +547,9 @@ export default function IntakePage() {
     setMessage("Admin intake saved successfully.");
     setClient({ ...blankPerson });
     setSpouse({ ...blankPerson });
-    setAgent("");
-    setReason("");
+    setReferredBy("");
+    setCurrentCoverage("");
+    setCurrentPremium("");
     setNotes("");
     setHealth([]);
     setAvailabilityMessage("");
@@ -593,19 +572,24 @@ export default function IntakePage() {
         <PersonSection title="Spouse" data={spouse} age={spouseAge} onUpdate={updateSpouse} phoneMatches={spousePhoneMatches} />
 
         <section style={cardStyle}>
-          <h2 style={{ marginTop: 0 }}>Admin</h2>
+          <h2 style={{ margin: 0 }}>Health Status</h2>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            <select value={agent} onChange={(e) => setAgent(e.target.value)} style={inputStyle}>
-              <option value="">AOR / Assign Agent</option>
-              {agentOptions.map((x) => <option key={x} value={x}>{x}</option>)}
-            </select>
-
-            <select value={reason} onChange={(e) => setReason(e.target.value)} style={inputStyle}>
-              <option value="">Reason for Call</option>
-              {reasonOptions.map((x) => <option key={x} value={x}>{x}</option>)}
-            </select>
+          <div style={{ display: "grid", gap: "8px" }}>
+            {healthOptions.map((option) => (
+              <label key={option} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <input type="checkbox" checked={health.includes(option)} onChange={() => toggleHealth(option)} />
+                {option}
+              </label>
+            ))}
           </div>
+
+          <div><strong>Selected:</strong> {health.length ? health.join(", ") : "None"}</div>
+
+          <input value={referredBy} onChange={(e) => setReferredBy(e.target.value)} placeholder="Referred By" style={inputStyle} />
+
+          <input value={currentCoverage} onChange={(e) => setCurrentCoverage(e.target.value)} placeholder="Current Coverage" style={inputStyle} />
+
+          <input value={currentPremium} onChange={(e) => setCurrentPremium(e.target.value)} placeholder="Current Premium" style={inputStyle} />
 
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes" rows={5} style={inputStyle} />
         </section>
@@ -659,21 +643,6 @@ export default function IntakePage() {
           </div>
 
           {availabilityMessage ? <p>{availabilityMessage}</p> : null}
-        </section>
-
-        <section style={cardStyle}>
-          <h2 style={{ margin: 0 }}>Health Status</h2>
-
-          <div style={{ display: "grid", gap: "8px" }}>
-            {healthOptions.map((option) => (
-              <label key={option} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <input type="checkbox" checked={health.includes(option)} onChange={() => toggleHealth(option)} />
-                {option}
-              </label>
-            ))}
-          </div>
-
-          <div><strong>Selected:</strong> {health.length ? health.join(", ") : "None"}</div>
         </section>
 
         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
