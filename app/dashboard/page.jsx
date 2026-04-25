@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
-const agents = [
-  { name: "Admin", initials: "ADMIN", color: "Purple", slug: "admin" },
-  { name: "Loyd Richardson", initials: "LR", color: "Green", slug: "loyd-richardson" },
-  { name: "Blake Richardson", initials: "BR", color: "Orange", slug: "blake-richardson" },
-  { name: "William Sykes", initials: "WS", color: "Blue", slug: "william-sykes" },
-  { name: "Jimmie Bassett", initials: "JB", color: "Red", slug: "jimmie-bassett" },
-  { name: "Christiana Grant", initials: "CG", color: "Purple", slug: "christiana-grant" },
+const AGENTS = [
+  { name: "Admin", initials: "ADMIN", color: "Purple", page: "admin" },
+  { name: "Loyd Richardson", initials: "LR", color: "Green", page: "agent-loyd" },
+  { name: "Blake Richardson", initials: "BR", color: "Orange", page: "agent-blake" },
+  { name: "William Sykes", initials: "WS", color: "Blue", page: "agent-william" },
+  { name: "Jimmie Bassett", initials: "JB", color: "Red", page: "agent-jimmie" },
+  { name: "Christiana Grant", initials: "CG", color: "Purple", page: "agent-christiana" },
 ];
 
-const appointmentTypes = [
+const APPOINTMENT_TYPES = [
   "Phone appointment",
   "Office appointment",
   "Service",
@@ -23,7 +23,7 @@ const appointmentTypes = [
   "Business/HR director",
 ];
 
-const appointmentCodeMap = {
+const APPOINTMENT_CODES = {
   "Phone appointment": "P/A",
   "Office appointment": "O/A",
   Service: "S",
@@ -35,7 +35,7 @@ const appointmentCodeMap = {
   "Business/HR director": "HR",
 };
 
-const healthOptions = [
+const HEALTH_OPTIONS = [
   "C-PAP",
   "Receiving therapy",
   "Neuropathy",
@@ -49,24 +49,24 @@ const healthOptions = [
   "Surgeries pending",
 ];
 
-const emailTemplates = {
+const EMAIL_TEMPLATES = {
   "Appointment Confirmation":
-    "Hello {{clientName}},\n\nThis confirms your appointment with {{agent}} on {{date}} at {{time}}.\n\nPlease call us if anything changes.\n\nSenior Care Plus",
+    "Thank you for speaking with us. This email confirms your scheduled appointment. Please contact our office if anything changes.",
   "Missing Information":
-    "Hello {{clientName}},\n\nWe are missing a few items needed to complete your file. Please contact our office so we can update your information.\n\nSenior Care Plus",
+    "We are missing a few details needed to complete your file. Please contact our office so we can finish the review.",
   "Claims Follow Up":
-    "Hello {{clientName}},\n\nWe are following up regarding your claims issue. Please send any EOB, facility bill, or claim paperwork available.\n\nSenior Care Plus",
-  "Premium Review":
-    "Hello {{clientName}},\n\nWe noticed your premium may have increased. Please contact us so we can review your options and make sure your coverage is still the best fit.\n\nSenior Care Plus",
+    "We are following up regarding your claim issue. Please send any EOBs, claim documents, dates of service, and provider contact information available.",
+  "Plan Review":
+    "We noticed your premium or coverage may need review. Please contact our office so we can make sure your plan is still the best fit.",
 };
 
-const blankPerson = {
+const BLANK_PERSON = {
   firstName: "",
   lastName: "",
   phone: "",
-  phoneConfirm: "",
   email: "",
   birthdate: "",
+  age: "",
   address: "",
   city: "",
   state: "",
@@ -76,51 +76,82 @@ const blankPerson = {
   coverageType: "",
 };
 
-const inputStyle = {
-  padding: "12px",
-  border: "1px solid #c9d1d9",
-  borderRadius: "8px",
-  fontSize: "14px",
-  width: "100%",
-  boxSizing: "border-box",
-  background: "#fff",
-};
-
-const buttonStyle = {
-  padding: "11px 14px",
-  borderRadius: "8px",
-  border: "1px solid #c9d1d9",
-  background: "#fff",
-  cursor: "pointer",
-  textDecoration: "none",
-  color: "#000",
-  display: "inline-block",
-  fontSize: "14px",
-};
-
-const primaryButtonStyle = {
-  ...buttonStyle,
-  background: "#0f172a",
-  border: "1px solid #0f172a",
-  color: "#fff",
-};
-
-const cardStyle = {
-  border: "1px solid #d0d7de",
-  borderRadius: "12px",
-  padding: "18px",
-  background: "#fff",
-  display: "grid",
-  gap: "12px",
-};
-
-const pageStyle = {
-  padding: "32px",
-  fontFamily: "Arial, sans-serif",
-  maxWidth: "1100px",
-  margin: "0 auto",
-  background: "#f6f8fa",
-  minHeight: "100vh",
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background: "#f5f7fb",
+    color: "#1f2937",
+    fontFamily: "Arial, sans-serif",
+    padding: "28px",
+  },
+  shell: {
+    maxWidth: "1180px",
+    margin: "0 auto",
+  },
+  header: {
+    background: "#ffffff",
+    border: "1px solid #dbe3ee",
+    borderRadius: "16px",
+    padding: "22px",
+    marginBottom: "18px",
+    boxShadow: "0 4px 14px rgba(15, 23, 42, 0.06)",
+  },
+  nav: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px",
+    marginTop: "14px",
+  },
+  card: {
+    background: "#ffffff",
+    border: "1px solid #dbe3ee",
+    borderRadius: "16px",
+    padding: "20px",
+    marginBottom: "16px",
+    boxShadow: "0 4px 14px rgba(15, 23, 42, 0.05)",
+  },
+  grid2: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: "12px",
+  },
+  grid3: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: "12px",
+  },
+  button: {
+    padding: "11px 14px",
+    borderRadius: "10px",
+    border: "1px solid #cbd5e1",
+    background: "#ffffff",
+    cursor: "pointer",
+    fontWeight: 700,
+  },
+  primaryButton: {
+    padding: "11px 14px",
+    borderRadius: "10px",
+    border: "1px solid #1d4ed8",
+    background: "#1d4ed8",
+    color: "#ffffff",
+    cursor: "pointer",
+    fontWeight: 700,
+  },
+  input: {
+    width: "100%",
+    boxSizing: "border-box",
+    padding: "12px",
+    borderRadius: "10px",
+    border: "1px solid #cbd5e1",
+    fontSize: "14px",
+    background: "#ffffff",
+  },
+  label: {
+    fontSize: "13px",
+    fontWeight: 700,
+    marginBottom: "5px",
+    display: "block",
+  },
 };
 
 function formatPhone(value) {
@@ -130,7 +161,7 @@ function formatPhone(value) {
   return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
-function formatBirthdate(value) {
+function formatDate(value) {
   const digits = String(value || "").replace(/\D/g, "").slice(0, 8);
   if (digits.length <= 2) return digits;
   if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
@@ -147,636 +178,549 @@ function calculateAge(dateString) {
 
   if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900) return "";
 
-  const birthDate = new Date(year, month - 1, day);
-  if (birthDate.getFullYear() !== year || birthDate.getMonth() !== month - 1 || birthDate.getDate() !== day) return "";
-
   const today = new Date();
   let age = today.getFullYear() - year;
-  const hadBirthday = today.getMonth() > month - 1 || (today.getMonth() === month - 1 && today.getDate() >= day);
-  if (!hadBirthday) age -= 1;
-  if (age < 0 || age > 120) return "";
-  return String(age);
+  const birthdayPassed =
+    today.getMonth() + 1 > month ||
+    (today.getMonth() + 1 === month && today.getDate() >= day);
+
+  if (!birthdayPassed) age -= 1;
+  return age >= 0 && age <= 120 ? String(age) : "";
 }
 
-function applyTemplate(template, data) {
-  return template
-    .replaceAll("{{clientName}}", data.clientName || "Client")
-    .replaceAll("{{agent}}", data.agent || "Admin")
-    .replaceAll("{{date}}", data.date || "appointment date")
-    .replaceAll("{{time}}", data.time || "appointment time");
+function Field({ label, children }) {
+  return (
+    <div>
+      <label style={styles.label}>{label}</label>
+      {children}
+    </div>
+  );
 }
 
-function safeJsonParse(value, fallback) {
-  try {
-    return value ? JSON.parse(value) : fallback;
-  } catch {
-    return fallback;
-  }
+function TextInput({ label, value, onChange, placeholder, type = "text" }) {
+  return (
+    <Field label={label}>
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder || label}
+        style={styles.input}
+      />
+    </Field>
+  );
 }
 
-function makeEventId() {
-  return `event-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+function SelectInput({ label, value, onChange, options }) {
+  return (
+    <Field label={label}>
+      <select value={value} onChange={(event) => onChange(event.target.value)} style={styles.input}>
+        <option value="">Select {label}</option>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </Field>
+  );
 }
 
-function buildAppointmentStartEnd(date, time, duration) {
-  if (!date || !time) return null;
-  const start = new Date(`${date}T${time}:00`);
-  if (Number.isNaN(start.getTime())) return null;
-  const durationMinutes = Number(duration || 60);
-  const end = new Date(start.getTime() + durationMinutes * 60000);
-  return { start, end, durationMinutes };
-}
+function PersonSection({ title, person, setPerson }) {
+  function update(field, value) {
+    let nextValue = value;
 
-function PersonSection({ title, data, age, onUpdate }) {
-  const phoneMatches = !data.phoneConfirm || data.phone === data.phoneConfirm;
+    if (field === "phone") nextValue = formatPhone(value);
+    if (field === "birthdate") nextValue = formatDate(value);
 
-  function updateField(field, value) {
-    if (field === "phone" || field === "phoneConfirm") onUpdate(field, formatPhone(value));
-    else if (field === "birthdate") onUpdate(field, formatBirthdate(value));
-    else onUpdate(field, value);
+    setPerson((previous) => {
+      const updated = { ...previous, [field]: nextValue };
+      if (field === "birthdate") updated.age = calculateAge(nextValue);
+      return updated;
+    });
   }
 
   return (
-    <section style={cardStyle}>
+    <section style={styles.card}>
       <h2 style={{ marginTop: 0 }}>{title}</h2>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-        <input value={data.firstName} onChange={(e) => updateField("firstName", e.target.value)} placeholder={`${title} First Name`} style={inputStyle} />
-        <input value={data.lastName} onChange={(e) => updateField("lastName", e.target.value)} placeholder={`${title} Last Name`} style={inputStyle} />
+      <div style={styles.grid2}>
+        <TextInput label="First Name" value={person.firstName} onChange={(value) => update("firstName", value)} />
+        <TextInput label="Last Name" value={person.lastName} onChange={(value) => update("lastName", value)} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-        <input value={data.phone} onChange={(e) => updateField("phone", e.target.value)} placeholder={`${title} Phone`} style={inputStyle} />
-        <input value={data.email} onChange={(e) => updateField("email", e.target.value)} placeholder={`${title} Email`} style={inputStyle} />
+      <div style={styles.grid2}>
+        <TextInput label="Phone" value={person.phone} onChange={(value) => update("phone", value)} />
+        <TextInput label="Email" value={person.email} onChange={(value) => update("email", value)} />
       </div>
 
-      {data.phone ? (
-        <div>
-          <input value={data.phoneConfirm} onChange={(e) => updateField("phoneConfirm", e.target.value)} placeholder={`Re-enter ${title} Phone`} style={inputStyle} />
-          <div style={{ marginTop: "6px", fontSize: "13px", color: phoneMatches ? "#166534" : "#b91c1c" }}>
-            {phoneMatches ? "Phone verified" : "Phone numbers do not match"}
-          </div>
-        </div>
-      ) : null}
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-        <input
-          value={data.birthdate}
-          onChange={(e) => updateField("birthdate", e.target.value)}
-          placeholder={`${title} Birthdate MM/DD/YYYY`}
-          inputMode="numeric"
-          style={inputStyle}
-        />
-        <input value={age} readOnly placeholder={`${title} Age`} style={{ ...inputStyle, background: "#f8fafc" }} />
+      <div style={styles.grid2}>
+        <TextInput label="Birthdate" value={person.birthdate} onChange={(value) => update("birthdate", value)} placeholder="MM/DD/YYYY" />
+        <TextInput label="Age" value={person.age} onChange={() => {}} placeholder="Auto calculated" />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-        <input value={data.address} onChange={(e) => updateField("address", e.target.value)} placeholder={`${title} Address`} style={inputStyle} />
-        <input value={data.city} onChange={(e) => updateField("city", e.target.value)} placeholder={`${title} City`} style={inputStyle} />
+      <div style={styles.grid2}>
+        <TextInput label="Address" value={person.address} onChange={(value) => update("address", value)} />
+        <TextInput label="City" value={person.city} onChange={(value) => update("city", value)} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-        <input value={data.state} onChange={(e) => updateField("state", e.target.value)} placeholder="State" style={inputStyle} />
-        <input value={data.zip} onChange={(e) => updateField("zip", e.target.value)} placeholder="ZIP" style={inputStyle} />
+      <div style={styles.grid3}>
+        <TextInput label="State" value={person.state} onChange={(value) => update("state", value)} />
+        <TextInput label="ZIP" value={person.zip} onChange={(value) => update("zip", value)} />
+        <SelectInput label="Sex" value={person.sex} onChange={(value) => update("sex", value)} options={["Male", "Female"]} />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
-        <select value={data.sex} onChange={(e) => updateField("sex", e.target.value)} style={inputStyle}>
-          <option value="">Sex</option>
-          <option>Male</option>
-          <option>Female</option>
-        </select>
-        <select value={data.tobacco} onChange={(e) => updateField("tobacco", e.target.value)} style={inputStyle}>
-          <option value="">Tobacco</option>
-          <option>Yes</option>
-          <option>No</option>
-        </select>
-        <select value={data.coverageType} onChange={(e) => updateField("coverageType", e.target.value)} style={inputStyle}>
-          <option value="">Coverage Type</option>
-          <option>Group coverage</option>
-          <option>Medicare</option>
-          <option>Individual coverage</option>
-          <option>Other</option>
-        </select>
+      <div style={styles.grid2}>
+        <SelectInput label="Tobacco" value={person.tobacco} onChange={(value) => update("tobacco", value)} options={["Yes", "No"]} />
+        <SelectInput label="Coverage Type" value={person.coverageType} onChange={(value) => update("coverageType", value)} options={["Group coverage", "Medicare", "Individual coverage", "Other"]} />
       </div>
     </section>
   );
 }
 
-export default function SipsConnectLiveSingleFile() {
-  const [page, setPage] = useState("dashboard");
-  const [selectedAgent, setSelectedAgent] = useState(agents[1]);
-  const [client, setClient] = useState({ ...blankPerson });
-  const [spouse, setSpouse] = useState({ ...blankPerson });
-  const [status, setStatus] = useState("New Intake");
-  const [referredBy, setReferredBy] = useState("");
-  const [currentCoverage, setCurrentCoverage] = useState("");
-  const [currentPremium, setCurrentPremium] = useState("");
-  const [notes, setNotes] = useState("");
+export default function SipsDashboardPage() {
+  const [view, setView] = useState("dashboard");
+  const [selectedAgent, setSelectedAgent] = useState(AGENTS[0]);
+  const [selectedHousehold, setSelectedHousehold] = useState(null);
+
+  const [client, setClient] = useState({ ...BLANK_PERSON });
+  const [spouse, setSpouse] = useState({ ...BLANK_PERSON });
   const [assignedAgent, setAssignedAgent] = useState("Admin");
   const [appointmentType, setAppointmentType] = useState("Service");
   const [appointmentDate, setAppointmentDate] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("");
-  const [appointmentDuration, setAppointmentDuration] = useState("60");
   const [appointmentLocation, setAppointmentLocation] = useState("Phone Call");
-  const [health, setHealth] = useState([]);
-  const [templateName, setTemplateName] = useState("Appointment Confirmation");
-  const [savedMessage, setSavedMessage] = useState("");
-  const [calendarMessage, setCalendarMessage] = useState("");
-  const [savedEvents, setSavedEvents] = useState([]);
-  const [savedHouseholds, setSavedHouseholds] = useState([]);
+  const [referredBy, setReferredBy] = useState("");
+  const [currentCoverage, setCurrentCoverage] = useState("");
+  const [currentPremium, setCurrentPremium] = useState("");
+  const [notes, setNotes] = useState("");
+  const [healthFlags, setHealthFlags] = useState([]);
+  const [emailTemplate, setEmailTemplate] = useState("Appointment Confirmation");
+  const [households, setHouseholds] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [message, setMessage] = useState("");
 
-  const clientAge = useMemo(() => calculateAge(client.birthdate), [client.birthdate]);
-  const spouseAge = useMemo(() => calculateAge(spouse.birthdate), [spouse.birthdate]);
-  const clientName = `${client.firstName} ${client.lastName}`.trim() || "Client";
-  const selectedTemplate = applyTemplate(emailTemplates[templateName], {
-    clientName,
-    agent: assignedAgent,
-    date: appointmentDate,
-    time: appointmentTime,
-  });
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    setSavedEvents(safeJsonParse(window.localStorage.getItem("sipsCalendarEvents"), []));
-    setSavedHouseholds(safeJsonParse(window.localStorage.getItem("sipsHouseholds"), []));
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("sipsCalendarEvents", JSON.stringify(savedEvents));
-  }, [savedEvents]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem("sipsHouseholds", JSON.stringify(savedHouseholds));
-  }, [savedHouseholds]);
-
-  function updateClient(field, value) {
-    setClient((prev) => ({ ...prev, [field]: value }));
-  }
-
-  function updateSpouse(field, value) {
-    setSpouse((prev) => ({ ...prev, [field]: value }));
-  }
-
-  function toggleHealth(option) {
-    setHealth((prev) => (prev.includes(option) ? prev.filter((x) => x !== option) : [...prev, option]));
-  }
-
-  function getAgentStatus(agentName) {
+  const agentStatus = useMemo(() => {
     const now = new Date();
-    const currentEvent = savedEvents.find((event) => {
-      if (event.agent !== agentName) return false;
-      const start = new Date(event.startIso);
-      const end = new Date(event.endIso);
-      return start <= now && now <= end;
-    });
-
-    if (currentEvent) return { label: "Busy", detail: currentEvent.title, color: "#b91c1c" };
-    return { label: "Available", detail: "No local event is blocking this time", color: "#166534" };
-  }
-
-  function hasAppointmentConflict(agentName, startIso, endIso) {
-    const start = new Date(startIso);
-    const end = new Date(endIso);
-    return savedEvents.some((event) => {
-      if (event.agent !== agentName) return false;
-      const eventStart = new Date(event.startIso);
-      const eventEnd = new Date(event.endIso);
-      return start < eventEnd && end > eventStart;
-    });
-  }
-
-  function buildEventPayload() {
-    const times = buildAppointmentStartEnd(appointmentDate, appointmentTime, appointmentDuration);
-    if (!times) return { error: "Enter appointment date and time first." };
-
-    const typeCode = appointmentCodeMap[appointmentType] || appointmentType;
-    const agentObj = agents.find((a) => a.name === assignedAgent) || agents[0];
-    const healthSummary = health.length ? health.join(", ") : "None";
-    const title = `[${typeCode}] ${clientName} | ${agentObj.initials}`;
-
-    const description =
-      `OPEN ADMIN: /dashboard\n` +
-      `OPEN HOUSEHOLD: /dashboard\n\n` +
-      `Status: ${status || "-"}\n` +
-      `Reason for Call: ${appointmentType || "-"}\n` +
-      `Assigned Agent: ${assignedAgent}\n` +
-      `Client: ${clientName}\n` +
-      `Phone: ${client.phone || "-"}\n` +
-      `Email: ${client.email || "-"}\n` +
-      `Age: ${clientAge || "-"}\n` +
-      `ZIP: ${client.zip || "-"}\n` +
-      `Referred By: ${referredBy || "-"}\n` +
-      `Current Coverage: ${currentCoverage || "-"}\n` +
-      `Current Premium: ${currentPremium || "-"}\n\n` +
-      `Health Conditions:\n${healthSummary}\n\n` +
-      `Notes:\n${notes || "-"}`;
-
-    return {
-      id: makeEventId(),
-      agent: assignedAgent,
-      title,
-      description,
-      location: appointmentLocation || "Office",
-      startIso: times.start.toISOString(),
-      endIso: times.end.toISOString(),
-      date: appointmentDate,
-      time: appointmentTime,
-      duration: times.durationMinutes,
-      clientName,
-      status,
-      type: appointmentType,
-    };
-  }
-
-  function checkAvailability() {
-    const payload = buildEventPayload();
-    if (payload.error) {
-      setCalendarMessage(payload.error);
-      return;
-    }
-
-    const conflict = hasAppointmentConflict(payload.agent, payload.startIso, payload.endIso);
-    setCalendarMessage(conflict ? `${payload.agent} is already booked at this time.` : `${payload.agent} appears available at this time.`);
-  }
-
-  async function createCalendarEvent() {
-    const payload = buildEventPayload();
-    if (payload.error) {
-      setCalendarMessage(payload.error);
-      return;
-    }
-
-    if (hasAppointmentConflict(payload.agent, payload.startIso, payload.endIso)) {
-      setCalendarMessage(`${payload.agent} already has an event at this time. Change the time or agent.`);
-      return;
-    }
-
-    setCalendarMessage("Saving calendar event...");
-
-    try {
-      const res = await fetch("/api/calendar/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          agents: [payload.agent],
-          title: payload.title,
-          description: payload.description,
-          location: payload.location,
-          start: payload.startIso,
-          end: payload.endIso,
-        }),
+    return AGENTS.reduce((result, agent) => {
+      const agentBusy = events.some((event) => {
+        if (event.agent !== agent.name || !event.date || !event.time) return false;
+        const start = new Date(`${event.date}T${event.time}:00`);
+        const end = new Date(start.getTime() + 60 * 60000);
+        return now >= start && now <= end;
       });
+      result[agent.name] = agentBusy ? "Busy" : "Available";
+      return result;
+    }, {});
+  }, [events]);
 
-      if (res.ok) {
-        const data = await res.json().catch(() => ({}));
-        if (data.success !== false) {
-          setSavedEvents((prev) => [{ ...payload, googleCalendarSaved: true }, ...prev]);
-          setCalendarMessage("Calendar event saved and added to the local calendar list.");
-          return;
-        }
-        setCalendarMessage(`Calendar API returned an error, so I saved it locally instead: ${data.error || "Unknown error"}`);
-      } else {
-        setCalendarMessage("Calendar API is not connected yet, so I saved it locally inside this page.");
-      }
-    } catch {
-      setCalendarMessage("Calendar API is not connected yet, so I saved it locally inside this page.");
-    }
-
-    setSavedEvents((prev) => [{ ...payload, googleCalendarSaved: false }, ...prev]);
-  }
-
-  function saveAdminIntake() {
-    const clientPhoneBad = client.phone && client.phoneConfirm && client.phone !== client.phoneConfirm;
-    const spousePhoneBad = spouse.phone && spouse.phoneConfirm && spouse.phone !== spouse.phoneConfirm;
-
-    if (clientPhoneBad) {
-      setSavedMessage("Client phone numbers do not match.");
-      return;
-    }
-    if (spousePhoneBad) {
-      setSavedMessage("Spouse phone numbers do not match.");
-      return;
-    }
-
-    const household = {
-      id: `household-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      client,
-      spouse,
-      clientAge,
-      spouseAge,
-      status,
-      assignedAgent,
-      referredBy,
-      currentCoverage,
-      currentPremium,
-      notes,
-      health,
-      appointmentType,
-      appointmentDate,
-      appointmentTime,
-      appointmentDuration,
-      appointmentLocation,
-    };
-
-    setSavedHouseholds((prev) => [household, ...prev]);
-    setSavedMessage("Admin intake saved. It will show on Household, Clients, and Today inside this single-page system.");
-  }
-
-  function clearForm() {
-    setClient({ ...blankPerson });
-    setSpouse({ ...blankPerson });
-    setStatus("New Intake");
+  function resetForm() {
+    setClient({ ...BLANK_PERSON });
+    setSpouse({ ...BLANK_PERSON });
+    setAssignedAgent("Admin");
+    setAppointmentType("Service");
+    setAppointmentDate("");
+    setAppointmentTime("");
+    setAppointmentLocation("Phone Call");
     setReferredBy("");
     setCurrentCoverage("");
     setCurrentPremium("");
     setNotes("");
-    setHealth([]);
-    setAppointmentDate("");
-    setAppointmentTime("");
-    setAppointmentDuration("60");
-    setAppointmentLocation("Phone Call");
-    setSavedMessage("Form cleared.");
+    setHealthFlags([]);
   }
 
-  function NavButtons({ household = true }) {
-    return (
-      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "18px" }}>
-        <button type="button" onClick={() => setPage("dashboard")} style={primaryButtonStyle}>Dashboard</button>
-        <button type="button" onClick={() => setPage("admin")} style={buttonStyle}>Back to Admin</button>
-        <button type="button" onClick={() => setPage("calendar")} style={buttonStyle}>Go to Calendar</button>
-        {household ? <button type="button" onClick={() => setPage("household")} style={buttonStyle}>Back to Household</button> : null}
-        <button type="button" onClick={() => setPage("clients")} style={buttonStyle}>Clients</button>
-        <button type="button" onClick={() => setPage("today")} style={buttonStyle}>Today</button>
-      </div>
+  function saveIntake() {
+    const clientName = `${client.firstName} ${client.lastName}`.trim();
+
+    if (!clientName) {
+      setMessage("Please enter at least the client first and last name before saving.");
+      return;
+    }
+
+    const household = {
+      id: Date.now(),
+      client: { ...client },
+      spouse: { ...spouse },
+      assignedAgent,
+      appointmentType,
+      appointmentDate,
+      appointmentTime,
+      appointmentLocation,
+      referredBy,
+      currentCoverage,
+      currentPremium,
+      notes,
+      healthFlags: [...healthFlags],
+      createdAt: new Date().toLocaleString(),
+    };
+
+    setHouseholds((previous) => [household, ...previous]);
+    setSelectedHousehold(household);
+    setMessage("Intake saved. Household snapshot is ready.");
+
+    if (appointmentDate && appointmentTime) {
+      createCalendarEvent(household);
+    }
+
+    resetForm();
+    setView("household");
+  }
+
+  async function createCalendarEvent(householdOverride) {
+    const source = householdOverride || {
+      id: Date.now(),
+      client,
+      spouse,
+      assignedAgent,
+      appointmentType,
+      appointmentDate,
+      appointmentTime,
+      appointmentLocation,
+      referredBy,
+      currentCoverage,
+      currentPremium,
+      notes,
+      healthFlags,
+    };
+
+    if (!source.appointmentDate || !source.appointmentTime) {
+      setMessage("Please enter appointment date and time before creating a calendar event.");
+      return;
+    }
+
+    const clientName = `${source.client.firstName} ${source.client.lastName}`.trim() || "Client";
+    const agent = AGENTS.find((item) => item.name === source.assignedAgent) || AGENTS[0];
+    const code = APPOINTMENT_CODES[source.appointmentType] || source.appointmentType;
+
+    const event = {
+      id: Date.now() + Math.random(),
+      title: `[${code}] ${clientName} | ${agent.initials}`,
+      clientName,
+      agent: source.assignedAgent,
+      type: source.appointmentType,
+      date: source.appointmentDate,
+      time: source.appointmentTime,
+      location: source.appointmentLocation,
+      householdId: source.id,
+      notes: source.notes,
+    };
+
+    setEvents((previous) => [event, ...previous]);
+    setMessage("Calendar event saved inside this dashboard. Google Calendar API can be connected after the layout is final.");
+    setView("calendar");
+  }
+
+  function toggleHealth(option) {
+    setHealthFlags((previous) =>
+      previous.includes(option)
+        ? previous.filter((item) => item !== option)
+        : [...previous, option]
     );
   }
 
-  function DashboardPage() {
-    return (
-      <main style={pageStyle}>
-        <h1>SIPS Connect Dashboard</h1>
-        <NavButtons household={false} />
+  function openAgent(agent) {
+    setSelectedAgent(agent);
+    setView("agent");
+  }
 
-        <section style={cardStyle}>
-          <h2 style={{ margin: 0 }}>Agent Status</h2>
+  function openHousehold(household) {
+    setSelectedHousehold(household);
+    setView("household");
+  }
+
+  function Header() {
+    return (
+      <header style={styles.header}>
+        <h1 style={{ margin: 0 }}>SIPS Connect</h1>
+        <p style={{ marginBottom: 0 }}>Dashboard, Admin Intake, Agents, Calendar, Clients, and Household Snapshot</p>
+
+        <nav style={styles.nav}>
+          <button style={view === "dashboard" ? styles.primaryButton : styles.button} onClick={() => setView("dashboard")}>Dashboard</button>
+          <button style={view === "admin" ? styles.primaryButton : styles.button} onClick={() => setView("admin")}>Admin Intake</button>
+          <button style={view === "calendar" ? styles.primaryButton : styles.button} onClick={() => setView("calendar")}>Calendar</button>
+          <button style={view === "clients" ? styles.primaryButton : styles.button} onClick={() => setView("clients")}>Clients</button>
+          <button style={view === "today" ? styles.primaryButton : styles.button} onClick={() => setView("today")}>Today</button>
+        </nav>
+      </header>
+    );
+  }
+
+  function DashboardView() {
+    return (
+      <>
+        <section style={styles.card}>
+          <h2 style={{ marginTop: 0 }}>Dashboard</h2>
+          <p>This is the main dashboard. Admin Intake is separate so agents do not get confused.</p>
+          <div style={styles.nav}>
+            <button style={styles.primaryButton} onClick={() => setView("admin")}>Open Admin Intake</button>
+            <button style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+            <button style={styles.button} onClick={() => setView("clients")}>View Clients</button>
+          </div>
+        </section>
+
+        <section style={styles.card}>
+          <h2 style={{ marginTop: 0 }}>Agent Status</h2>
           <div style={{ display: "grid", gap: "12px" }}>
-            {agents.filter((a) => a.name !== "Admin").map((agent) => {
-              const agentStatus = getAgentStatus(agent.name);
-              return (
-                <div key={agent.slug} style={{ border: "1px solid #d0d7de", borderRadius: "10px", padding: "14px", display: "grid", gap: "10px" }}>
-                  <strong>{agent.name} — {agent.initials} — {agent.color}</strong>
-                  <div><span style={{ color: agentStatus.color, fontWeight: "bold" }}>{agentStatus.label}</span> — {agentStatus.detail}</div>
-                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                    <button type="button" style={buttonStyle} onClick={() => alert(`${agent.name}: ${agentStatus.label} — ${agentStatus.detail}`)}>Check Status</button>
-                    <button type="button" style={buttonStyle} onClick={() => { setSelectedAgent(agent); setPage("agent"); }}>Go to Agent Page</button>
-                    <button type="button" style={buttonStyle} onClick={() => { setSelectedAgent(agent); setAssignedAgent(agent.name); setPage("calendar"); }}>Go to Calendar</button>
-                  </div>
+            {AGENTS.map((agent) => (
+              <div key={agent.name} style={{ border: "1px solid #dbe3ee", borderRadius: "12px", padding: "14px", display: "grid", gap: "10px" }}>
+                <div>
+                  <strong>{agent.name}</strong> — {agent.initials} — {agent.color}
+                  <div>Status: <strong>{agentStatus[agent.name]}</strong></div>
                 </div>
-              );
-            })}
+                <div style={styles.nav}>
+                  <button style={styles.button} onClick={() => setMessage(`${agent.name} is currently ${agentStatus[agent.name]}.`)}>Check Status</button>
+                  <button style={styles.button} onClick={() => openAgent(agent)}>Go to Agent Page</button>
+                  <button style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
-
-        <section style={cardStyle}>
-          <h2 style={{ margin: 0 }}>Fast Actions</h2>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <button type="button" style={primaryButtonStyle} onClick={() => setPage("admin")}>Open Admin Intake</button>
-            <button type="button" style={buttonStyle} onClick={() => setPage("calendar")}>Open Calendar</button>
-            <button type="button" style={buttonStyle} onClick={() => setPage("clients")}>Open Clients</button>
-            <button type="button" style={buttonStyle} onClick={() => setPage("today")}>Open Today</button>
-          </div>
-        </section>
-      </main>
+      </>
     );
   }
 
-  function AdminPage() {
+  function AdminView() {
     return (
-      <main style={pageStyle}>
-        <h1>Admin Intake</h1>
-        <NavButtons />
-        <form onSubmit={(e) => { e.preventDefault(); saveAdminIntake(); }} style={{ display: "grid", gap: "18px" }}>
-          <section style={cardStyle}>
-            <h2 style={{ margin: 0 }}>Status</h2>
-            <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
-              <option>New Intake</option>
-              <option>Needs Review</option>
-              <option>Scheduled</option>
-              <option>Waiting on Client</option>
-              <option>Application Started</option>
-              <option>Completed</option>
-              <option>Urgent</option>
-            </select>
-          </section>
+      <>
+        <section style={styles.card}>
+          <h2 style={{ marginTop: 0 }}>Admin Intake</h2>
+          <div style={styles.nav}>
+            <button style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
+            <button style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+          </div>
+        </section>
 
-          <PersonSection title="Client" data={client} age={clientAge} onUpdate={updateClient} />
-          <PersonSection title="Spouse" data={spouse} age={spouseAge} onUpdate={updateSpouse} />
+        <PersonSection title="Client" person={client} setPerson={setClient} />
+        <PersonSection title="Spouse" person={spouse} setPerson={setSpouse} />
 
-          <section style={cardStyle}>
-            <h2 style={{ margin: 0 }}>Health / Referral / Coverage</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "8px" }}>
-              {healthOptions.map((option) => (
-                <label key={option}>
-                  <input type="checkbox" checked={health.includes(option)} onChange={() => toggleHealth(option)} /> {option}
+        <section style={styles.card}>
+          <h2 style={{ marginTop: 0 }}>Status, Referral, Coverage, and Notes</h2>
+
+          <div style={styles.grid2}>
+            <SelectInput label="Assigned Agent" value={assignedAgent} onChange={setAssignedAgent} options={AGENTS.map((agent) => agent.name)} />
+            <SelectInput label="Reason / Appointment Type" value={appointmentType} onChange={setAppointmentType} options={APPOINTMENT_TYPES} />
+          </div>
+
+          <div style={styles.grid3}>
+            <TextInput label="Referred By" value={referredBy} onChange={setReferredBy} />
+            <TextInput label="Current Coverage" value={currentCoverage} onChange={setCurrentCoverage} />
+            <TextInput label="Current Premium" value={currentPremium} onChange={setCurrentPremium} />
+          </div>
+
+          <div style={{ marginTop: "12px" }}>
+            <label style={styles.label}>Health Status</label>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "8px" }}>
+              {HEALTH_OPTIONS.map((option) => (
+                <label key={option} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <input type="checkbox" checked={healthFlags.includes(option)} onChange={() => toggleHealth(option)} />
+                  {option}
                 </label>
               ))}
             </div>
-            <input value={referredBy} onChange={(e) => setReferredBy(e.target.value)} placeholder="Referred By" style={inputStyle} />
-            <input value={currentCoverage} onChange={(e) => setCurrentCoverage(e.target.value)} placeholder="Current Coverage" style={inputStyle} />
-            <input value={currentPremium} onChange={(e) => setCurrentPremium(e.target.value)} placeholder="Current Premium" style={inputStyle} />
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes" rows={4} style={inputStyle} />
-          </section>
-
-          <section style={cardStyle}>
-            <h2 style={{ margin: 0 }}>Appointment Scheduler</h2>
-            <select value={assignedAgent} onChange={(e) => setAssignedAgent(e.target.value)} style={inputStyle}>
-              {agents.map((a) => <option key={a.name}>{a.name}</option>)}
-            </select>
-            <select value={appointmentType} onChange={(e) => setAppointmentType(e.target.value)} style={inputStyle}>
-              {appointmentTypes.map((x) => <option key={x}>{x}</option>)}
-            </select>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              <input type="date" value={appointmentDate} onChange={(e) => setAppointmentDate(e.target.value)} style={inputStyle} />
-              <input type="time" value={appointmentTime} onChange={(e) => setAppointmentTime(e.target.value)} style={inputStyle} />
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              <select value={appointmentDuration} onChange={(e) => setAppointmentDuration(e.target.value)} style={inputStyle}>
-                <option value="15">15 minutes</option>
-                <option value="30">30 minutes</option>
-                <option value="45">45 minutes</option>
-                <option value="60">1 hour</option>
-                <option value="90">1.5 hours</option>
-              </select>
-              <select value={appointmentLocation} onChange={(e) => setAppointmentLocation(e.target.value)} style={inputStyle}>
-                <option>Phone Call</option>
-                <option>Office</option>
-                <option>Client Home</option>
-                <option>Zoom / Virtual</option>
-                <option>Other</option>
-              </select>
-            </div>
-            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-              <button type="button" style={buttonStyle} onClick={checkAvailability}>Check Availability</button>
-              <button type="button" style={primaryButtonStyle} onClick={createCalendarEvent}>Create Calendar Event</button>
-              <button type="button" style={buttonStyle} onClick={() => setPage("calendar")}>Go to Calendar</button>
-              <button type="button" style={buttonStyle} onClick={() => setPage("household")}>Back to Household</button>
-            </div>
-            {calendarMessage ? <p>{calendarMessage}</p> : null}
-          </section>
-
-          <section style={cardStyle}>
-            <h2 style={{ margin: 0 }}>Email Template Option</h2>
-            <select value={templateName} onChange={(e) => setTemplateName(e.target.value)} style={inputStyle}>
-              {Object.keys(emailTemplates).map((x) => <option key={x}>{x}</option>)}
-            </select>
-            <textarea value={selectedTemplate} readOnly rows={7} style={inputStyle} />
-            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-              <button type="button" style={buttonStyle} onClick={() => navigator.clipboard?.writeText(selectedTemplate)}>Copy Email Template</button>
-              <a style={buttonStyle} href={`mailto:${client.email || ""}?subject=${encodeURIComponent(templateName)}&body=${encodeURIComponent(selectedTemplate)}`}>Open Email</a>
-            </div>
-          </section>
-
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <button type="submit" style={primaryButtonStyle}>Save Admin Intake</button>
-            <button type="button" style={buttonStyle} onClick={createCalendarEvent}>Save Intake + Calendar Event</button>
-            <button type="button" style={buttonStyle} onClick={clearForm}>Clear Form</button>
-            <button type="button" style={buttonStyle} onClick={() => setPage("dashboard")}>Return to Dashboard</button>
           </div>
-          {savedMessage ? <p>{savedMessage}</p> : null}
-        </form>
-      </main>
-    );
-  }
 
-  function CalendarPage() {
-    return (
-      <main style={pageStyle}>
-        <h1>Calendar</h1>
-        <NavButtons />
-        <section style={cardStyle}>
-          <h2 style={{ margin: 0 }}>Create / Check Appointment</h2>
-          <p>Selected Agent: <strong>{assignedAgent}</strong></p>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <button type="button" style={buttonStyle} onClick={() => setPage("admin")}>Back to Admin</button>
-            <button type="button" style={buttonStyle} onClick={() => setPage("household")}>Back to Household</button>
-            <button type="button" style={primaryButtonStyle} onClick={createCalendarEvent}>Save Current Intake to Calendar</button>
-          </div>
-          {calendarMessage ? <p>{calendarMessage}</p> : null}
-        </section>
-
-        <section style={cardStyle}>
-          <h2 style={{ margin: 0 }}>Saved Calendar Events</h2>
-          {savedEvents.length === 0 ? <p>No saved events yet.</p> : null}
-          {savedEvents.map((event) => (
-            <div key={event.id} style={{ border: "1px solid #d0d7de", borderRadius: "10px", padding: "12px" }}>
-              <strong>{event.title}</strong>
-              <p style={{ margin: "6px 0" }}>{event.date} at {event.time} — {event.duration} minutes — {event.location}</p>
-              <p style={{ margin: "6px 0" }}>Agent: {event.agent} | Client: {event.clientName}</p>
-              <p style={{ margin: "6px 0" }}>Saved to Google Calendar: {event.googleCalendarSaved ? "Yes" : "No / Local only"}</p>
-            </div>
-          ))}
-        </section>
-      </main>
-    );
-  }
-
-  function HouseholdPage() {
-    return (
-      <main style={pageStyle}>
-        <h1>Household</h1>
-        <NavButtons />
-        <section style={cardStyle}>
-          <h2 style={{ margin: 0 }}>{clientName}</h2>
-          <p><strong>Status:</strong> {status}</p>
-          <p><strong>Assigned Agent:</strong> {assignedAgent}</p>
-          <p><strong>Phone:</strong> {client.phone || "-"}</p>
-          <p><strong>Email:</strong> {client.email || "-"}</p>
-          <p><strong>Birthdate / Age:</strong> {client.birthdate || "-"} / {clientAge || "-"}</p>
-          <p><strong>Spouse:</strong> {`${spouse.firstName} ${spouse.lastName}`.trim() || "-"}</p>
-          <p><strong>Spouse Birthdate / Age:</strong> {spouse.birthdate || "-"} / {spouseAge || "-"}</p>
-          <p><strong>Current Coverage:</strong> {currentCoverage || "-"}</p>
-          <p><strong>Current Premium:</strong> {currentPremium || "-"}</p>
-          <p><strong>Health:</strong> {health.length ? health.join(", ") : "None"}</p>
-          <p><strong>Notes:</strong> {notes || "-"}</p>
-        </section>
-      </main>
-    );
-  }
-
-  function AgentPage() {
-    const agentStatus = getAgentStatus(selectedAgent.name);
-    return (
-      <main style={pageStyle}>
-        <h1>{selectedAgent.name}</h1>
-        <NavButtons />
-        <section style={cardStyle}>
-          <h2 style={{ margin: 0 }}>Agent Page</h2>
-          <p><strong>Initials:</strong> {selectedAgent.initials}</p>
-          <p><strong>Calendar Color:</strong> {selectedAgent.color}</p>
-          <p><strong>Status:</strong> <span style={{ color: agentStatus.color, fontWeight: "bold" }}>{agentStatus.label}</span> — {agentStatus.detail}</p>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <button type="button" style={buttonStyle} onClick={() => alert(`${selectedAgent.name}: ${agentStatus.label} — ${agentStatus.detail}`)}>Check Agent Status</button>
-            <button type="button" style={buttonStyle} onClick={() => { setAssignedAgent(selectedAgent.name); setPage("calendar"); }}>Go to Calendar</button>
-            <button type="button" style={buttonStyle} onClick={() => setPage("admin")}>Back to Admin</button>
+          <div style={{ marginTop: "12px" }}>
+            <Field label="Notes">
+              <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={5} style={styles.input} />
+            </Field>
           </div>
         </section>
-      </main>
+
+        <section style={styles.card}>
+          <h2 style={{ marginTop: 0 }}>Calendar</h2>
+          <div style={styles.grid3}>
+            <TextInput label="Appointment Date" type="date" value={appointmentDate} onChange={setAppointmentDate} />
+            <TextInput label="Appointment Time" type="time" value={appointmentTime} onChange={setAppointmentTime} />
+            <SelectInput label="Location" value={appointmentLocation} onChange={setAppointmentLocation} options={["Phone Call", "Office", "Client Home", "Zoom / Virtual", "Other"]} />
+          </div>
+
+          <div style={styles.nav}>
+            <button style={styles.button} onClick={() => createCalendarEvent()}>Create Calendar Event</button>
+            <button style={styles.button} onClick={() => setView("calendar")}>Open Calendar</button>
+            {selectedHousehold ? <button style={styles.button} onClick={() => setView("household")}>Back to Household</button> : null}
+          </div>
+        </section>
+
+        <section style={styles.card}>
+          <h2 style={{ marginTop: 0 }}>Email Template</h2>
+          <SelectInput label="Template" value={emailTemplate} onChange={setEmailTemplate} options={Object.keys(EMAIL_TEMPLATES)} />
+          <textarea readOnly value={EMAIL_TEMPLATES[emailTemplate]} rows={5} style={{ ...styles.input, marginTop: "12px" }} />
+          <div style={styles.nav}>
+            <button style={styles.button} onClick={() => navigator.clipboard?.writeText(EMAIL_TEMPLATES[emailTemplate])}>Copy Email Template</button>
+            <a style={styles.button} href={`mailto:?subject=${encodeURIComponent(emailTemplate)}&body=${encodeURIComponent(EMAIL_TEMPLATES[emailTemplate])}`}>Open Email</a>
+          </div>
+        </section>
+
+        <section style={styles.card}>
+          <button style={styles.primaryButton} onClick={saveIntake}>Save Admin Intake</button>
+        </section>
+      </>
     );
   }
 
-  function ClientsPage() {
+  function CalendarView() {
     return (
-      <main style={pageStyle}>
-        <h1>Clients</h1>
-        <NavButtons />
-        <section style={cardStyle}>
-          <h2 style={{ margin: 0 }}>Saved Households</h2>
-          {savedHouseholds.length === 0 ? <p>No saved households yet.</p> : null}
-          {savedHouseholds.map((household) => {
-            const name = `${household.client.firstName} ${household.client.lastName}`.trim() || "Client";
-            return (
-              <div key={household.id} style={{ border: "1px solid #d0d7de", borderRadius: "10px", padding: "12px" }}>
-                <strong>{name}</strong>
-                <p style={{ margin: "6px 0" }}>Status: {household.status} | Agent: {household.assignedAgent}</p>
-                <p style={{ margin: "6px 0" }}>Phone: {household.client.phone || "-"} | Email: {household.client.email || "-"}</p>
+      <section style={styles.card}>
+        <h2 style={{ marginTop: 0 }}>Calendar</h2>
+        <div style={styles.nav}>
+          <button style={styles.button} onClick={() => setView("admin")}>Back to Admin</button>
+          {selectedHousehold ? <button style={styles.button} onClick={() => setView("household")}>Back to Household</button> : null}
+          <button style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
+        </div>
+
+        {events.length === 0 ? (
+          <p>No calendar events saved yet.</p>
+        ) : (
+          <div style={{ display: "grid", gap: "10px", marginTop: "14px" }}>
+            {events.map((event) => (
+              <div key={event.id} style={{ border: "1px solid #dbe3ee", borderRadius: "12px", padding: "14px" }}>
+                <strong>{event.title}</strong>
+                <div>{event.date} at {event.time}</div>
+                <div>{event.agent} — {event.location}</div>
+                <button style={{ ...styles.button, marginTop: "10px" }} onClick={() => {
+                  const found = households.find((household) => household.id === event.householdId);
+                  if (found) openHousehold(found);
+                }}>Open Household</button>
               </div>
-            );
-          })}
-        </section>
-      </main>
+            ))}
+          </div>
+        )}
+      </section>
     );
   }
 
-  function TodayPage() {
-    const today = new Date().toISOString().slice(0, 10);
-    const todaysEvents = savedEvents.filter((event) => event.date === today);
+  function ClientsView() {
     return (
-      <main style={pageStyle}>
-        <h1>Today’s Appointments</h1>
-        <NavButtons />
-        <section style={cardStyle}>
-          <h2 style={{ margin: 0 }}>Today</h2>
-          {todaysEvents.length === 0 ? <p>No local events saved for today.</p> : null}
-          {todaysEvents.map((event) => (
-            <div key={event.id} style={{ border: "1px solid #d0d7de", borderRadius: "10px", padding: "12px" }}>
-              <strong>{event.time} — {event.title}</strong>
-              <p style={{ margin: "6px 0" }}>{event.agent} | {event.location}</p>
-            </div>
-          ))}
-        </section>
-      </main>
+      <section style={styles.card}>
+        <h2 style={{ marginTop: 0 }}>Clients</h2>
+        {households.length === 0 ? (
+          <p>No saved clients yet.</p>
+        ) : (
+          <div style={{ display: "grid", gap: "10px" }}>
+            {households.map((household) => (
+              <div key={household.id} style={{ border: "1px solid #dbe3ee", borderRadius: "12px", padding: "14px" }}>
+                <strong>{household.client.firstName} {household.client.lastName}</strong>
+                <div>Agent: {household.assignedAgent}</div>
+                <div>Phone: {household.client.phone || "-"}</div>
+                <button style={{ ...styles.button, marginTop: "10px" }} onClick={() => openHousehold(household)}>Open Household</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     );
   }
 
-  if (page === "admin") return <AdminPage />;
-  if (page === "calendar") return <CalendarPage />;
-  if (page === "household") return <HouseholdPage />;
-  if (page === "agent") return <AgentPage />;
-  if (page === "clients") return <ClientsPage />;
-  if (page === "today") return <TodayPage />;
-  return <DashboardPage />;
+  function HouseholdView() {
+    if (!selectedHousehold) {
+      return (
+        <section style={styles.card}>
+          <h2 style={{ marginTop: 0 }}>Household</h2>
+          <p>No household selected.</p>
+          <button style={styles.button} onClick={() => setView("clients")}>Go to Clients</button>
+        </section>
+      );
+    }
+
+    const household = selectedHousehold;
+
+    return (
+      <section style={styles.card}>
+        <h2 style={{ marginTop: 0 }}>Household Snapshot</h2>
+        <div style={styles.nav}>
+          <button style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
+          <button style={styles.button} onClick={() => setView("admin")}>Back to Admin</button>
+          <button style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+        </div>
+
+        <div style={styles.grid2}>
+          <div style={{ border: "1px solid #dbe3ee", borderRadius: "12px", padding: "14px" }}>
+            <h3>Client</h3>
+            <p><strong>Name:</strong> {household.client.firstName} {household.client.lastName}</p>
+            <p><strong>Birthdate:</strong> {household.client.birthdate || "-"}</p>
+            <p><strong>Age:</strong> {household.client.age || "-"}</p>
+            <p><strong>Phone:</strong> {household.client.phone || "-"}</p>
+            <p><strong>Email:</strong> {household.client.email || "-"}</p>
+            <p><strong>Address:</strong> {household.client.address || "-"} {household.client.city || ""} {household.client.state || ""} {household.client.zip || ""}</p>
+          </div>
+
+          <div style={{ border: "1px solid #dbe3ee", borderRadius: "12px", padding: "14px" }}>
+            <h3>Spouse</h3>
+            <p><strong>Name:</strong> {household.spouse.firstName || "-"} {household.spouse.lastName || ""}</p>
+            <p><strong>Birthdate:</strong> {household.spouse.birthdate || "-"}</p>
+            <p><strong>Age:</strong> {household.spouse.age || "-"}</p>
+            <p><strong>Phone:</strong> {household.spouse.phone || "-"}</p>
+            <p><strong>Email:</strong> {household.spouse.email || "-"}</p>
+          </div>
+        </div>
+
+        <div style={{ marginTop: "14px", border: "1px solid #dbe3ee", borderRadius: "12px", padding: "14px" }}>
+          <h3>Admin Summary</h3>
+          <p><strong>Assigned Agent:</strong> {household.assignedAgent}</p>
+          <p><strong>Reason:</strong> {household.appointmentType}</p>
+          <p><strong>Referred By:</strong> {household.referredBy || "-"}</p>
+          <p><strong>Current Coverage:</strong> {household.currentCoverage || "-"}</p>
+          <p><strong>Current Premium:</strong> {household.currentPremium || "-"}</p>
+          <p><strong>Health:</strong> {household.healthFlags.length ? household.healthFlags.join(", ") : "None"}</p>
+          <p><strong>Notes:</strong> {household.notes || "-"}</p>
+        </div>
+      </section>
+    );
+  }
+
+  function AgentView() {
+    return (
+      <section style={styles.card}>
+        <h2 style={{ marginTop: 0 }}>{selectedAgent.name}</h2>
+        <p><strong>Initials:</strong> {selectedAgent.initials}</p>
+        <p><strong>Calendar Color:</strong> {selectedAgent.color}</p>
+        <p><strong>Status:</strong> {agentStatus[selectedAgent.name]}</p>
+        <div style={styles.nav}>
+          <button style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
+          <button style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+          <button style={styles.button} onClick={() => setView("admin")}>Create Intake for Agent</button>
+        </div>
+      </section>
+    );
+  }
+
+  function TodayView() {
+    const today = new Date().toISOString().slice(0, 10);
+    const todayEvents = events.filter((event) => event.date === today);
+
+    return (
+      <section style={styles.card}>
+        <h2 style={{ marginTop: 0 }}>Today</h2>
+        {todayEvents.length === 0 ? <p>No appointments saved for today.</p> : todayEvents.map((event) => (
+          <div key={event.id} style={{ border: "1px solid #dbe3ee", borderRadius: "12px", padding: "14px", marginBottom: "10px" }}>
+            <strong>{event.title}</strong>
+            <div>{event.time} — {event.agent}</div>
+          </div>
+        ))}
+      </section>
+    );
+  }
+
+  return (
+    <main style={styles.page}>
+      <div style={styles.shell}>
+        <Header />
+
+        {message ? (
+          <div style={{ ...styles.card, borderColor: "#93c5fd", background: "#eff6ff" }}>
+            {message}
+          </div>
+        ) : null}
+
+        {view === "dashboard" ? <DashboardView /> : null}
+        {view === "admin" ? <AdminView /> : null}
+        {view === "calendar" ? <CalendarView /> : null}
+        {view === "clients" ? <ClientsView /> : null}
+        {view === "household" ? <HouseholdView /> : null}
+        {view === "agent" ? <AgentView /> : null}
+        {view === "today" ? <TodayView /> : null}
+      </div>
+    </main>
+  );
 }
