@@ -1,53 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { useMemo, useState } from "react";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
-const schedulerAgentOptions = [
-  "Admin",
-  "Loyd Richardson",
-  "Blake Richardson",
-  "William Sykes",
-  "Jimmie Bassett",
-  "Christiana Grant",
+const agents = [
+  { name: "Admin", initials: "ADMIN", color: "Purple", slug: "admin" },
+  { name: "Loyd Richardson", initials: "LR", color: "Green", slug: "loyd-richardson" },
+  { name: "Blake Richardson", initials: "BR", color: "Orange", slug: "blake-richardson" },
+  { name: "William Sykes", initials: "WS", color: "Blue", slug: "william-sykes" },
+  { name: "Jimmie Bassett", initials: "JB", color: "Red", slug: "jimmie-bassett" },
+  { name: "Christiana Grant", initials: "CG", color: "Purple", slug: "christiana-grant" },
 ];
 
-const agentColorLabels = {
-  Admin: "Purple",
-  "Loyd Richardson": "Green",
-  "Blake Richardson": "Orange",
-  "William Sykes": "Blue",
-  "Jimmie Bassett": "Red",
-  "Christiana Grant": "Purple",
-};
-
-const agentInitialsMap = {
-  "Loyd Richardson": "LR",
-  "Blake Richardson": "BR",
-  "William Sykes": "WS",
-  "Jimmie Bassett": "JB",
-  "Christiana Grant": "CG",
-  Admin: "ADMIN",
-};
-
-const appointmentCodeMap = {
-  "Phone appointment": "P/A",
-  "Office appointment": "O/A",
-  Service: "S",
-  "Follow up": "F/U",
-  "Urgent call": "ASAP",
-  "Claims issue": "ASAP",
-  "Prescription drug plan": "PDP",
-  Referral: "REF",
-  "Business/HR director": "HR",
-};
-
-const appointmentOptions = [
+const appointmentTypes = [
   "Phone appointment",
   "Office appointment",
   "Service",
@@ -58,6 +22,18 @@ const appointmentOptions = [
   "Referral",
   "Business/HR director",
 ];
+
+const appointmentCodeMap: Record<string, string> = {
+  "Phone appointment": "P/A",
+  "Office appointment": "O/A",
+  Service: "S",
+  "Follow up": "F/U",
+  "Urgent call": "ASAP",
+  "Claims issue": "ASAP",
+  "Prescription drug plan": "PDP",
+  Referral: "REF",
+  "Business/HR director": "HR",
+};
 
 const healthOptions = [
   "C-PAP",
@@ -73,15 +49,16 @@ const healthOptions = [
   "Surgeries pending",
 ];
 
-const sexOptions = ["Male", "Female"];
-const tobaccoOptions = ["Yes", "No"];
-
-const coverageTypeOptions = [
-  "Group coverage",
-  "Medicare",
-  "Individual coverage",
-  "Other",
-];
+const emailTemplates: Record<string, string> = {
+  "Appointment Confirmation":
+    "Hello {{clientName}},\n\nThis confirms your appointment with {{agent}} on {{date}} at {{time}}.\n\nPlease call us if anything changes.\n\nSenior Care Plus",
+  "Missing Information":
+    "Hello {{clientName}},\n\nWe are missing a few items needed to complete your file. Please contact our office so we can update your information.\n\nSenior Care Plus",
+  "Claims Follow Up":
+    "Hello {{clientName}},\n\nWe are following up regarding your claims issue. Please send any EOB, facility bill, or claim paperwork available.\n\nSenior Care Plus",
+  "Premium Review":
+    "Hello {{clientName}},\n\nWe noticed your premium may have increased. Please contact us so we can review your options and make sure your coverage is still the best fit.\n\nSenior Care Plus",
+};
 
 const blankPerson = {
   firstName: "",
@@ -99,7 +76,10 @@ const blankPerson = {
   coverageType: "",
 };
 
-const inputStyle = {
+type Person = typeof blankPerson;
+type PageName = "dashboard" | "admin" | "calendar" | "household" | "clients" | "today" | "agent";
+
+const inputStyle: React.CSSProperties = {
   padding: "12px",
   border: "1px solid #c9d1d9",
   borderRadius: "8px",
@@ -108,16 +88,8 @@ const inputStyle = {
   boxSizing: "border-box",
 };
 
-const cardStyle = {
-  border: "1px solid #d0d7de",
-  borderRadius: "10px",
-  padding: "20px",
-  display: "grid",
-  gap: "12px",
-};
-
-const buttonStyle = {
-  padding: "12px 16px",
+const buttonStyle: React.CSSProperties = {
+  padding: "11px 14px",
   borderRadius: "8px",
   border: "1px solid #c9d1d9",
   background: "#fff",
@@ -125,538 +97,242 @@ const buttonStyle = {
   textDecoration: "none",
   color: "#000",
   display: "inline-block",
+  fontSize: "14px",
 };
 
-function formatPhone(value) {
+const primaryButtonStyle: React.CSSProperties = {
+  ...buttonStyle,
+  background: "#0f172a",
+  border: "1px solid #0f172a",
+  color: "#fff",
+};
+
+const cardStyle: React.CSSProperties = {
+  border: "1px solid #d0d7de",
+  borderRadius: "12px",
+  padding: "18px",
+  background: "#fff",
+  display: "grid",
+  gap: "12px",
+};
+
+function formatPhone(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 10);
   if (digits.length <= 3) return digits;
   if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
   return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
-function formatDate(value) {
+function formatDate(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 8);
   if (digits.length <= 2) return digits;
   if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
   return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
 }
 
-function calculateAge(dateString) {
+function calculateAge(dateString: string) {
   const digits = dateString.replace(/\D/g, "");
   if (digits.length !== 8) return "";
-
   const month = parseInt(digits.slice(0, 2), 10);
   const day = parseInt(digits.slice(2, 4), 10);
   const year = parseInt(digits.slice(4, 8), 10);
-
   const today = new Date();
   let age = today.getFullYear() - year;
-
-  const hadBirthday =
-    today.getMonth() + 1 > month ||
-    (today.getMonth() + 1 === month && today.getDate() >= day);
-
+  const hadBirthday = today.getMonth() + 1 > month || (today.getMonth() + 1 === month && today.getDate() >= day);
   if (!hadBirthday) age -= 1;
   if (age < 0 || age > 120) return "";
-
   return String(age);
 }
 
-function buildAppointmentTimes(date, time, duration) {
-  if (!date || !time) return null;
-
-  const start = new Date(`${date}T${time}:00`);
-  const durationMinutes = Number(duration || 30);
-  const end = new Date(start.getTime() + durationMinutes * 60000);
-
-  return { start, end, durationMinutes };
+function applyTemplate(template: string, data: any) {
+  return template
+    .replaceAll("{{clientName}}", data.clientName || "Client")
+    .replaceAll("{{agent}}", data.agent || "Admin")
+    .replaceAll("{{date}}", data.date || "appointment date")
+    .replaceAll("{{time}}", data.time || "appointment time");
 }
 
-function PersonSection({ title, data, age, onUpdate, phoneMatches }) {
+function PersonSection({ title, data, age, onUpdate }: { title: string; data: Person; age: string; onUpdate: (field: keyof Person, value: string) => void }) {
+  const phoneMatches = !data.phoneConfirm || data.phone === data.phoneConfirm;
   return (
     <section style={cardStyle}>
       <h2 style={{ marginTop: 0 }}>{title}</h2>
-
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
         <input value={data.firstName} onChange={(e) => onUpdate("firstName", e.target.value)} placeholder={`${title} First Name`} style={inputStyle} />
         <input value={data.lastName} onChange={(e) => onUpdate("lastName", e.target.value)} placeholder={`${title} Last Name`} style={inputStyle} />
       </div>
-
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-        <input value={data.phone} onChange={(e) => onUpdate("phone", e.target.value)} placeholder={`${title} Phone`} style={inputStyle} />
+        <input value={data.phone} onChange={(e) => onUpdate("phone", formatPhone(e.target.value))} placeholder={`${title} Phone`} style={inputStyle} />
         <input value={data.email} onChange={(e) => onUpdate("email", e.target.value)} placeholder={`${title} Email`} style={inputStyle} />
       </div>
-
       {data.phone ? (
         <div>
-          <input value={data.phoneConfirm} onChange={(e) => onUpdate("phoneConfirm", e.target.value)} placeholder={`Re-enter ${title} Phone to verify`} style={inputStyle} />
-          <div style={{ marginTop: "6px", fontSize: "13px" }}>
-            {data.phoneConfirm ? phoneMatches ? "Phone verified" : "Phone numbers do not match" : "Please re-enter phone number"}
-          </div>
+          <input value={data.phoneConfirm} onChange={(e) => onUpdate("phoneConfirm", formatPhone(e.target.value))} placeholder={`Re-enter ${title} Phone`} style={inputStyle} />
+          <div style={{ marginTop: "6px", fontSize: "13px" }}>{phoneMatches ? "Phone verified" : "Phone numbers do not match"}</div>
         </div>
       ) : null}
-
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-        <input value={data.birthdate} onChange={(e) => onUpdate("birthdate", e.target.value)} placeholder={`${title} Birthdate MM/DD/YYYY`} style={inputStyle} />
+        <input value={data.birthdate} onChange={(e) => onUpdate("birthdate", formatDate(e.target.value))} placeholder={`${title} Birthdate MM/DD/YYYY`} style={inputStyle} />
         <input value={age} readOnly placeholder={`${title} Age`} style={inputStyle} />
       </div>
-
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
         <input value={data.address} onChange={(e) => onUpdate("address", e.target.value)} placeholder={`${title} Address`} style={inputStyle} />
         <input value={data.city} onChange={(e) => onUpdate("city", e.target.value)} placeholder={`${title} City`} style={inputStyle} />
       </div>
-
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-        <input value={data.state} onChange={(e) => onUpdate("state", e.target.value)} placeholder={`${title} State`} style={inputStyle} />
-        <input value={data.zip} onChange={(e) => onUpdate("zip", e.target.value)} placeholder={`${title} ZIP`} style={inputStyle} />
+        <input value={data.state} onChange={(e) => onUpdate("state", e.target.value)} placeholder="State" style={inputStyle} />
+        <input value={data.zip} onChange={(e) => onUpdate("zip", e.target.value)} placeholder="ZIP" style={inputStyle} />
       </div>
-
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
-        <select value={data.sex} onChange={(e) => onUpdate("sex", e.target.value)} style={inputStyle}>
-          <option value="">Sex</option>
-          {sexOptions.map((x) => <option key={x} value={x}>{x}</option>)}
-        </select>
-
-        <select value={data.tobacco} onChange={(e) => onUpdate("tobacco", e.target.value)} style={inputStyle}>
-          <option value="">Tobacco</option>
-          {tobaccoOptions.map((x) => <option key={x} value={x}>{x}</option>)}
-        </select>
-
-        <select value={data.coverageType} onChange={(e) => onUpdate("coverageType", e.target.value)} style={inputStyle}>
-          <option value="">Coverage Type</option>
-          {coverageTypeOptions.map((x) => <option key={x} value={x}>{x}</option>)}
-        </select>
+        <select value={data.sex} onChange={(e) => onUpdate("sex", e.target.value)} style={inputStyle}><option value="">Sex</option><option>Male</option><option>Female</option></select>
+        <select value={data.tobacco} onChange={(e) => onUpdate("tobacco", e.target.value)} style={inputStyle}><option value="">Tobacco</option><option>Yes</option><option>No</option></select>
+        <select value={data.coverageType} onChange={(e) => onUpdate("coverageType", e.target.value)} style={inputStyle}><option value="">Coverage Type</option><option>Group coverage</option><option>Medicare</option><option>Individual coverage</option><option>Other</option></select>
       </div>
     </section>
   );
 }
 
-export default function IntakePage() {
-  const [client, setClient] = useState({ ...blankPerson });
-  const [spouse, setSpouse] = useState({ ...blankPerson });
-
+export default function SipsConnectSingleFile() {
+  const [page, setPage] = useState<PageName>("dashboard");
+  const [selectedAgent, setSelectedAgent] = useState(agents[1]);
+  const [client, setClient] = useState<Person>({ ...blankPerson });
+  const [spouse, setSpouse] = useState<Person>({ ...blankPerson });
+  const [status, setStatus] = useState("New Intake");
   const [referredBy, setReferredBy] = useState("");
   const [currentCoverage, setCurrentCoverage] = useState("");
   const [currentPremium, setCurrentPremium] = useState("");
   const [notes, setNotes] = useState("");
-
-  const [schedulerAgent, setSchedulerAgent] = useState("Admin");
+  const [assignedAgent, setAssignedAgent] = useState("Admin");
   const [appointmentType, setAppointmentType] = useState("Service");
   const [appointmentDate, setAppointmentDate] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("");
   const [appointmentDuration, setAppointmentDuration] = useState("60");
   const [appointmentLocation, setAppointmentLocation] = useState("Phone Call");
-  const [availabilityMessage, setAvailabilityMessage] = useState("");
-
-  const [health, setHealth] = useState([]);
-
-  const [message, setMessage] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [userId, setUserId] = useState(null);
+  const [health, setHealth] = useState<string[]>([]);
+  const [templateName, setTemplateName] = useState("Appointment Confirmation");
+  const [savedMessage, setSavedMessage] = useState("");
 
   const clientAge = useMemo(() => calculateAge(client.birthdate), [client.birthdate]);
   const spouseAge = useMemo(() => calculateAge(spouse.birthdate), [spouse.birthdate]);
+  const clientName = `${client.firstName} ${client.lastName}`.trim() || "Client";
+  const selectedTemplate = applyTemplate(emailTemplates[templateName], { clientName, agent: assignedAgent, date: appointmentDate, time: appointmentTime });
 
-  const clientPhoneMatches =
-    !client.phone && !client.phoneConfirm ? true : client.phone === client.phoneConfirm;
-
-  const spousePhoneMatches =
-    !spouse.phone && !spouse.phoneConfirm ? true : spouse.phone === spouse.phoneConfirm;
-
-  useEffect(() => {
-    async function loadUser() {
-      const { data } = await supabase.auth.getUser();
-      setUserId(data?.user?.id || null);
-    }
-    loadUser();
-  }, []);
-
-  function updateClient(field, value) {
-    let next = value;
-    if (field === "phone" || field === "phoneConfirm") next = formatPhone(value);
-    if (field === "birthdate") next = formatDate(value);
-    setClient((prev) => ({ ...prev, [field]: next }));
-  }
-
-  function updateSpouse(field, value) {
-    let next = value;
-    if (field === "phone" || field === "phoneConfirm") next = formatPhone(value);
-    if (field === "birthdate") next = formatDate(value);
-    setSpouse((prev) => ({ ...prev, [field]: next }));
-  }
-
-  function spouseHasData() {
-    return Boolean(
-      spouse.firstName ||
-      spouse.lastName ||
-      spouse.phone ||
-      spouse.email ||
-      spouse.birthdate ||
-      spouse.address ||
-      spouse.city ||
-      spouse.state ||
-      spouse.zip ||
-      spouse.sex ||
-      spouse.tobacco ||
-      spouse.coverageType
-    );
-  }
-
-  function toggleHealth(option) {
-    setHealth((prev) =>
-      prev.includes(option) ? prev.filter((x) => x !== option) : [...prev, option]
-    );
-  }
-
-  async function checkAvailability() {
-    const times = buildAppointmentTimes(appointmentDate, appointmentTime, appointmentDuration);
-
-    if (!times) {
-      alert("Please choose appointment date and time.");
-      return;
-    }
-
-    setAvailabilityMessage("Checking availability...");
-
-    const res = await fetch("/api/calendar/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        checkOnly: true,
-        agents: [schedulerAgent],
-        start: times.start.toISOString(),
-        end: times.end.toISOString(),
-      }),
-    });
-
-    const data = await res.json();
-
-    setAvailabilityMessage(
-      data.success
-        ? data.available
-          ? `${schedulerAgent} appears available.`
-          : `${schedulerAgent} is already booked at this time.`
-        : "Error: " + data.error
-    );
-  }
-
-  async function createCalendarEventOnly() {
-    const times = buildAppointmentTimes(appointmentDate, appointmentTime, appointmentDuration);
-
-    if (!times) {
-      alert("Please enter appointment date and time.");
-      return;
-    }
-
-    const clientName =
-      `${client.firstName || ""} ${client.lastName || ""}`.trim() || "Client";
-
-    const typeCode = appointmentCodeMap[appointmentType] || appointmentType;
-    const agentCode = agentInitialsMap[schedulerAgent] || schedulerAgent;
-    const healthSummary = health.length ? health.join(", ") : "None";
-
-    const description =
-      `Reason for Call: ${appointmentType || "-"}\n` +
-      `Assigned Agent: ${schedulerAgent}\n` +
-      `Client: ${clientName}\n` +
-      `Phone: ${client.phone || "-"}\n` +
-      `Email: ${client.email || "-"}\n` +
-      `Age: ${clientAge || "-"}\n` +
-      `ZIP: ${client.zip || "-"}\n` +
-      `Referred By: ${referredBy || "-"}\n` +
-      `Current Coverage: ${currentCoverage || "-"}\n` +
-      `Current Premium: ${currentPremium || "-"}\n\n` +
-      `Health Conditions:\n${healthSummary}\n\n` +
-      `Notes:\n${notes || "-"}`;
-
-    const res = await fetch("/api/calendar/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        agents: [schedulerAgent],
-        title: `[${typeCode}] ${clientName} | ${agentCode}`,
-        description,
-        location: appointmentLocation || "Office",
-        start: times.start.toISOString(),
-        end: times.end.toISOString(),
-      }),
-    });
-
-    const data = await res.json();
-
-    if (data.success) {
-      alert("Calendar event created.");
-    } else {
-      alert("Error: " + data.error);
-    }
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-
-    if (!userId) {
-      setMessage("You must be signed in before saving intake.");
-      return;
-    }
-
-    if (!clientPhoneMatches) {
-      setMessage("Client phone numbers do not match.");
-      return;
-    }
-
-    if (spouseHasData() && !spousePhoneMatches) {
-      setMessage("Spouse phone numbers do not match.");
-      return;
-    }
-
-    setSaving(true);
-    setMessage("");
-
-    const times = buildAppointmentTimes(appointmentDate, appointmentTime, appointmentDuration);
-
-    const { data: householdData, error: householdError } = await supabase
-      .from("households")
-      .insert([
-        {
-          owner_user_id: userId,
-          assigned_agent: schedulerAgent,
-          notes,
-          reason_for_call: appointmentType,
-          referred_by: referredBy,
-          current_coverage: currentCoverage,
-          current_premium: currentPremium,
-          health_flags: health,
-          appointment_type: appointmentType,
-          appointment_date: appointmentDate,
-          appointment_time: appointmentTime,
-          appointment_duration: Number(appointmentDuration || 60),
-          appointment_location: appointmentLocation,
-        },
-      ])
-      .select()
-      .single();
-
-    if (householdError) {
-      setMessage(householdError.message);
-      setSaving(false);
-      return;
-    }
-
-    const householdId = householdData.id;
-
-    const peopleToInsert = [
-      {
-        household_id: householdId,
-        person_type: "client",
-        first_name: client.firstName,
-        last_name: client.lastName,
-        phone: client.phone,
-        email: client.email,
-        birthdate: client.birthdate,
-        age: clientAge,
-        address: client.address,
-        city: client.city,
-        state: client.state,
-        zip: client.zip,
-        sex: client.sex,
-        tobacco: client.tobacco,
-        coverage_type: client.coverageType,
-      },
-    ];
-
-    if (spouseHasData()) {
-      peopleToInsert.push({
-        household_id: householdId,
-        person_type: "spouse",
-        first_name: spouse.firstName,
-        last_name: spouse.lastName,
-        phone: spouse.phone,
-        email: spouse.email,
-        birthdate: spouse.birthdate,
-        age: spouseAge,
-        address: spouse.address,
-        city: spouse.city,
-        state: spouse.state,
-        zip: spouse.zip,
-        sex: spouse.sex,
-        tobacco: spouse.tobacco,
-        coverage_type: spouse.coverageType,
-      });
-    }
-
-    const { error: peopleError } = await supabase.from("people").insert(peopleToInsert);
-
-    if (peopleError) {
-      setMessage(peopleError.message);
-      setSaving(false);
-      return;
-    }
-
-    await supabase.from("intakes").insert([
-      {
-        household_id: householdId,
-        created_by: userId,
-        notes,
-      },
-    ]);
-
-    if (times && appointmentDate && appointmentTime) {
-      const clientName = `${client.firstName || ""} ${client.lastName || ""}`.trim() || "Client";
-      const typeCode = appointmentCodeMap[appointmentType] || appointmentType;
-      const agentCode = agentInitialsMap[schedulerAgent] || schedulerAgent;
-      const healthSummary = health.length ? health.join(", ") : "None";
-      const householdLink = `${window.location.origin}/households/${householdId}`;
-
-      const description =
-        `OPEN CLIENT FILE:\n${householdLink}\n\n` +
-        `Reason for Call: ${appointmentType || "-"}\n` +
-        `Assigned Agent: ${schedulerAgent}\n` +
-        `Client: ${clientName}\n` +
-        `Phone: ${client.phone || "-"}\n` +
-        `Email: ${client.email || "-"}\n` +
-        `Age: ${clientAge || "-"}\n` +
-        `ZIP: ${client.zip || "-"}\n` +
-        `Referred By: ${referredBy || "-"}\n` +
-        `Current Coverage: ${currentCoverage || "-"}\n` +
-        `Current Premium: ${currentPremium || "-"}\n\n` +
-        `Health Conditions:\n${healthSummary}\n\n` +
-        `Notes:\n${notes || "-"}`;
-
-      const calendarRes = await fetch("/api/calendar/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          agents: [schedulerAgent],
-          title: `[${typeCode}] ${clientName} | ${agentCode}`,
-          description,
-          location: appointmentLocation || "Office",
-          start: times.start.toISOString(),
-          end: times.end.toISOString(),
-        }),
-      });
-
-      const calendarData = await calendarRes.json();
-
-      if (!calendarData.success) {
-        setMessage(`Intake saved, but calendar failed: ${calendarData.error}`);
-        setSaving(false);
-        return;
-      }
-    }
-
-    setMessage("Admin intake saved successfully.");
-    setClient({ ...blankPerson });
-    setSpouse({ ...blankPerson });
-    setReferredBy("");
-    setCurrentCoverage("");
-    setCurrentPremium("");
-    setNotes("");
-    setHealth([]);
-    setAvailabilityMessage("");
-    setSaving(false);
-  }
-
-  return (
-    <main style={{ padding: "32px", fontFamily: "Arial, sans-serif", maxWidth: "1100px", margin: "0 auto" }}>
-      <h1>Admin Intake</h1>
-
-      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "20px" }}>
-        <a href="/dashboard" style={buttonStyle}>Dashboard</a>
-        <a href="/clients" style={buttonStyle}>Clients</a>
-        <a href="/today" style={buttonStyle}>Today’s Appointments</a>
+  function NavButtons({ household = true }: { household?: boolean }) {
+    return (
+      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "18px" }}>
+        <button onClick={() => setPage("dashboard")} style={primaryButtonStyle}>Dashboard</button>
+        <button onClick={() => setPage("admin")} style={buttonStyle}>Back to Admin</button>
+        <button onClick={() => setPage("calendar")} style={buttonStyle}>Go to Calendar</button>
+        {household ? <button onClick={() => setPage("household")} style={buttonStyle}>Back to Household</button> : null}
+        <button onClick={() => setPage("clients")} style={buttonStyle}>Clients</button>
+        <button onClick={() => setPage("today")} style={buttonStyle}>Today</button>
       </div>
+    );
+  }
 
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: "24px", marginTop: "24px" }}>
-        <PersonSection title="Client" data={client} age={clientAge} onUpdate={updateClient} phoneMatches={clientPhoneMatches} />
+  function updateClient(field: keyof Person, value: string) { setClient((prev) => ({ ...prev, [field]: value })); }
+  function updateSpouse(field: keyof Person, value: string) { setSpouse((prev) => ({ ...prev, [field]: value })); }
+  function toggleHealth(option: string) { setHealth((prev) => prev.includes(option) ? prev.filter((x) => x !== option) : [...prev, option]); }
 
-        <PersonSection title="Spouse" data={spouse} age={spouseAge} onUpdate={updateSpouse} phoneMatches={spousePhoneMatches} />
-
+  function DashboardPage() {
+    return (
+      <main style={pageStyle}>
+        <h1>SIPS Connect Dashboard</h1>
+        <NavButtons household={false} />
         <section style={cardStyle}>
-          <h2 style={{ margin: 0 }}>Health Status</h2>
-
-          <div style={{ display: "grid", gap: "8px" }}>
-            {healthOptions.map((option) => (
-              <label key={option} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <input type="checkbox" checked={health.includes(option)} onChange={() => toggleHealth(option)} />
-                {option}
-              </label>
+          <h2 style={{ margin: 0 }}>Agent Status</h2>
+          <div style={{ display: "grid", gap: "12px" }}>
+            {agents.filter((a) => a.name !== "Admin").map((agent) => (
+              <div key={agent.slug} style={{ border: "1px solid #d0d7de", borderRadius: "10px", padding: "14px", display: "grid", gap: "10px" }}>
+                <strong>{agent.name} — {agent.initials} — {agent.color}</strong>
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                  <button style={buttonStyle} onClick={() => alert(`${agent.name} status check: use calendar connection for live availability.`)}>Check Status</button>
+                  <button style={buttonStyle} onClick={() => { setSelectedAgent(agent); setPage("agent"); }}>Go to Agent Page</button>
+                  <button style={buttonStyle} onClick={() => { setSelectedAgent(agent); setAssignedAgent(agent.name); setPage("calendar"); }}>Go to Calendar</button>
+                </div>
+              </div>
             ))}
           </div>
-
-          <div><strong>Selected:</strong> {health.length ? health.join(", ") : "None"}</div>
-
-          <input value={referredBy} onChange={(e) => setReferredBy(e.target.value)} placeholder="Referred By" style={inputStyle} />
-
-          <input value={currentCoverage} onChange={(e) => setCurrentCoverage(e.target.value)} placeholder="Current Coverage" style={inputStyle} />
-
-          <input value={currentPremium} onChange={(e) => setCurrentPremium(e.target.value)} placeholder="Current Premium" style={inputStyle} />
-
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes" rows={5} style={inputStyle} />
         </section>
+      </main>
+    );
+  }
 
-        <section style={cardStyle}>
-          <h2 style={{ margin: 0 }}>Appointment Scheduler</h2>
-
-          <select value={schedulerAgent} onChange={(e) => setSchedulerAgent(e.target.value)} style={inputStyle}>
-            {schedulerAgentOptions.map((agentName) => (
-              <option key={agentName} value={agentName}>
-                {agentName} — {agentInitialsMap[agentName]} — {agentColorLabels[agentName]}
-              </option>
-            ))}
-          </select>
-
-          <select value={appointmentType} onChange={(e) => setAppointmentType(e.target.value)} style={inputStyle}>
-            {appointmentOptions.map((x) => <option key={x} value={x}>{x}</option>)}
-          </select>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            <input type="date" value={appointmentDate} onChange={(e) => setAppointmentDate(e.target.value)} style={inputStyle} />
-            <input type="time" value={appointmentTime} onChange={(e) => setAppointmentTime(e.target.value)} style={inputStyle} />
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            <select value={appointmentDuration} onChange={(e) => setAppointmentDuration(e.target.value)} style={inputStyle}>
-              <option value="15">15 minutes</option>
-              <option value="30">30 minutes</option>
-              <option value="45">45 minutes</option>
-              <option value="60">1 hour</option>
-              <option value="90">1.5 hours</option>
+  function AdminPage() {
+    return (
+      <main style={pageStyle}>
+        <h1>Admin Intake</h1>
+        <NavButtons />
+        <form onSubmit={(e) => { e.preventDefault(); setSavedMessage("Admin intake saved in this single-file demo. Connect Supabase/API when deploying."); }} style={{ display: "grid", gap: "18px" }}>
+          <section style={cardStyle}>
+            <h2 style={{ margin: 0 }}>Status</h2>
+            <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
+              <option>New Intake</option><option>Needs Review</option><option>Scheduled</option><option>Waiting on Client</option><option>Application Started</option><option>Completed</option><option>Urgent</option>
             </select>
+          </section>
+          <PersonSection title="Client" data={client} age={clientAge} onUpdate={updateClient} />
+          <PersonSection title="Spouse" data={spouse} age={spouseAge} onUpdate={updateSpouse} />
+          <section style={cardStyle}>
+            <h2 style={{ margin: 0 }}>Health / Referral / Coverage</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "8px" }}>
+              {healthOptions.map((option) => <label key={option}><input type="checkbox" checked={health.includes(option)} onChange={() => toggleHealth(option)} /> {option}</label>)}
+            </div>
+            <input value={referredBy} onChange={(e) => setReferredBy(e.target.value)} placeholder="Referred By" style={inputStyle} />
+            <input value={currentCoverage} onChange={(e) => setCurrentCoverage(e.target.value)} placeholder="Current Coverage" style={inputStyle} />
+            <input value={currentPremium} onChange={(e) => setCurrentPremium(e.target.value)} placeholder="Current Premium" style={inputStyle} />
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes" rows={4} style={inputStyle} />
+          </section>
+          <section style={cardStyle}>
+            <h2 style={{ margin: 0 }}>Appointment Scheduler</h2>
+            <select value={assignedAgent} onChange={(e) => setAssignedAgent(e.target.value)} style={inputStyle}>{agents.map((a) => <option key={a.name}>{a.name}</option>)}</select>
+            <select value={appointmentType} onChange={(e) => setAppointmentType(e.target.value)} style={inputStyle}>{appointmentTypes.map((x) => <option key={x}>{x}</option>)}</select>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}><input type="date" value={appointmentDate} onChange={(e) => setAppointmentDate(e.target.value)} style={inputStyle} /><input type="time" value={appointmentTime} onChange={(e) => setAppointmentTime(e.target.value)} style={inputStyle} /></div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}><select value={appointmentDuration} onChange={(e) => setAppointmentDuration(e.target.value)} style={inputStyle}><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="90">1.5 hours</option></select><select value={appointmentLocation} onChange={(e) => setAppointmentLocation(e.target.value)} style={inputStyle}><option>Phone Call</option><option>Office</option><option>Client Home</option><option>Zoom / Virtual</option><option>Other</option></select></div>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}><button type="button" style={buttonStyle} onClick={() => alert(`${assignedAgent} status check. Connect to Google Calendar API for live availability.`)}>Check Availability</button><button type="button" style={buttonStyle} onClick={() => setPage("calendar")}>Go to Calendar</button><button type="button" style={buttonStyle} onClick={() => setPage("household")}>Back to Household</button></div>
+          </section>
+          <section style={cardStyle}>
+            <h2 style={{ margin: 0 }}>Email Template Option</h2>
+            <select value={templateName} onChange={(e) => setTemplateName(e.target.value)} style={inputStyle}>{Object.keys(emailTemplates).map((x) => <option key={x}>{x}</option>)}</select>
+            <textarea value={selectedTemplate} readOnly rows={7} style={inputStyle} />
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}><button type="button" style={buttonStyle} onClick={() => navigator.clipboard?.writeText(selectedTemplate)}>Copy Email Template</button><a style={buttonStyle} href={`mailto:${client.email || ""}?subject=${encodeURIComponent(templateName)}&body=${encodeURIComponent(selectedTemplate)}`}>Open Email</a></div>
+          </section>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}><button type="submit" style={primaryButtonStyle}>Save Admin Intake</button><button type="button" style={buttonStyle} onClick={() => setPage("dashboard")}>Return to Dashboard</button></div>
+          {savedMessage ? <p>{savedMessage}</p> : null}
+        </form>
+      </main>
+    );
+  }
 
-            <select value={appointmentLocation} onChange={(e) => setAppointmentLocation(e.target.value)} style={inputStyle}>
-              <option value="Phone Call">Phone Call</option>
-              <option value="Office">Office</option>
-              <option value="Client Home">Client Home</option>
-              <option value="Zoom / Virtual">Zoom / Virtual</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
+  function CalendarPage() {
+    return <main style={pageStyle}><h1>Calendar</h1><NavButtons /><section style={cardStyle}><h2 style={{ margin: 0 }}>Calendar Controls</h2><p>Selected Agent: <strong>{selectedAgent.name}</strong></p><p>Use Admin Intake to create/check appointments. This single-file version keeps calendar navigation and household return buttons in one place.</p><button style={buttonStyle} onClick={() => setPage("admin")}>Back to Admin</button><button style={buttonStyle} onClick={() => setPage("household")}>Back to Household</button></section></main>;
+  }
 
-          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-            <button type="button" onClick={checkAvailability} style={buttonStyle}>
-              Check Availability
-            </button>
+  function HouseholdPage() {
+    return <main style={pageStyle}><h1>Household</h1><NavButtons /><section style={cardStyle}><h2 style={{ margin: 0 }}>{clientName}</h2><p><strong>Status:</strong> {status}</p><p><strong>Assigned Agent:</strong> {assignedAgent}</p><p><strong>Phone:</strong> {client.phone || "-"}</p><p><strong>Email:</strong> {client.email || "-"}</p><p><strong>Current Coverage:</strong> {currentCoverage || "-"}</p><p><strong>Current Premium:</strong> {currentPremium || "-"}</p><p><strong>Health:</strong> {health.length ? health.join(", ") : "None"}</p><p><strong>Notes:</strong> {notes || "-"}</p></section></main>;
+  }
 
-            <button type="button" onClick={createCalendarEventOnly} style={buttonStyle}>
-              Create Calendar Event
-            </button>
-          </div>
+  function AgentPage() {
+    return <main style={pageStyle}><h1>{selectedAgent.name}</h1><NavButtons /><section style={cardStyle}><h2 style={{ margin: 0 }}>Agent Page</h2><p><strong>Initials:</strong> {selectedAgent.initials}</p><p><strong>Calendar Color:</strong> {selectedAgent.color}</p><div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}><button style={buttonStyle} onClick={() => alert(`${selectedAgent.name} status check. Connect calendar API for live status.`)}>Check Agent Status</button><button style={buttonStyle} onClick={() => setPage("calendar")}>Go to Calendar</button><button style={buttonStyle} onClick={() => setPage("admin")}>Back to Admin</button></div></section></main>;
+  }
 
-          {availabilityMessage ? <p>{availabilityMessage}</p> : null}
-        </section>
+  function SimplePage({ title, text }: { title: string; text: string }) {
+    return <main style={pageStyle}><h1>{title}</h1><NavButtons /><section style={cardStyle}><p>{text}</p></section></main>;
+  }
 
-        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-          <button type="submit" style={buttonStyle} disabled={saving}>
-            {saving ? "Saving..." : "Save Admin Intake"}
-          </button>
-
-          <a href="/dashboard" style={buttonStyle}>
-            Return to Dashboard
-          </a>
-        </div>
-
-        {message ? <p>{message}</p> : null}
-      </form>
-    </main>
-  );
+  if (page === "admin") return <AdminPage />;
+  if (page === "calendar") return <CalendarPage />;
+  if (page === "household") return <HouseholdPage />;
+  if (page === "agent") return <AgentPage />;
+  if (page === "clients") return <SimplePage title="Clients" text="Client list page. Connect this to your saved households/people table when ready." />;
+  if (page === "today") return <SimplePage title="Today’s Appointments" text="Today page. Connect this to calendar events and household status when ready." />;
+  return <DashboardPage />;
 }
+
+const pageStyle: React.CSSProperties = {
+  padding: "32px",
+  fontFamily: "Arial, sans-serif",
+  maxWidth: "1100px",
+  margin: "0 auto",
+  background: "#f6f8fa",
+  minHeight: "100vh",
+};
