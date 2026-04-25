@@ -542,7 +542,11 @@ export default function HouseholdDetailPage() {
   return (
     <main style={pageStyle}>
       <h1>Household Detail</h1>
-
+<div style={{ marginBottom: "20px" }}>
+  <a href="/today" style={buttonStyle}>
+    Go to Daily Dashboard
+  </a>
+</div>
       <section style={{ ...cardStyle, marginBottom: "20px" }}>
         <div><strong>Agent:</strong> {household?.assigned_agent || "-"}</div>
         <div><strong>Reason for Call:</strong> {household?.reason_for_call || "-"}</div>
