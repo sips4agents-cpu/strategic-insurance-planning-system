@@ -315,7 +315,7 @@ export default function HouseholdDetailPage() {
     const aorCode =
       agentInitialsMap[household?.assigned_agent] || household?.assigned_agent || "-";
 
-    const healthSummary = health.length ? health.join(", ") : "None";
+    const healthSummary = health && health.length ? health.join(", ") : "None";
     const title = `[${typeCode}] ${clientName} | ${agentCode}`;
 
     const description =
@@ -355,15 +355,22 @@ export default function HouseholdDetailPage() {
 
     if (data.success) {
       await supabase
-        .from("households")
-        .update({
-          appointment_type: appointmentType,
-          appointment_date: appointmentDate,
-          appointment_time: appointmentTime,
-          appointment_duration: times.durationMinutes,
-          appointment_location: appointmentLocation,
-        })
-        .eq("id", id);
+  .from("households")
+  .update({
+    appointment_type: appointmentType,
+    appointment_date: appointmentDate,
+    appointment_time: appointmentTime,
+    appointment_duration: times.durationMinutes,
+    appointment_location: appointmentLocation,
+    current_premium: currentPremium,
+    proposed_premium: proposedPremium,
+    recommended_carrier: recommendedCarrier,
+    recommended_plan: recommendedPlan,
+    effective_date: effectiveDate,
+    quote_notes: quoteNotes,
+    health_flags: health,
+  })
+  .eq("id", id);
 
       setAvailabilityMessage("Calendar event created.");
       alert("Calendar event created!");
