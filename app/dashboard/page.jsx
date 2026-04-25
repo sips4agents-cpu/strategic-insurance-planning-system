@@ -1195,6 +1195,9 @@ export default function SipsDashboardPage() {
 
   const [emailTemplate, setEmailTemplate] = useState("Plan Review");
   const [selectedAgent, setSelectedAgent] = useState("Admin");
+  const [appointmentsAgentFilter, setAppointmentsAgentFilter] = useState("All");
+  const [appointmentsTypeFilter, setAppointmentsTypeFilter] = useState("All");
+  const [clientsAgentFilter, setClientsAgentFilter] = useState("All");
 
   const selectedHousehold = useMemo(
     () => households.find((item) => item.id === selectedHouseholdId) || households[0] || null,
@@ -1239,19 +1242,14 @@ export default function SipsDashboardPage() {
 
   function openAppointmentsForType(type) {
     updateHousehold("reasonForCall", type);
+    setAppointmentsTypeFilter(type || "All");
+    setAppointmentsAgentFilter(household.assignedAgent || selectedAgent || "All");
     setView("calendar");
-    setMessage(`Appointment type selected: ${type}. Use Open sips4agents@gmail.com Appointments to view the Google calendar.`);
+    setMessage(`Appointment view set to ${type || "All"} for ${household.assignedAgent || selectedAgent || "All agents"}.`);
   }
 
   function getReturnLinks() {
-    if (typeof window === "undefined") return "Return links available inside SIPS.";
-    const base = window.location.origin;
-    return (
-      `Return to SIPS Dashboard: ${base}/dashboard\n` +
-      `Return to Admin: ${base}/dashboard?view=admin\n` +
-      `Return to Agent: ${base}/dashboard?view=agent\n` +
-      `Return to Household: ${base}/dashboard?view=household`
-    );
+    return "Use the return buttons inside SIPS: Admin, Household, Quick Rater, Agent.";
   }
 
   function updateAncillary(product, field, value) {
@@ -1332,6 +1330,7 @@ export default function SipsDashboardPage() {
       title: `[${typeCode}] ${clientName} | ${agent.initials}`,
       clientName,
       agent: household.assignedAgent,
+      appointmentType: household.reasonForCall,
       date: appointmentDate,
       time: appointmentTime,
       start: start.toISOString(),
@@ -1624,30 +1623,77 @@ export default function SipsDashboardPage() {
   }
 
   function renderCalendar() {
+    const filteredEvents = events.filter((event) => {
+      const agentMatch = appointmentsAgentFilter === "All" || event.agent === appointmentsAgentFilter;
+      const typeMatch = appointmentsTypeFilter === "All" || event.appointmentType === appointmentsTypeFilter;
+      return agentMatch && typeMatch;
+    });
+
     return (
       <section style={styles.card}>
         <h2 style={{ marginTop: 0 }}>Appointments</h2>
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontWeight: 700 }}>Appointment Type / Service</label>
-          <select style={{ ...styles.input, marginTop: 6 }} value={household.reasonForCall} onChange={(e) => updateHousehold("reasonForCall", e.target.value)}>
-            {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
-          </select>
+
+        <div style={styles.grid3}>
+          <div>
+            <label style={{ fontWeight: 700 }}>View Agent</label>
+            <select
+              style={{ ...styles.input, marginTop: 6 }}
+              value={appointmentsAgentFilter}
+              onChange={(e) => setAppointmentsAgentFilter(e.target.value)}
+            >
+              <option value="All">All Agents</option>
+              {AGENTS.map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ fontWeight: 700 }}>Appointment Type / Service</label>
+            <select
+              style={{ ...styles.input, marginTop: 6 }}
+              value={appointmentsTypeFilter}
+              onChange={(e) => {
+                setAppointmentsTypeFilter(e.target.value);
+                if (e.target.value !== "All") updateHousehold("reasonForCall", e.target.value);
+              }}
+            >
+              <option value="All">All Appointment Types</option>
+              {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ fontWeight: 700 }}>Set New Appointment Type</label>
+            <select
+              style={{ ...styles.input, marginTop: 6 }}
+              value={household.reasonForCall}
+              onChange={(e) => updateHousehold("reasonForCall", e.target.value)}
+            >
+              {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+          </div>
         </div>
-        <div style={styles.nav}>
-          <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
-          <button type="button" style={styles.button} onClick={() => setView("admin")}>Back to Admin</button>
-          <button type="button" style={styles.button} onClick={() => setView("agent")}>Back to Agent</button>
-          <button type="button" style={styles.button} onClick={() => setView("household")}>Back to Household</button>
+
+        <div style={{ ...styles.nav, marginTop: 12 }}>
+          <button type="button" style={styles.button} onClick={() => setView("admin")}>Return to Admin</button>
+          <button type="button" style={styles.button} onClick={() => setView("household")}>Return to Household</button>
+          <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Return to Quick Rater</button>
+          <button type="button" style={styles.button} onClick={() => setView("agent")}>Return to Agent</button>
           <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open sips4agents@gmail.com Appointments</button>
         </div>
-        {events.length === 0 ? <p>No saved appointments yet.</p> : null}
-        {events.map((event) => (
+
+        {filteredEvents.length === 0 ? <p>No saved appointments match this view.</p> : null}
+        {filteredEvents.map((event) => (
           <div key={event.id} style={{ border: "1px solid #d6dde8", borderRadius: 12, padding: 14, marginTop: 10 }}>
             <strong>{event.title}</strong>
             <p>{event.date} at {event.time} · {event.location}</p>
             <p>Agent: {event.agent}</p>
-            <pre style={{ whiteSpace: "pre-wrap", background: "#f8fafc", padding: 10, borderRadius: 10 }}>{event.returnLinks || "Return links will appear on newly created events."}</pre>
-            <button type="button" style={styles.button} onClick={() => { const match = households.find((h) => h.id === event.householdId); if (match) loadHousehold(match); setView("household"); }}>Open Household</button>
+            <p>Type: {event.appointmentType || "-"}</p>
+            <div style={styles.nav}>
+              <button type="button" style={styles.button} onClick={() => setView("admin")}>Return to Admin</button>
+              <button type="button" style={styles.button} onClick={() => { const match = households.find((h) => h.id === event.householdId); if (match) loadHousehold(match); setView("household"); }}>Return to Household</button>
+              <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Return to Quick Rater</button>
+              <button type="button" style={styles.button} onClick={() => { setSelectedAgent(event.agent || selectedAgent); setView("agent"); }}>Return to Agent</button>
+            </div>
           </div>
         ))}
       </section>
@@ -1655,16 +1701,50 @@ export default function SipsDashboardPage() {
   }
 
   function renderClients() {
+    const filteredHouseholds = households.filter((item) => {
+      return clientsAgentFilter === "All" || item.assignedAgent === clientsAgentFilter;
+    });
+
     return (
       <section style={styles.card}>
         <h2 style={{ marginTop: 0 }}>Clients</h2>
-        {households.length === 0 ? <p>No clients saved yet.</p> : null}
-        {households.map((item) => (
+
+        <div style={{ ...styles.grid2, marginBottom: 12 }}>
+          <div>
+            <label style={{ fontWeight: 700 }}>View Clients</label>
+            <select
+              style={{ ...styles.input, marginTop: 6 }}
+              value={clientsAgentFilter}
+              onChange={(e) => setClientsAgentFilter(e.target.value)}
+            >
+              <option value="All">All Agents</option>
+              {AGENTS.map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontWeight: 700 }}>Appointment Type Parameter</label>
+            <select
+              style={{ ...styles.input, marginTop: 6 }}
+              value={household.reasonForCall}
+              onChange={(e) => updateHousehold("reasonForCall", e.target.value)}
+            >
+              {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {filteredHouseholds.length === 0 ? <p>No clients saved for this view.</p> : null}
+        {filteredHouseholds.map((item) => (
           <div key={item.id} style={{ border: "1px solid #d6dde8", borderRadius: 12, padding: 14, marginTop: 10 }}>
             <strong>{fullName(item.client)}</strong>
             <p>{item.client.phone || "No phone"} · {item.client.email || "No email"}</p>
             <p>{item.client.address || "No address"} {item.client.city || ""} {item.client.state || ""} {item.client.zip || ""}</p>
-            <button type="button" style={styles.button} onClick={() => { loadHousehold(item); setView("household"); }}>Open Household</button>
+            <p>Assigned Agent: {item.assignedAgent || "-"}</p>
+            <div style={styles.nav}>
+              <button type="button" style={styles.button} onClick={() => { loadHousehold(item); setView("household"); }}>Open Household</button>
+              <button type="button" style={styles.button} onClick={() => { loadHousehold(item); setSelectedAgent(item.assignedAgent || selectedAgent); setView("agent"); }}>Open Agent Page</button>
+              <button type="button" style={styles.button} onClick={() => { loadHousehold(item); setAppointmentsAgentFilter(item.assignedAgent || "All"); setAppointmentsTypeFilter(item.reasonForCall || "All"); setView("calendar"); }}>View Appointments</button>
+            </div>
           </div>
         ))}
       </section>
