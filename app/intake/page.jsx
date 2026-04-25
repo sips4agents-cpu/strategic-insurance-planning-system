@@ -1,13 +1,20 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";;
-import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
+
+const agentOptions = [
+  "Loyd Richardson",
+  "Jimmie Bassett",
+  "William Sykes",
+  "Blake Richardson",
+  "Christiana Grant",
+];
 
 const schedulerAgentOptions = [
   "Admin",
@@ -47,6 +54,17 @@ const appointmentCodeMap = {
   Referral: "REF",
   "Business/HR director": "HR",
 };
+
+const reasonOptions = [
+  "Phone appointment",
+  "Office appointment",
+  "Service",
+  "Follow up",
+  "Claims issue",
+  "Prescription drug plan",
+  "Referral",
+  "Business/HR director",
+];
 
 const appointmentOptions = [
   "Phone appointment",
@@ -150,6 +168,8 @@ function calculateAge(dateString) {
   const day = parseInt(digits.slice(2, 4), 10);
   const year = parseInt(digits.slice(4, 8), 10);
 
+  if (!month || !day || !year) return "";
+
   const today = new Date();
   let age = today.getFullYear() - year;
 
@@ -232,12 +252,12 @@ function PersonSection({ title, data, age, onUpdate, phoneMatches }) {
   );
 }
 
-function IntakePageContent() {
-  const searchParams = useSearchParams();
-
+export default function IntakePage() {
   const [client, setClient] = useState({ ...blankPerson });
   const [spouse, setSpouse] = useState({ ...blankPerson });
 
+  const [agent, setAgent] = useState("");
+  const [reason, setReason] = useState("");
   const [referredBy, setReferredBy] = useState("");
   const [currentCoverage, setCurrentCoverage] = useState("");
   const [currentPremium, setCurrentPremium] = useState("");
@@ -271,84 +291,8 @@ function IntakePageContent() {
       const { data } = await supabase.auth.getUser();
       setUserId(data?.user?.id || null);
     }
-
     loadUser();
   }, []);
-useEffect(() => {
-    const firstName = searchParams.get("firstName") || "";
-    const lastName = searchParams.get("lastName") || "";
-    const phone = searchParams.get("phone") || "";
-    const email = searchParams.get("email") || "";
-    const zip = searchParams.get("zip") || "";
-
-    const agentParam = searchParams.get("agent") || "";
-    const appointmentTypeParam =
-      searchParams.get("appointmentType") || searchParams.get("reason") || "";
-    const referredByParam = searchParams.get("referredBy") || "";
-    const currentCoverageParam = searchParams.get("currentCoverage") || "";
-    const currentPremiumParam = searchParams.get("currentPremium") || "";
-    const appointmentDateParam = searchParams.get("appointmentDate") || "";
-    const appointmentTimeParam = searchParams.get("appointmentTime") || "";
-    const appointmentLocationParam = searchParams.get("appointmentLocation") || "";
-
-    // CLIENT PREFILL
-    if (firstName || lastName || phone || email || zip) {
-      setClient((prev) => ({
-        ...prev,
-        firstName: firstName || prev.firstName,
-        lastName: lastName || prev.lastName,
-        phone: phone ? formatPhone(phone) : prev.phone,
-        email: email || prev.email,
-        zip: zip || prev.zip,
-      }));
-    }
-
-    // SCHEDULER + DETAILS PREFILL
-    if (agentParam) setSchedulerAgent(agentParam);
-    if (appointmentTypeParam) setAppointmentType(appointmentTypeParam);
-    if (referredByParam) setReferredBy(referredByParam);
-    if (currentCoverageParam) setCurrentCoverage(currentCoverageParam);
-    if (currentPremiumParam) setCurrentPremium(currentPremiumParam);
-    if (appointmentDateParam) setAppointmentDate(appointmentDateParam);
-    if (appointmentTimeParam) setAppointmentTime(appointmentTimeParam);
-    if (appointmentLocationParam) setAppointmentLocation(appointmentLocationParam);
-  }, [searchParams]);
-  useEffect(() => {
-    const firstName = searchParams.get("firstName") || "";
-    const lastName = searchParams.get("lastName") || "";
-    const phone = searchParams.get("phone") || "";
-    const email = searchParams.get("email") || "";
-    const zip = searchParams.get("zip") || "";
-
-    const agentParam = searchParams.get("agent") || "";
-    const appointmentTypeParam = searchParams.get("appointmentType") || searchParams.get("reason") || "";
-    const referredByParam = searchParams.get("referredBy") || "";
-    const currentCoverageParam = searchParams.get("currentCoverage") || "";
-    const currentPremiumParam = searchParams.get("currentPremium") || "";
-    const appointmentDateParam = searchParams.get("appointmentDate") || "";
-    const appointmentTimeParam = searchParams.get("appointmentTime") || "";
-    const appointmentLocationParam = searchParams.get("appointmentLocation") || "";
-
-    if (firstName || lastName || phone || email || zip) {
-      setClient((prev) => ({
-        ...prev,
-        firstName: firstName || prev.firstName,
-        lastName: lastName || prev.lastName,
-        phone: phone ? formatPhone(phone) : prev.phone,
-        email: email || prev.email,
-        zip: zip || prev.zip,
-      }));
-    }
-
-    if (agentParam) setSchedulerAgent(agentParam);
-    if (appointmentTypeParam) setAppointmentType(appointmentTypeParam);
-    if (referredByParam) setReferredBy(referredByParam);
-    if (currentCoverageParam) setCurrentCoverage(currentCoverageParam);
-    if (currentPremiumParam) setCurrentPremium(currentPremiumParam);
-    if (appointmentDateParam) setAppointmentDate(appointmentDateParam);
-    if (appointmentTimeParam) setAppointmentTime(appointmentTimeParam);
-    if (appointmentLocationParam) setAppointmentLocation(appointmentLocationParam);
-  }, [searchParams]);
 
   function updateClient(field, value) {
     let next = value;
@@ -367,6 +311,17 @@ useEffect(() => {
   function spouseHasData() {
     return Boolean(
       spouse.firstName ||
+        spouse.lastName ||
+        spouse.phone ||
+        spouse.email ||
+        spouse.birthdate ||
+        spouse.address ||
+        spouse.city ||
+        spouse.state ||
+        spouse.zip ||
+        spouse.sex ||
+        spouse.tobacco ||
+        spouse.coverageType
       spouse.lastName ||
       spouse.phone ||
       spouse.email ||
@@ -410,7 +365,15 @@ useEffect(() => {
 
     const data = await res.json();
 
+    if (!data.success) {
+      setAvailabilityMessage("Error: " + data.error);
+      return;
+    }
+
     setAvailabilityMessage(
+      data.available
+        ? `${schedulerAgent} appears available.`
+        : `${schedulerAgent} is already booked at this time.`
       data.success
         ? data.available
           ? `${schedulerAgent} appears available.`
@@ -432,9 +395,11 @@ useEffect(() => {
 
     const typeCode = appointmentCodeMap[appointmentType] || appointmentType;
     const agentCode = agentInitialsMap[schedulerAgent] || schedulerAgent;
+    const aorCode = agentInitialsMap[agent] || agent || "-";
     const healthSummary = health.length ? health.join(", ") : "None";
 
     const description =
+      `Reason for Call: ${reason || appointmentType || "-"}\n` +
       `Reason for Call: ${appointmentType || "-"}\n` +
       `Assigned Agent: ${schedulerAgent}\n` +
       `Client: ${clientName}\n` +
@@ -442,6 +407,7 @@ useEffect(() => {
       `Email: ${client.email || "-"}\n` +
       `Age: ${clientAge || "-"}\n` +
       `ZIP: ${client.zip || "-"}\n` +
+      `AOR: ${aorCode}\n\n` +
       `Referred By: ${referredBy || "-"}\n` +
       `Current Coverage: ${currentCoverage || "-"}\n` +
       `Current Premium: ${currentPremium || "-"}\n\n` +
@@ -498,8 +464,10 @@ useEffect(() => {
       .insert([
         {
           owner_user_id: userId,
+          assigned_agent: agent,
           assigned_agent: schedulerAgent,
           notes,
+          reason_for_call: reason,
           reason_for_call: appointmentType,
           referred_by: referredBy,
           current_coverage: currentCoverage,
@@ -583,11 +551,13 @@ useEffect(() => {
       const clientName = `${client.firstName || ""} ${client.lastName || ""}`.trim() || "Client";
       const typeCode = appointmentCodeMap[appointmentType] || appointmentType;
       const agentCode = agentInitialsMap[schedulerAgent] || schedulerAgent;
+      const aorCode = agentInitialsMap[agent] || agent || "-";
       const healthSummary = health.length ? health.join(", ") : "None";
       const householdLink = `${window.location.origin}/households/${householdId}`;
 
       const description =
         `OPEN CLIENT FILE:\n${householdLink}\n\n` +
+        `Reason for Call: ${reason || appointmentType || "-"}\n` +
         `Reason for Call: ${appointmentType || "-"}\n` +
         `Assigned Agent: ${schedulerAgent}\n` +
         `Client: ${clientName}\n` +
@@ -595,6 +565,17 @@ useEffect(() => {
         `Email: ${client.email || "-"}\n` +
         `Age: ${clientAge || "-"}\n` +
         `ZIP: ${client.zip || "-"}\n` +
+        `AOR: ${aorCode}\n\n` +
+        `Premiums:\n` +
+        `Current Premium: -\n` +
+        `Proposed Premium: -\n` +
+        `Recommended Carrier: -\n` +
+        `Recommended Plan: -\n` +
+        `Effective Date: -\n\n` +
+        `Health Conditions:\n` +
+        `${healthSummary}\n\n` +
+        `Notes:\n` +
+        `${notes || "-"}`;
         `Referred By: ${referredBy || "-"}\n` +
         `Current Coverage: ${currentCoverage || "-"}\n` +
         `Current Premium: ${currentPremium || "-"}\n\n` +
@@ -626,6 +607,8 @@ useEffect(() => {
     setMessage("Admin intake saved successfully.");
     setClient({ ...blankPerson });
     setSpouse({ ...blankPerson });
+    setAgent("");
+    setReason("");
     setReferredBy("");
     setCurrentCoverage("");
     setCurrentPremium("");
@@ -651,8 +634,19 @@ useEffect(() => {
         <PersonSection title="Spouse" data={spouse} age={spouseAge} onUpdate={updateSpouse} phoneMatches={spousePhoneMatches} />
 
         <section style={cardStyle}>
+          <h2 style={{ marginTop: 0 }}>Admin</h2>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <select value={agent} onChange={(e) => setAgent(e.target.value)} style={inputStyle}>
+              <option value="">AOR / Assign Agent</option>
+              {agentOptions.map((x) => <option key={x} value={x}>{x}</option>)}
+            </select>
           <h2 style={{ margin: 0 }}>Health Status</h2>
 
+            <select value={reason} onChange={(e) => setReason(e.target.value)} style={inputStyle}>
+              <option value="">Reason for Call</option>
+              {reasonOptions.map((x) => <option key={x} value={x}>{x}</option>)}
+            </select>
           <div style={{ display: "grid", gap: "8px" }}>
             {healthOptions.map((option) => (
               <label key={option} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -722,6 +716,21 @@ useEffect(() => {
           </div>
 
           {availabilityMessage ? <p>{availabilityMessage}</p> : null}
+        </section>
+
+        <section style={cardStyle}>
+          <h2 style={{ margin: 0 }}>Health Status</h2>
+
+          <div style={{ display: "grid", gap: "8px" }}>
+            {healthOptions.map((option) => (
+              <label key={option} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <input type="checkbox" checked={health.includes(option)} onChange={() => toggleHealth(option)} />
+                {option}
+              </label>
+            ))}
+          </div>
+
+          <div><strong>Selected:</strong> {health.length ? health.join(", ") : "None"}</div>
         </section>
 
         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
