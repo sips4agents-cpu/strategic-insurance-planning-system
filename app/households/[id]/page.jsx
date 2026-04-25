@@ -105,6 +105,9 @@ const buttonStyle = {
   border: "1px solid #c9d1d9",
   background: "#fff",
   cursor: "pointer",
+  textDecoration: "none",
+  color: "#000",
+  display: "inline-block",
 };
 
 function PersonCard({ title, person }) {
@@ -149,6 +152,17 @@ export default function HouseholdDetailPage() {
   const [appointmentLocation, setAppointmentLocation] = useState("Office");
   const [availabilityMessage, setAvailabilityMessage] = useState("");
 
+  const [currentPremium, setCurrentPremium] = useState("");
+  const [proposedPremium, setProposedPremium] = useState("");
+  const [recommendedCarrier, setRecommendedCarrier] = useState("");
+  const [recommendedPlan, setRecommendedPlan] = useState("");
+  const [effectiveDate, setEffectiveDate] = useState("");
+  const [quoteNotes, setQuoteNotes] = useState("");
+  const [quickRaterUrl, setQuickRaterUrl] = useState("");
+  const [medicareProUrl, setMedicareProUrl] = useState("");
+  const [mondayItemUrl, setMondayItemUrl] = useState("");
+  const [savingQuote, setSavingQuote] = useState(false);
+
   async function loadHousehold() {
     const { data, error } = await supabase
       .from("households")
@@ -165,6 +179,15 @@ export default function HouseholdDetailPage() {
         appointment_time,
         appointment_duration,
         appointment_location,
+        current_premium,
+        proposed_premium,
+        recommended_carrier,
+        recommended_plan,
+        effective_date,
+        quote_notes,
+        quick_rater_url,
+        medicare_pro_url,
+        monday_item_url,
         people (*),
         intakes (
           id,
@@ -189,6 +212,17 @@ export default function HouseholdDetailPage() {
     setAppointmentTime(data?.appointment_time || "");
     setAppointmentDuration(String(data?.appointment_duration || 30));
     setAppointmentLocation(data?.appointment_location || "Office");
+
+    setCurrentPremium(data?.current_premium || "");
+    setProposedPremium(data?.proposed_premium || "");
+    setRecommendedCarrier(data?.recommended_carrier || "");
+    setRecommendedPlan(data?.recommended_plan || "");
+    setEffectiveDate(data?.effective_date || "");
+    setQuoteNotes(data?.quote_notes || "");
+    setQuickRaterUrl(data?.quick_rater_url || "");
+    setMedicareProUrl(data?.medicare_pro_url || "");
+    setMondayItemUrl(data?.monday_item_url || "");
+
     setMessage("");
   }
 
@@ -294,8 +328,11 @@ export default function HouseholdDetailPage() {
       `ZIP: ${client?.zip || "-"}\n` +
       `AOR: ${aorCode}\n\n` +
       `Premiums:\n` +
-      `Current Premium: ${household?.current_premium || "-"}\n` +
-      `Proposed Premium: ${household?.proposed_premium || "-"}\n\n` +
+      `Current Premium: ${currentPremium || "-"}\n` +
+      `Proposed Premium: ${proposedPremium || "-"}\n` +
+      `Recommended Carrier: ${recommendedCarrier || "-"}\n` +
+      `Recommended Plan: ${recommendedPlan || "-"}\n` +
+      `Effective Date: ${effectiveDate || "-"}\n\n` +
       `Health Conditions:\n` +
       `${healthSummary}\n\n` +
       `Notes:\n` +
@@ -375,6 +412,73 @@ export default function HouseholdDetailPage() {
     await loadHousehold();
     setSavingWorkflow(false);
     alert("Status and health flags saved.");
+  }
+
+  async function saveQuotePrep() {
+    setSavingQuote(true);
+
+    const { error } = await supabase
+      .from("households")
+      .update({
+        current_premium: currentPremium,
+        proposed_premium: proposedPremium,
+        recommended_carrier: recommendedCarrier,
+        recommended_plan: recommendedPlan,
+        effective_date: effectiveDate,
+        quote_notes: quoteNotes,
+        quick_rater_url: quickRaterUrl,
+        medicare_pro_url: medicareProUrl,
+        monday_item_url: mondayItemUrl,
+      })
+      .eq("id", id);
+
+    if (error) {
+      alert("Save failed: " + error.message);
+      setSavingQuote(false);
+      return;
+    }
+
+    await loadHousehold();
+    setSavingQuote(false);
+    alert("Quote prep saved.");
+  }
+
+  function copyClientQuoteInfo() {
+    const clientName =
+      `${client?.first_name || ""} ${client?.last_name || ""}`.trim() || "Client";
+
+    const text =
+      `Client: ${clientName}\n` +
+      `Phone: ${client?.phone || "-"}\n` +
+      `Email: ${client?.email || "-"}\n` +
+      `Age: ${client?.age || "-"}\n` +
+      `Birthdate: ${client?.birthdate || "-"}\n` +
+      `Sex: ${client?.sex || "-"}\n` +
+      `Tobacco: ${client?.tobacco || "-"}\n` +
+      `ZIP: ${client?.zip || "-"}\n` +
+      `Coverage Type: ${client?.coverage_type || "-"}\n` +
+      `Reason for Call: ${household?.reason_for_call || "-"}\n` +
+      `AOR: ${household?.assigned_agent || "-"}\n\n` +
+      `Current Premium: ${currentPremium || "-"}\n` +
+      `Proposed Premium: ${proposedPremium || "-"}\n` +
+      `Recommended Carrier: ${recommendedCarrier || "-"}\n` +
+      `Recommended Plan: ${recommendedPlan || "-"}\n` +
+      `Effective Date: ${effectiveDate || "-"}\n\n` +
+      `Health Conditions: ${health.length ? health.join(", ") : "None"}\n\n` +
+      `Quote Notes:\n${quoteNotes || "-"}\n\n` +
+      `Working Notes:\n${workingNotes || "-"}`;
+
+    navigator.clipboard.writeText(text);
+    alert("Client quote info copied.");
+  }
+
+  function openLink(url, label) {
+    if (!url) {
+      alert(`Add ${label} link first.`);
+      return;
+    }
+
+    window.open(url, "_blank");
   }
 
   async function deleteHousehold() {
@@ -479,11 +583,7 @@ export default function HouseholdDetailPage() {
       <section style={{ ...cardStyle, marginTop: "20px" }}>
         <h2 style={{ margin: 0 }}>Appointment Scheduler</h2>
 
-        <select
-          value={schedulerAgent}
-          onChange={(e) => setSchedulerAgent(e.target.value)}
-          style={inputStyle}
-        >
+        <select value={schedulerAgent} onChange={(e) => setSchedulerAgent(e.target.value)} style={inputStyle}>
           {schedulerAgentOptions.map((agent) => (
             <option key={agent} value={agent}>
               {agent} — {agentInitialsMap[agent]} — {agentColorLabels[agent]}
@@ -491,11 +591,7 @@ export default function HouseholdDetailPage() {
           ))}
         </select>
 
-        <select
-          value={appointmentType}
-          onChange={(e) => setAppointmentType(e.target.value)}
-          style={inputStyle}
-        >
+        <select value={appointmentType} onChange={(e) => setAppointmentType(e.target.value)} style={inputStyle}>
           <option value="Phone appointment">Phone appointment</option>
           <option value="Office appointment">Office appointment</option>
           <option value="Service">Service</option>
@@ -551,6 +647,54 @@ export default function HouseholdDetailPage() {
         </div>
 
         <div><strong>Selected:</strong> {health.length ? health.join(", ") : "None"}</div>
+      </section>
+
+      <section style={{ ...cardStyle, marginTop: "20px" }}>
+        <h2 style={{ margin: 0 }}>Quote Prep Panel</h2>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <input value={currentPremium} onChange={(e) => setCurrentPremium(e.target.value)} placeholder="Current Premium" style={inputStyle} />
+          <input value={proposedPremium} onChange={(e) => setProposedPremium(e.target.value)} placeholder="Proposed Premium" style={inputStyle} />
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <input value={recommendedCarrier} onChange={(e) => setRecommendedCarrier(e.target.value)} placeholder="Recommended Carrier" style={inputStyle} />
+          <input value={recommendedPlan} onChange={(e) => setRecommendedPlan(e.target.value)} placeholder="Recommended Plan" style={inputStyle} />
+        </div>
+
+        <input type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} style={inputStyle} />
+
+        <textarea value={quoteNotes} onChange={(e) => setQuoteNotes(e.target.value)} placeholder="Quote Notes" rows={4} style={inputStyle} />
+
+        <input value={quickRaterUrl} onChange={(e) => setQuickRaterUrl(e.target.value)} placeholder="Quick Rater / CSG Link" style={inputStyle} />
+        <input value={medicareProUrl} onChange={(e) => setMedicareProUrl(e.target.value)} placeholder="Medicare Pro Link" style={inputStyle} />
+        <input value={mondayItemUrl} onChange={(e) => setMondayItemUrl(e.target.value)} placeholder="Monday Item Link" style={inputStyle} />
+
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+          <button onClick={saveQuotePrep} style={buttonStyle} disabled={savingQuote}>
+            {savingQuote ? "Saving..." : "Save Quote Prep"}
+          </button>
+
+          <button onClick={copyClientQuoteInfo} style={buttonStyle}>
+            Copy Client Info
+          </button>
+
+          <button onClick={() => openLink(quickRaterUrl, "Quick Rater")} style={buttonStyle}>
+            Open Quick Rater / CSG
+          </button>
+
+          <button onClick={() => openLink(medicareProUrl, "Medicare Pro")} style={buttonStyle}>
+            Open Medicare Pro
+          </button>
+
+          <button onClick={() => openLink(mondayItemUrl, "Monday")} style={buttonStyle}>
+            Open Monday
+          </button>
+
+          <a href="https://calendar.google.com/" target="_blank" style={buttonStyle}>
+            Open Calendar
+          </a>
+        </div>
       </section>
 
       <section style={{ ...cardStyle, marginTop: "20px" }}>
