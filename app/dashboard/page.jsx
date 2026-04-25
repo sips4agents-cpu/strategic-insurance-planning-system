@@ -63,6 +63,7 @@ const blankPerson = {
   lastName: "",
   phone: "",
   email: "",
+  forms: "",
   birthdate: "",
   address: "",
   city: "",
@@ -71,6 +72,33 @@ const blankPerson = {
   sex: "",
   tobacco: "",
   coverageType: "",
+  health: "",
+  status: "",
+  weight: "",
+  height: "",
+  currentCarrier: "",
+  currentMedSuppPremium: "",
+  proposedCarrier: "",
+  proposedPlan: "",
+  proposedMedSuppPremium: "",
+  manualOverrideProposedRate: "",
+  currentTotalPremium: "",
+};
+
+const blankAncillaryRow = {
+  clientCurrent: "",
+  clientAction: "",
+  clientProposed: "",
+  spouseCurrent: "",
+  spouseAction: "",
+  spouseProposed: "",
+};
+
+const blankAncillary = {
+  Dental: { ...blankAncillaryRow },
+  Cancer: { ...blankAncillaryRow },
+  "Short Term Care": { ...blankAncillaryRow },
+  "Final Expense": { ...blankAncillaryRow },
 };
 
 const blankHousehold = {
@@ -83,6 +111,12 @@ const blankHousehold = {
   reasonForCall: "Service",
   notes: "",
   healthFlags: [],
+  ancillary: {
+    Dental: { ...blankAncillaryRow },
+    Cancer: { ...blankAncillaryRow },
+    "Short Term Care": { ...blankAncillaryRow },
+    "Final Expense": { ...blankAncillaryRow },
+  },
   client: { ...blankPerson },
   spouse: { ...blankPerson },
 };
@@ -225,6 +259,43 @@ function personHasData(person) {
   return Object.values(person).some((value) => String(value || "").trim() !== "");
 }
 
+function moneyValue(value) {
+  const number = Number(String(value || "").replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(number) ? number : 0;
+}
+
+function moneyDisplay(value) {
+  const number = Number(value || 0);
+  return number.toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
+
+function getEffectiveProposed(person) {
+  const override = moneyValue(person.manualOverrideProposedRate);
+  if (override > 0) return override;
+  return moneyValue(person.proposedMedSuppPremium);
+}
+
+function calculatePremiumSnapshot(person, side, ancillary) {
+  const currentMedSupp = moneyValue(person.currentMedSuppPremium);
+  const proposedMedSupp = getEffectiveProposed(person);
+  const ancillaryCurrent = Object.values(ancillary || {}).reduce(
+    (sum, row) => sum + moneyValue(side === "client" ? row.clientCurrent : row.spouseCurrent),
+    0
+  );
+  const ancillaryProposed = Object.values(ancillary || {}).reduce(
+    (sum, row) => sum + moneyValue(side === "client" ? row.clientProposed : row.spouseProposed),
+    0
+  );
+  const currentMonthly = currentMedSupp + ancillaryCurrent;
+  const proposedMonthly = proposedMedSupp + ancillaryProposed;
+  return {
+    currentMonthly,
+    proposedMonthly,
+    monthlySavings: currentMonthly - proposedMonthly,
+    annualSavings: (currentMonthly - proposedMonthly) * 12,
+  };
+}
+
 function PersonForm({ title, type, person, updatePerson }) {
   return (
     <section style={styles.card}>
@@ -340,6 +411,390 @@ function PersonForm({ title, type, person, updatePerson }) {
   );
 }
 
+function FactFinderQuoter({ household, updatePerson, updateHousehold, updateAncillary, saveIntake, createCalendarEvent, setView }) {
+  const ancillary = household.ancillary || blankAncillary;
+  const clientSnapshot = calculatePremiumSnapshot(household.client, "client", ancillary);
+  const spouseSnapshot = calculatePremiumSnapshot(household.spouse, "spouse", ancillary);
+  const totalCurrent = clientSnapshot.currentMonthly + spouseSnapshot.currentMonthly;
+  const totalProposed = clientSnapshot.proposedMonthly + spouseSnapshot.proposedMonthly;
+  const totalMonthlySavings = totalCurrent - totalProposed;
+  const totalAnnualSavings = totalMonthlySavings * 12;
+
+  const renderPersonFactFinder = (label, type, person) => (
+    <section style={styles.card}>
+      <h3 style={{ marginTop: 0 }}>{label} Fact Finder</h3>
+      <div style={styles.grid2}>
+        <input style={styles.input} value={person.firstName} onChange={(e) => updatePerson(type, "firstName", e.target.value)} placeholder="First Name" />
+        <input style={styles.input} value={person.lastName} onChange={(e) => updatePerson(type, "lastName", e.target.value)} placeholder="Last Name" />
+      </div>
+      <div style={{ ...styles.grid2, marginTop: 12 }}>
+        <input style={styles.input} value={person.phone} onChange={(e) => updatePerson(type, "phone", formatPhone(e.target.value))} placeholder="Phone" />
+        <input style={styles.input} value={person.email} onChange={(e) => updatePerson(type, "email", e.target.value)} placeholder="Email" />
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <input style={styles.input} value={person.forms} onChange={(e) => updatePerson(type, "forms", e.target.value)} placeholder="Forms" />
+      </div>
+      <div style={{ ...styles.grid3, marginTop: 12 }}>
+        <input style={styles.input} value={person.birthdate} onChange={(e) => updatePerson(type, "birthdate", formatDate(e.target.value))} placeholder="Birthdate MM/DD/YYYY" />
+        <input style={styles.input} value={calculateAge(person.birthdate)} readOnly placeholder="Age" />
+        <input style={styles.input} value={household.referredBy} onChange={(e) => updateHousehold("referredBy", e.target.value)} placeholder="Referred By" />
+      </div>
+      <div style={{ ...styles.grid3, marginTop: 12 }}>
+        <input style={styles.input} value={person.health} onChange={(e) => updatePerson(type, "health", e.target.value)} placeholder="Health" />
+        <select style={styles.input} value={person.status} onChange={(e) => updatePerson(type, "status", e.target.value)}>
+          <option value="">Status</option>
+          <option value="Good Health">Good Health</option>
+          <option value="Needs Review">Needs Review</option>
+          <option value="Underwriting Concern">Underwriting Concern</option>
+          <option value="Decline Risk">Decline Risk</option>
+        </select>
+        <select style={styles.input} value={person.tobacco} onChange={(e) => updatePerson(type, "tobacco", e.target.value)}>
+          <option value="">Tobacco</option>
+          <option value="No">No</option>
+          <option value="Yes">Yes</option>
+        </select>
+      </div>
+      <div style={{ ...styles.grid2, marginTop: 12 }}>
+        <input style={styles.input} value={person.weight} onChange={(e) => updatePerson(type, "weight", e.target.value)} placeholder="Weight" />
+        <input style={styles.input} value={person.height} onChange={(e) => updatePerson(type, "height", e.target.value)} placeholder="Height" />
+      </div>
+      <div style={{ ...styles.grid2, marginTop: 12 }}>
+        <input style={styles.input} value={person.currentCarrier} onChange={(e) => updatePerson(type, "currentCarrier", e.target.value)} placeholder="Current Carrier" />
+        <input style={styles.input} value={person.currentMedSuppPremium} onChange={(e) => updatePerson(type, "currentMedSuppPremium", e.target.value)} placeholder="Current Med Supp Premium" />
+      </div>
+      <div style={{ ...styles.grid2, marginTop: 12 }}>
+        <input style={styles.input} value={person.proposedCarrier} onChange={(e) => updatePerson(type, "proposedCarrier", e.target.value)} placeholder="Proposed Carrier" />
+        <input style={styles.input} value={person.proposedPlan} onChange={(e) => updatePerson(type, "proposedPlan", e.target.value)} placeholder="Proposed Plan" />
+      </div>
+      <div style={{ ...styles.grid2, marginTop: 12 }}>
+        <input style={styles.input} value={person.proposedMedSuppPremium} onChange={(e) => updatePerson(type, "proposedMedSuppPremium", e.target.value)} placeholder="Proposed Med Supp Premium" />
+        <input style={styles.input} value={person.manualOverrideProposedRate} onChange={(e) => updatePerson(type, "manualOverrideProposedRate", e.target.value)} placeholder="Manual Override Proposed Rate" />
+      </div>
+    </section>
+  );
+
+  return (
+    <>
+      <section style={styles.card}>
+        <h2 style={{ marginTop: 0 }}>Agent Fact Finder / Quoter</h2>
+        <p style={{ marginTop: 0 }}>Built from your uploaded Quick FactFinder Quoter layout. Use this while the client is on the phone.</p>
+      </section>
+
+      <div style={styles.grid2}>
+        {renderPersonFactFinder("Client", "client", household.client)}
+        {renderPersonFactFinder("Spouse", "spouse", household.spouse)}
+      </div>
+
+      <section style={styles.card}>
+        <h3 style={{ marginTop: 0 }}>Ancillary Products — Keep / Replace / Remove</h3>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
+            <thead>
+              <tr>
+                {["Product", "Applicant Current", "Applicant Action", "Applicant Proposed", "Spouse Current", "Spouse Action", "Spouse Proposed"].map((head) => (
+                  <th key={head} style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #d6dde8" }}>{head}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {Object.keys(blankAncillary).map((product) => {
+                const row = ancillary[product] || blankAncillaryRow;
+                return (
+                  <tr key={product}>
+                    <td style={{ padding: 8, borderBottom: "1px solid #eef2f6", fontWeight: 700 }}>{product}</td>
+                    <td style={{ padding: 8, borderBottom: "1px solid #eef2f6" }}><input style={styles.input} value={row.clientCurrent} onChange={(e) => updateAncillary(product, "clientCurrent", e.target.value)} placeholder="$" /></td>
+                    <td style={{ padding: 8, borderBottom: "1px solid #eef2f6" }}>
+                      <select style={styles.input} value={row.clientAction} onChange={(e) => updateAncillary(product, "clientAction", e.target.value)}>
+                        <option value="">Action</option><option value="Keep">Keep</option><option value="Replace">Replace</option><option value="Remove">Remove</option><option value="Add">Add</option>
+                      </select>
+                    </td>
+                    <td style={{ padding: 8, borderBottom: "1px solid #eef2f6" }}><input style={styles.input} value={row.clientProposed} onChange={(e) => updateAncillary(product, "clientProposed", e.target.value)} placeholder="$" /></td>
+                    <td style={{ padding: 8, borderBottom: "1px solid #eef2f6" }}><input style={styles.input} value={row.spouseCurrent} onChange={(e) => updateAncillary(product, "spouseCurrent", e.target.value)} placeholder="$" /></td>
+                    <td style={{ padding: 8, borderBottom: "1px solid #eef2f6" }}>
+                      <select style={styles.input} value={row.spouseAction} onChange={(e) => updateAncillary(product, "spouseAction", e.target.value)}>
+                        <option value="">Action</option><option value="Keep">Keep</option><option value="Replace">Replace</option><option value="Remove">Remove</option><option value="Add">Add</option>
+                      </select>
+                    </td>
+                    <td style={{ padding: 8, borderBottom: "1px solid #eef2f6" }}><input style={styles.input} value={row.spouseProposed} onChange={(e) => updateAncillary(product, "spouseProposed", e.target.value)} placeholder="$" /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section style={styles.card}>
+        <h3 style={{ marginTop: 0 }}>Premium Snapshot</h3>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
+            <thead>
+              <tr>
+                {["Metric", "Applicant", "Spouse", "Total"].map((head) => <th key={head} style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #d6dde8" }}>{head}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td style={{ padding: 10 }}>Current Monthly Total</td><td>{moneyDisplay(clientSnapshot.currentMonthly)}</td><td>{moneyDisplay(spouseSnapshot.currentMonthly)}</td><td>{moneyDisplay(totalCurrent)}</td></tr>
+              <tr><td style={{ padding: 10 }}>Proposed Monthly Total</td><td>{moneyDisplay(clientSnapshot.proposedMonthly)}</td><td>{moneyDisplay(spouseSnapshot.proposedMonthly)}</td><td>{moneyDisplay(totalProposed)}</td></tr>
+              <tr><td style={{ padding: 10 }}>Monthly Savings</td><td>{moneyDisplay(clientSnapshot.monthlySavings)}</td><td>{moneyDisplay(spouseSnapshot.monthlySavings)}</td><td>{moneyDisplay(totalMonthlySavings)}</td></tr>
+              <tr><td style={{ padding: 10 }}>Annual Savings</td><td>{moneyDisplay(clientSnapshot.annualSavings)}</td><td>{moneyDisplay(spouseSnapshot.annualSavings)}</td><td>{moneyDisplay(totalAnnualSavings)}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style={{ ...styles.nav, marginTop: 14 }}>
+          <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Fact Finder Updates</button>
+          <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Open Quick Rater</button>
+          <button type="button" style={styles.button} onClick={() => setView("calculator")}>Open Calculator</button>
+          <button type="button" style={styles.button} onClick={createCalendarEvent}>Create Calendar Event</button>
+          <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open Calendar</button>
+        </div>
+      </section>
+    </>
+  );
+}
+
+
+function QuickRaterPage({ household, updatePerson, updateAncillary, setView, saveIntake }) {
+  const ancillary = household.ancillary || blankAncillary;
+  const clientSnapshot = calculatePremiumSnapshot(household.client, "client", ancillary);
+  const spouseSnapshot = calculatePremiumSnapshot(household.spouse, "spouse", ancillary);
+  const householdCurrent = clientSnapshot.currentMonthly + spouseSnapshot.currentMonthly;
+  const householdProposed = clientSnapshot.proposedMonthly + spouseSnapshot.proposedMonthly;
+  const householdSavings = householdCurrent - householdProposed;
+  const householdAnnualSavings = householdSavings * 12;
+
+  const quickPersonBlock = (label, type, person, side) => {
+    const snapshot = calculatePremiumSnapshot(person, side, ancillary);
+    return (
+      <section style={styles.card}>
+        <h3 style={{ marginTop: 0 }}>{label}</h3>
+        <div style={styles.grid2}>
+          <input style={styles.input} value={person.firstName} onChange={(e) => updatePerson(type, "firstName", e.target.value)} placeholder="Name" />
+          <input style={styles.input} value={calculateAge(person.birthdate)} readOnly placeholder="Age" />
+        </div>
+        <div style={{ ...styles.grid2, marginTop: 12 }}>
+          <input style={styles.input} value={person.zip} onChange={(e) => updatePerson(type, "zip", e.target.value)} placeholder="ZIP Code" />
+          <select style={styles.input} value={person.tobacco} onChange={(e) => updatePerson(type, "tobacco", e.target.value)}>
+            <option value="">Tobacco Use</option>
+            <option value="No">No</option>
+            <option value="Yes">Yes</option>
+          </select>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <input style={styles.input} value={person.health} onChange={(e) => updatePerson(type, "health", e.target.value)} placeholder="Current Health" />
+        </div>
+        <div style={{ overflowX: "auto", marginTop: 14 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 620 }}>
+            <thead>
+              <tr>
+                {["Field", "Current", "Proposed"].map((head) => (
+                  <th key={head} style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #d6dde8" }}>{head}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ padding: 8, fontWeight: 700 }}>Med Supp Premium</td>
+                <td style={{ padding: 8 }}><input style={styles.input} value={person.currentMedSuppPremium} onChange={(e) => updatePerson(type, "currentMedSuppPremium", e.target.value)} placeholder="$" /></td>
+                <td style={{ padding: 8 }}><input style={styles.input} value={person.proposedMedSuppPremium} onChange={(e) => updatePerson(type, "proposedMedSuppPremium", e.target.value)} placeholder="$" /></td>
+              </tr>
+              {Object.keys(blankAncillary).map((product) => {
+                const row = ancillary[product] || blankAncillaryRow;
+                const currentKey = side === "client" ? "clientCurrent" : "spouseCurrent";
+                const proposedKey = side === "client" ? "clientProposed" : "spouseProposed";
+                return (
+                  <tr key={product}>
+                    <td style={{ padding: 8, fontWeight: 700 }}>{product}</td>
+                    <td style={{ padding: 8 }}><input style={styles.input} value={row[currentKey]} onChange={(e) => updateAncillary(product, currentKey, e.target.value)} placeholder="$" /></td>
+                    <td style={{ padding: 8 }}><input style={styles.input} value={row[proposedKey]} onChange={(e) => updateAncillary(product, proposedKey, e.target.value)} placeholder="$" /></td>
+                  </tr>
+                );
+              })}
+              <tr>
+                <td style={{ padding: 8, fontWeight: 700 }}>Current Monthly Total</td>
+                <td style={{ padding: 8 }}>{moneyDisplay(snapshot.currentMonthly)}</td>
+                <td style={{ padding: 8 }}></td>
+              </tr>
+              <tr>
+                <td style={{ padding: 8, fontWeight: 700 }}>Proposed Monthly Total</td>
+                <td style={{ padding: 8 }}></td>
+                <td style={{ padding: 8 }}>{moneyDisplay(snapshot.proposedMonthly)}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: 8, fontWeight: 700 }}>Monthly Savings</td>
+                <td style={{ padding: 8 }} colSpan={2}>{moneyDisplay(snapshot.monthlySavings)}</td>
+              </tr>
+              <tr>
+                <td style={{ padding: 8, fontWeight: 700 }}>Annual Savings</td>
+                <td style={{ padding: 8 }} colSpan={2}>{moneyDisplay(snapshot.annualSavings)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  };
+
+  return (
+    <>
+      <section style={styles.card}>
+        <h2 style={{ marginTop: 0 }}>Quick Rater</h2>
+        <p style={{ marginTop: 0 }}>Linked to the Agent Fact Finder. Changes made here update the Agent page and Calculator automatically.</p>
+        <div style={styles.nav}>
+          <button type="button" style={styles.button} onClick={() => setView("agent")}>Return to Agent</button>
+          <button type="button" style={styles.button} onClick={() => setView("calculator")}>View Calculator</button>
+          <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
+        </div>
+      </section>
+
+      <div style={styles.grid2}>
+        {quickPersonBlock("Applicant", "client", household.client, "client")}
+        {quickPersonBlock("Spouse", "spouse", household.spouse, "spouse")}
+      </div>
+
+      <section style={styles.card}>
+        <h3 style={{ marginTop: 0 }}>Household Totals</h3>
+        <div style={styles.grid2}>
+          <div><strong>Current Monthly Total:</strong> {moneyDisplay(householdCurrent)}</div>
+          <div><strong>Proposed Monthly Total:</strong> {moneyDisplay(householdProposed)}</div>
+          <div><strong>Monthly Savings:</strong> {moneyDisplay(householdSavings)}</div>
+          <div><strong>Annual Savings:</strong> {moneyDisplay(householdAnnualSavings)}</div>
+        </div>
+        <div style={{ ...styles.nav, marginTop: 14 }}>
+          <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Quick Rater Updates</button>
+          <button type="button" style={styles.button} onClick={() => setView("agent")}>Return to Agent</button>
+          <button type="button" style={styles.button} onClick={() => setView("calculator")}>View Calculator</button>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function CalculatorPage({ household, updatePerson, updateAncillary, setView, saveIntake }) {
+  const ancillary = household.ancillary || blankAncillary;
+  const clientSnapshot = calculatePremiumSnapshot(household.client, "client", ancillary);
+  const spouseSnapshot = calculatePremiumSnapshot(household.spouse, "spouse", ancillary);
+  const totalCurrent = clientSnapshot.currentMonthly + spouseSnapshot.currentMonthly;
+  const totalProposed = clientSnapshot.proposedMonthly + spouseSnapshot.proposedMonthly;
+  const monthlySavings = totalCurrent - totalProposed;
+  const annualSavings = monthlySavings * 12;
+
+  const calculatorRows = [
+    ["Proposed supplement Plan G", "proposedMedSuppPremium", "proposedMedSuppPremium", "currentMedSuppPremium", "currentMedSuppPremium"],
+    ["$10,000 Lump Sum Cancer", "Cancer", "Cancer", "Cancer", "Cancer"],
+    ["$5,000 Dental", "Dental", "Dental", "Dental", "Dental"],
+    ["$10,000 Final Expense", "Final Expense", "Final Expense", "Final Expense", "Final Expense"],
+    ["Short Term Care", "Short Term Care", "Short Term Care", "Short Term Care", "Short Term Care"],
+  ];
+
+  function getRowValue(person, side, key, currentOrProposed) {
+    if (key === "proposedMedSuppPremium") return person.proposedMedSuppPremium;
+    if (key === "currentMedSuppPremium") return person.currentMedSuppPremium;
+    const row = ancillary[key] || blankAncillaryRow;
+    if (side === "client" && currentOrProposed === "proposed") return row.clientProposed;
+    if (side === "spouse" && currentOrProposed === "proposed") return row.spouseProposed;
+    if (side === "client" && currentOrProposed === "current") return row.clientCurrent;
+    return row.spouseCurrent;
+  }
+
+  function setRowValue(side, key, currentOrProposed, value) {
+    if (key === "proposedMedSuppPremium") {
+      updatePerson(side, "proposedMedSuppPremium", value);
+      return;
+    }
+    if (key === "currentMedSuppPremium") {
+      updatePerson(side, "currentMedSuppPremium", value);
+      return;
+    }
+    const field =
+      side === "client"
+        ? currentOrProposed === "proposed" ? "clientProposed" : "clientCurrent"
+        : currentOrProposed === "proposed" ? "spouseProposed" : "spouseCurrent";
+    updateAncillary(key, field, value);
+  }
+
+  return (
+    <>
+      <section style={styles.card}>
+        <h2 style={{ marginTop: 0 }}>Calculator</h2>
+        <p style={{ marginTop: 0 }}>Original Medicare / Premium Comparison linked directly from Quick Rater and Agent Fact Finder.</p>
+        <div style={styles.nav}>
+          <button type="button" style={styles.button} onClick={() => setView("agent")}>Return to Agent</button>
+          <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Back to Quick Rater</button>
+          <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
+        </div>
+      </section>
+
+      <section style={styles.card}>
+        <h3 style={{ marginTop: 0 }}>Original Medicare / Plan G Exposure</h3>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 840 }}>
+            <thead>
+              <tr>
+                {["Medicare A and B", "Medicare Pays All But", "Plan G Pays", "You Pay"].map((head) => (
+                  <th key={head} style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #d6dde8" }}>{head}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ["Hospitalization First 60 Days", "All but $1,736", "$1,736", "$0"],
+                ["61st Through 90th Day", "All but $434 a day", "$434 a day", "$0"],
+                ["91st Day and After", "All but $868 a day", "$868 a day", "$0"],
+                ["Skilled Nursing Facility 21st Through 100th Day", "All but $217 a day", "$217 a day", "$0"],
+                ["Part B Deductible", "First $283", "$0", "$283"],
+                ["Remainder of Part B Approved Amounts", "Generally 80%", "Generally 20%", "$0"],
+                ["Part B Excess Charge", "$0", "100% approved", "$0"],
+              ].map((row) => (
+                <tr key={row[0]}>
+                  {row.map((cell) => <td key={cell} style={{ padding: 8, borderBottom: "1px solid #eef2f6" }}>{cell}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p>By law, every Medicare Supplement Plan G offers the same coverage regardless of insurance company.</p>
+      </section>
+
+      <section style={styles.card}>
+        <h3 style={{ marginTop: 0 }}>Premium Comparison</h3>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
+            <thead>
+              <tr>
+                {["Product", "Proposed Monthly Premium", "Proposed Spouse Premium", "Current Monthly Premium", "Spouse Current Premium"].map((head) => (
+                  <th key={head} style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #d6dde8" }}>{head}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {calculatorRows.map(([label, clientPropKey, spousePropKey, clientCurrentKey, spouseCurrentKey]) => (
+                <tr key={label}>
+                  <td style={{ padding: 8, fontWeight: 700 }}>{label}</td>
+                  <td style={{ padding: 8 }}><input style={styles.input} value={getRowValue(household.client, "client", clientPropKey, "proposed")} onChange={(e) => setRowValue("client", clientPropKey, "proposed", e.target.value)} placeholder="$" /></td>
+                  <td style={{ padding: 8 }}><input style={styles.input} value={getRowValue(household.spouse, "spouse", spousePropKey, "proposed")} onChange={(e) => setRowValue("spouse", spousePropKey, "proposed", e.target.value)} placeholder="$" /></td>
+                  <td style={{ padding: 8 }}><input style={styles.input} value={getRowValue(household.client, "client", clientCurrentKey, "current")} onChange={(e) => setRowValue("client", clientCurrentKey, "current", e.target.value)} placeholder="$" /></td>
+                  <td style={{ padding: 8 }}><input style={styles.input} value={getRowValue(household.spouse, "spouse", spouseCurrentKey, "current")} onChange={(e) => setRowValue("spouse", spouseCurrentKey, "current", e.target.value)} placeholder="$" /></td>
+                </tr>
+              ))}
+              <tr><td style={{ padding: 8, fontWeight: 700 }}>Total Monthly Premium</td><td>{moneyDisplay(clientSnapshot.proposedMonthly)}</td><td>{moneyDisplay(spouseSnapshot.proposedMonthly)}</td><td>{moneyDisplay(clientSnapshot.currentMonthly)}</td><td>{moneyDisplay(spouseSnapshot.currentMonthly)}</td></tr>
+              <tr><td style={{ padding: 8, fontWeight: 700 }}>Monthly Savings</td><td>{moneyDisplay(clientSnapshot.monthlySavings)}</td><td>{moneyDisplay(spouseSnapshot.monthlySavings)}</td><td colSpan={2}>{moneyDisplay(monthlySavings)}</td></tr>
+              <tr><td style={{ padding: 8, fontWeight: 700 }}>Proposed Annual Savings</td><td>{moneyDisplay(clientSnapshot.annualSavings)}</td><td>{moneyDisplay(spouseSnapshot.annualSavings)}</td><td colSpan={2}>{moneyDisplay(annualSavings)}</td></tr>
+              <tr><td style={{ padding: 8, fontWeight: 700 }}>Combined Savings</td><td colSpan={4}>{moneyDisplay(annualSavings)}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style={{ ...styles.nav, marginTop: 14 }}>
+          <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Calculator Updates</button>
+          <button type="button" style={styles.button} onClick={() => setView("agent")}>Return to Agent</button>
+          <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Back to Quick Rater</button>
+        </div>
+      </section>
+    </>
+  );
+}
+
+
 function TopNav({ view, setView }) {
   const navItems = [
     ["dashboard", "Dashboard"],
@@ -348,6 +803,8 @@ function TopNav({ view, setView }) {
     ["clients", "Clients"],
     ["today", "Today"],
     ["household", "Household"],
+    ["quickRater", "Quick Rater"],
+    ["calculator", "Calculator"],
   ];
 
   return (
@@ -373,7 +830,7 @@ export default function SipsDashboardPage() {
   const [events, setEvents] = useState([]);
   const [message, setMessage] = useState("");
 
-  const [household, setHousehold] = useState({ ...blankHousehold, client: { ...blankPerson }, spouse: { ...blankPerson } });
+  const [household, setHousehold] = useState({ ...blankHousehold, ancillary: { ...blankAncillary }, client: { ...blankPerson }, spouse: { ...blankPerson } });
 
   const [appointmentDate, setAppointmentDate] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("");
@@ -381,6 +838,7 @@ export default function SipsDashboardPage() {
   const [appointmentLocation, setAppointmentLocation] = useState("Phone Call");
 
   const [emailTemplate, setEmailTemplate] = useState("Plan Review");
+  const [selectedAgent, setSelectedAgent] = useState("Admin");
 
   const selectedHousehold = useMemo(
     () => households.find((item) => item.id === selectedHouseholdId) || households[0] || null,
@@ -401,6 +859,20 @@ export default function SipsDashboardPage() {
     setHousehold((prev) => ({ ...prev, [field]: value }));
   }
 
+  function updateAncillary(product, field, value) {
+    setHousehold((prev) => ({
+      ...prev,
+      ancillary: {
+        ...(prev.ancillary || blankAncillary),
+        [product]: {
+          ...blankAncillaryRow,
+          ...((prev.ancillary || {})[product] || {}),
+          [field]: value,
+        },
+      },
+    }));
+  }
+
   function toggleHealth(option) {
     setHousehold((prev) => {
       const current = prev.healthFlags || [];
@@ -414,7 +886,7 @@ export default function SipsDashboardPage() {
   }
 
   function resetIntake() {
-    setHousehold({ ...blankHousehold, client: { ...blankPerson }, spouse: { ...blankPerson } });
+    setHousehold({ ...blankHousehold, ancillary: { ...blankAncillary }, client: { ...blankPerson }, spouse: { ...blankPerson } });
     setAppointmentDate("");
     setAppointmentTime("");
     setAppointmentDuration("60");
@@ -432,6 +904,7 @@ export default function SipsDashboardPage() {
     const saved = {
       ...household,
       id,
+      ancillary: { ...blankAncillary, ...(household.ancillary || {}) },
       client: { ...household.client, age: calculateAge(household.client.birthdate) },
       spouse: { ...household.spouse, age: calculateAge(household.spouse.birthdate) },
       createdAt: new Date().toLocaleString(),
@@ -508,14 +981,17 @@ export default function SipsDashboardPage() {
   }
 
   function checkAgentStatus(agentName) {
-    const busy = events.some((event) => event.agent === agentName && event.date === appointmentDate);
-    alert(`${agentName} status: ${busy ? "Has event(s) on selected date" : "No saved events on selected date"}`);
+    setSelectedAgent(agentName);
+    const dateToCheck = appointmentDate || new Date().toISOString().slice(0, 10);
+    const busy = events.some((event) => event.agent === agentName && event.date === dateToCheck);
+    alert(`${agentName} status for ${dateToCheck}: ${busy ? "Has saved event(s)" : "No saved events"}`);
   }
 
   function loadHousehold(item) {
     setHousehold({
       ...blankHousehold,
       ...item,
+      ancillary: { ...blankAncillary, ...(item.ancillary || {}) },
       client: { ...blankPerson, ...(item.client || {}) },
       spouse: { ...blankPerson, ...(item.spouse || {}) },
     });
@@ -529,10 +1005,10 @@ export default function SipsDashboardPage() {
           <h2 style={{ marginTop: 0 }}>Dashboard</h2>
           <p>Use this page to move between Admin Intake, Agent Status, Calendar, Clients, Today, and Household.</p>
           <div style={styles.nav}>
-            <button style={styles.primaryButton} onClick={() => setView("admin")}>Open Admin Intake</button>
-            <button style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
-            <button style={styles.button} onClick={() => setView("clients")}>Go to Clients</button>
-            <button style={styles.button} onClick={() => setView("household")}>Go to Household</button>
+            <button type="button" style={styles.primaryButton} onClick={() => setView("admin")}>Open Admin Intake</button>
+            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+            <button type="button" style={styles.button} onClick={() => setView("clients")}>Go to Clients</button>
+            <button type="button" style={styles.button} onClick={() => setView("household")}>Go to Household</button>
           </div>
         </section>
 
@@ -546,9 +1022,9 @@ export default function SipsDashboardPage() {
                   <span style={styles.statusPill}>{agent.initials} · {agent.color}</span>
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button style={styles.button} onClick={() => checkAgentStatus(agent.name)}>Check Status</button>
-                  <button style={styles.button} onClick={() => setView("agent")}>Go to Agent Page</button>
-                  <button style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+                  <button type="button" style={styles.button} onClick={() => checkAgentStatus(agent.name)}>Check Status</button>
+                  <button type="button" style={styles.button} onClick={() => { setSelectedAgent(agent.name); setView("agent"); }}>Go to Agent Page</button>
+                  <button type="button" style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
                 </div>
               </div>
             ))}
@@ -564,9 +1040,9 @@ export default function SipsDashboardPage() {
         <section style={styles.card}>
           <h2 style={{ marginTop: 0 }}>Admin Intake</h2>
           <div style={styles.nav}>
-            <button style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
-            <button style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
-            <button style={styles.button} onClick={() => setView("household")}>Go to Household</button>
+            <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
+            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+            <button type="button" style={styles.button} onClick={() => setView("household")}>Go to Household</button>
           </div>
         </section>
 
@@ -637,9 +1113,9 @@ export default function SipsDashboardPage() {
             </select>
           </div>
           <div style={{ ...styles.nav, marginTop: 12 }}>
-            <button style={styles.button} onClick={() => checkAgentStatus(household.assignedAgent)}>Check Agent Status</button>
-            <button style={styles.button} onClick={createCalendarEvent}>Create Calendar Event</button>
-            <button style={styles.button} onClick={() => setView("calendar")}>Open Calendar</button>
+            <button type="button" style={styles.button} onClick={() => checkAgentStatus(household.assignedAgent)}>Check Agent Status</button>
+            <button type="button" style={styles.button} onClick={createCalendarEvent}>Create Calendar Event</button>
+            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open Calendar</button>
           </div>
         </section>
 
@@ -649,7 +1125,7 @@ export default function SipsDashboardPage() {
             {Object.keys(EMAIL_TEMPLATES).map((name) => <option key={name} value={name}>{name}</option>)}
           </select>
           <textarea style={{ ...styles.textarea, marginTop: 12 }} value={EMAIL_TEMPLATES[emailTemplate]} readOnly />
-          <button
+          <button type="button"
             style={styles.button}
             onClick={() => navigator.clipboard?.writeText(EMAIL_TEMPLATES[emailTemplate])}
           >
@@ -659,9 +1135,9 @@ export default function SipsDashboardPage() {
 
         <section style={styles.card}>
           <div style={styles.nav}>
-            <button style={styles.primaryButton} onClick={saveIntake}>Save Admin Intake</button>
-            <button style={styles.button} onClick={resetIntake}>Clear Intake</button>
-            <button style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
+            <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Admin Intake</button>
+            <button type="button" style={styles.button} onClick={resetIntake}>Clear Intake</button>
+            <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
           </div>
           {message ? <p><strong>{message}</strong></p> : null}
         </section>
@@ -674,9 +1150,10 @@ export default function SipsDashboardPage() {
       <section style={styles.card}>
         <h2 style={{ marginTop: 0 }}>Calendar</h2>
         <div style={styles.nav}>
-          <button style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
-          <button style={styles.button} onClick={() => setView("admin")}>Back to Admin</button>
-          <button style={styles.button} onClick={() => setView("household")}>Back to Household</button>
+          <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
+          <button type="button" style={styles.button} onClick={() => setView("admin")}>Back to Admin</button>
+          <button type="button" style={styles.button} onClick={() => setView("agent")}>Back to Agent</button>
+          <button type="button" style={styles.button} onClick={() => setView("household")}>Back to Household</button>
         </div>
         {events.length === 0 ? <p>No saved calendar events yet.</p> : null}
         {events.map((event) => (
@@ -684,7 +1161,7 @@ export default function SipsDashboardPage() {
             <strong>{event.title}</strong>
             <p>{event.date} at {event.time} · {event.location}</p>
             <p>Agent: {event.agent}</p>
-            <button style={styles.button} onClick={() => setView("household")}>Open Household</button>
+            <button type="button" style={styles.button} onClick={() => { const match = households.find((h) => h.id === event.householdId); if (match) loadHousehold(match); setView("household"); }}>Open Household</button>
           </div>
         ))}
       </section>
@@ -701,7 +1178,7 @@ export default function SipsDashboardPage() {
             <strong>{fullName(item.client)}</strong>
             <p>{item.client.phone || "No phone"} · {item.client.email || "No email"}</p>
             <p>{item.client.address || "No address"} {item.client.city || ""} {item.client.state || ""} {item.client.zip || ""}</p>
-            <button style={styles.button} onClick={() => { loadHousehold(item); setView("household"); }}>Open Household</button>
+            <button type="button" style={styles.button} onClick={() => { loadHousehold(item); setView("household"); }}>Open Household</button>
           </div>
         ))}
       </section>
@@ -726,14 +1203,14 @@ export default function SipsDashboardPage() {
   }
 
   function renderHousehold() {
-    const item = selectedHousehold || household;
+    const item = household;
     return (
       <section style={styles.card}>
         <h2 style={{ marginTop: 0 }}>Household Snapshot</h2>
         <div style={styles.nav}>
-          <button style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
-          <button style={styles.button} onClick={() => setView("admin")}>Back to Admin</button>
-          <button style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+          <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
+          <button type="button" style={styles.button} onClick={() => setView("admin")}>Back to Admin</button>
+          <button type="button" style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
         </div>
 
         <div style={styles.grid2}>
@@ -762,6 +1239,37 @@ export default function SipsDashboardPage() {
           </div>
         </div>
 
+
+        <div style={{ ...styles.card, marginTop: 16 }}>
+          <h3 style={{ marginTop: 0 }}>Live Phone Call Update Fields</h3>
+          <p style={{ marginTop: 0 }}>Use this section while the client is on the phone. Changes stay live and can be saved back to the household list.</p>
+          <PersonForm title="Client Update" type="client" person={household.client} updatePerson={updatePerson} />
+          <PersonForm title="Spouse Update" type="spouse" person={household.spouse} updatePerson={updatePerson} />
+
+          <div style={styles.grid2}>
+            <select style={styles.input} value={household.status} onChange={(e) => updateHousehold("status", e.target.value)}>
+              <option value="New">New</option>
+              <option value="Needs Review">Needs Review</option>
+              <option value="Scheduled">Scheduled</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Complete">Complete</option>
+            </select>
+            <select style={styles.input} value={household.assignedAgent} onChange={(e) => updateHousehold("assignedAgent", e.target.value)}>
+              {AGENTS.map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
+            </select>
+          </div>
+          <div style={{ ...styles.grid2, marginTop: 12 }}>
+            <input style={styles.input} value={household.currentCoverage} onChange={(e) => updateHousehold("currentCoverage", e.target.value)} placeholder="Current Coverage" />
+            <input style={styles.input} value={household.currentPremium} onChange={(e) => updateHousehold("currentPremium", e.target.value)} placeholder="Current Premium" />
+          </div>
+          <textarea style={{ ...styles.textarea, marginTop: 12 }} value={household.notes} onChange={(e) => updateHousehold("notes", e.target.value)} placeholder="Phone call notes / additional information" />
+          <div style={{ ...styles.nav, marginTop: 12 }}>
+            <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Household Updates</button>
+            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+            <button type="button" style={styles.button} onClick={() => setView("agent")}>Go to Agent</button>
+          </div>
+        </div>
+
         <div style={{ border: "1px solid #d6dde8", borderRadius: 12, padding: 14, marginTop: 12 }}>
           <h3>Admin Summary</h3>
           <p>Status: {item.status || "-"}</p>
@@ -777,16 +1285,88 @@ export default function SipsDashboardPage() {
     );
   }
 
-  function renderAgentPage() {
+
+  function renderQuickRater() {
     return (
-      <section style={styles.card}>
-        <h2 style={{ marginTop: 0 }}>Agent Page</h2>
-        <p>Select an agent from the dashboard status cards, then use Calendar or Admin Intake to schedule and manage work.</p>
-        <div style={styles.nav}>
-          <button style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
-          <button style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
-        </div>
-      </section>
+      <QuickRaterPage
+        household={household}
+        updatePerson={updatePerson}
+        updateAncillary={updateAncillary}
+        setView={setView}
+        saveIntake={saveIntake}
+      />
+    );
+  }
+
+  function renderCalculator() {
+    return (
+      <CalculatorPage
+        household={household}
+        updatePerson={updatePerson}
+        updateAncillary={updateAncillary}
+        setView={setView}
+        saveIntake={saveIntake}
+      />
+    );
+  }
+
+  function renderAgentPage() {
+    const agentEvents = events.filter((event) => event.agent === selectedAgent);
+    const agentHouseholds = households.filter((item) => item.assignedAgent === selectedAgent);
+
+    return (
+      <>
+        <section style={styles.card}>
+          <h2 style={{ marginTop: 0 }}>Agent Page</h2>
+          <div style={styles.nav}>
+            <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
+            <button type="button" style={styles.button} onClick={() => setView("admin")}>Back to Admin</button>
+            <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Go to Quick Rater</button>
+            <button type="button" style={styles.button} onClick={() => setView("calculator")}>Go to Calculator</button>
+            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+          </div>
+
+          <div style={styles.grid2}>
+            <select style={styles.input} value={selectedAgent} onChange={(e) => { setSelectedAgent(e.target.value); updateHousehold("assignedAgent", e.target.value); }}>
+              {AGENTS.map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
+            </select>
+            <button type="button" style={styles.button} onClick={() => checkAgentStatus(selectedAgent)}>Check This Agent Status</button>
+          </div>
+        </section>
+
+        <FactFinderQuoter
+          household={household}
+          updatePerson={updatePerson}
+          updateHousehold={updateHousehold}
+          updateAncillary={updateAncillary}
+          saveIntake={saveIntake}
+          createCalendarEvent={createCalendarEvent}
+          setView={setView}
+        />
+
+        <section style={styles.card}>
+          <h3 style={{ marginTop: 0 }}>{selectedAgent} Calendar Events</h3>
+          {agentEvents.length === 0 ? <p>No saved events for this agent yet.</p> : null}
+          {agentEvents.map((event) => (
+            <div key={event.id} style={{ border: "1px solid #d6dde8", borderRadius: 12, padding: 14, marginTop: 10 }}>
+              <strong>{event.title}</strong>
+              <p>{event.date} at {event.time} · {event.location}</p>
+            </div>
+          ))}
+        </section>
+
+        <section style={styles.card}>
+          <h3 style={{ marginTop: 0 }}>{selectedAgent} Households</h3>
+          {agentHouseholds.length === 0 ? <p>No households assigned to this agent yet.</p> : null}
+          {agentHouseholds.map((item) => (
+            <div key={item.id} style={{ border: "1px solid #d6dde8", borderRadius: 12, padding: 14, marginTop: 10 }}>
+              <strong>{fullName(item.client)}</strong>
+              <p>{item.client.phone || "No phone"} · {item.status || "No status"}</p>
+              <button type="button" style={styles.button} onClick={() => { loadHousehold(item); setView("household"); }}>Open Household</button>
+            </div>
+          ))}
+        </section>
+      </>
     );
   }
 
@@ -807,6 +1387,8 @@ export default function SipsDashboardPage() {
         {view === "today" && renderToday()}
         {view === "household" && renderHousehold()}
         {view === "agent" && renderAgentPage()}
+        {view === "quickRater" && renderQuickRater()}
+        {view === "calculator" && renderCalculator()}
       </div>
     </main>
   );
