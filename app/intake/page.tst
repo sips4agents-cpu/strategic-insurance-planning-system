@@ -23,7 +23,7 @@ const appointmentTypes = [
   "Business/HR director",
 ];
 
-const appointmentCodeMap: Record<string, string> = {
+const appointmentCodeMap = {
   "Phone appointment": "P/A",
   "Office appointment": "O/A",
   Service: "S",
