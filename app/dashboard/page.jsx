@@ -56,7 +56,26 @@ const EMAIL_TEMPLATES = {
     "Hi, this is Senior Care Plus following up on your claims issue. Please send any EOBs, unpaid claim notices, or provider contact information so we can assist.",
   "Appointment Reminder":
     "Hi, this is Senior Care Plus reminding you of your upcoming appointment. Please have your Medicare card, current insurance information, medications, and provider list available.",
+  "L564 Employer Form":
+    "Please forward the attached CMS-L564 employer form to HR. Once HR completes and signs it, send it back so we can attach it to your Medicare file.",
+  "Policy Review Documents":
+    "Please send a copy of your current policy, premium notice, prescription list, and doctor list so we can complete your review.",
 };
+
+const COVERAGE_OPTIONS = ["Medicare", "Group", "Individual Health", "Cobra"];
+const GROUP_SIZE_OPTIONS = ["20 or more employees", "Less than 20 employees"];
+const PROPOSED_PREMIUM_SOURCES = ["Manual input", "Get premium from CSG rater"];
+const SIPS_GOOGLE_CALENDAR_URL = "https://calendar.google.com/calendar/u/sips4agents@gmail.com/r";
+
+const ATTACHABLE_FORMS = [
+  "CMS-L564 Employer Coverage Form",
+  "Medicare Part B Application",
+  "Scope of Appointment",
+  "Prescription Drug List",
+  "Provider List",
+  "Current Policy / Premium Notice",
+  "Claims / EOB Documents",
+];
 
 const blankPerson = {
   firstName: "",
@@ -80,7 +99,9 @@ const blankPerson = {
   currentMedSuppPremium: "",
   proposedCarrier: "",
   proposedPlan: "",
+  proposedPremiumSource: "Manual input",
   proposedMedSuppPremium: "",
+  csgProposedPremium: "",
   manualOverrideProposedRate: "",
   currentTotalPremium: "",
 };
@@ -107,6 +128,7 @@ const blankHousehold = {
   status: "New",
   referredBy: "",
   currentCoverage: "",
+  groupSize: "",
   currentPremium: "",
   reasonForCall: "Service",
   notes: "",
@@ -272,6 +294,12 @@ function moneyDisplay(value) {
 function getEffectiveProposed(person) {
   const override = moneyValue(person.manualOverrideProposedRate);
   if (override > 0) return override;
+
+  if (person.proposedPremiumSource === "Get premium from CSG rater") {
+    const csgRate = moneyValue(person.csgProposedPremium);
+    if (csgRate > 0) return csgRate;
+  }
+
   return moneyValue(person.proposedMedSuppPremium);
 }
 
@@ -467,7 +495,10 @@ function FactFinderQuoter({ household, updatePerson, updateHousehold, updateAnci
         <input style={styles.input} value={person.proposedPlan} onChange={(e) => updatePerson(type, "proposedPlan", e.target.value)} placeholder="Proposed Plan" />
       </div>
       <div style={{ ...styles.grid2, marginTop: 12 }}>
-        <input style={styles.input} value={person.proposedMedSuppPremium} onChange={(e) => updatePerson(type, "proposedMedSuppPremium", e.target.value)} placeholder="Proposed Med Supp Premium" />
+        <select style={styles.input} value={person.proposedPremiumSource || "Manual input"} onChange={(e) => updatePerson(type, "proposedPremiumSource", e.target.value)}>
+          {PROPOSED_PREMIUM_SOURCES.map((option) => <option key={option} value={option}>{option}</option>)}
+        </select>
+        <input style={styles.input} value={person.proposedPremiumSource === "Get premium from CSG rater" ? person.csgProposedPremium : person.proposedMedSuppPremium} onChange={(e) => updatePerson(type, person.proposedPremiumSource === "Get premium from CSG rater" ? "csgProposedPremium" : "proposedMedSuppPremium", e.target.value)} placeholder={person.proposedPremiumSource === "Get premium from CSG rater" ? "CSG Rater Premium" : "Manual Proposed Premium"} />
         <input style={styles.input} value={person.manualOverrideProposedRate} onChange={(e) => updatePerson(type, "manualOverrideProposedRate", e.target.value)} placeholder="Manual Override Proposed Rate" />
       </div>
     </section>
@@ -596,7 +627,39 @@ function QuickRaterPage({ household, updatePerson, updateAncillary, setView, sav
               <tr>
                 <td style={{ padding: 8, fontWeight: 700 }}>Med Supp Premium</td>
                 <td style={{ padding: 8 }}><input style={styles.input} value={person.currentMedSuppPremium} onChange={(e) => updatePerson(type, "currentMedSuppPremium", e.target.value)} placeholder="$" /></td>
-                <td style={{ padding: 8 }}><input style={styles.input} value={person.proposedMedSuppPremium} onChange={(e) => updatePerson(type, "proposedMedSuppPremium", e.target.value)} placeholder="$" /></td>
+                <td style={{ padding: 8 }}>
+                  <select
+                    style={styles.input}
+                    value={person.proposedPremiumSource || "Manual input"}
+                    onChange={(e) => updatePerson(type, "proposedPremiumSource", e.target.value)}
+                  >
+                    {PROPOSED_PREMIUM_SOURCES.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                  {person.proposedPremiumSource === "Get premium from CSG rater" ? (
+                    <div style={{ marginTop: 8 }}>
+                      <input
+                        style={styles.input}
+                        value={person.csgProposedPremium}
+                        onChange={(e) => updatePerson(type, "csgProposedPremium", e.target.value)}
+                        placeholder="Premium from CSG Rater"
+                      />
+                      <button
+                        type="button"
+                        style={{ ...styles.button, marginTop: 8 }}
+                        onClick={() => window.open("https://csgactuarial.com", "_blank", "noopener,noreferrer")}
+                      >
+                        Open CSG Rater
+                      </button>
+                    </div>
+                  ) : (
+                    <input
+                      style={{ ...styles.input, marginTop: 8 }}
+                      value={person.proposedMedSuppPremium}
+                      onChange={(e) => updatePerson(type, "proposedMedSuppPremium", e.target.value)}
+                      placeholder="Manual Proposed Premium"
+                    />
+                  )}
+                </td>
               </tr>
               {Object.keys(blankAncillary).map((product) => {
                 const row = ancillary[product] || blankAncillaryRow;
@@ -661,7 +724,7 @@ function QuickRaterPage({ household, updatePerson, updateAncillary, setView, sav
           <div><strong>Annual Savings:</strong> {moneyDisplay(householdAnnualSavings)}</div>
         </div>
         <div style={{ ...styles.nav, marginTop: 14 }}>
-          <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Quick Rater Updates</button>
+          <button type="button" style={styles.primaryButton} onClick={() => { saveIntake(); }}>Save / Enter Quick Rater Updates</button>
           <button type="button" style={styles.button} onClick={() => setView("agent")}>Return to Agent</button>
           <button type="button" style={styles.button} onClick={() => setView("calculator")}>View Calculator</button>
         </div>
@@ -856,7 +919,40 @@ export default function SipsDashboardPage() {
   }
 
   function updateHousehold(field, value) {
-    setHousehold((prev) => ({ ...prev, [field]: value }));
+    setHousehold((prev) => {
+      const next = { ...prev, [field]: value };
+
+      if (field === "currentCoverage" && value !== "Group") {
+        next.groupSize = "";
+      }
+
+      if (field === "currentPremium") {
+        next.client = {
+          ...prev.client,
+          currentMedSuppPremium: value,
+          currentTotalPremium: value,
+        };
+      }
+
+      return next;
+    });
+  }
+
+  function openSipsGoogleCalendar() {
+    if (typeof window !== "undefined") {
+      window.open(SIPS_GOOGLE_CALENDAR_URL, "_blank", "noopener,noreferrer");
+    }
+  }
+
+  function getReturnLinks() {
+    if (typeof window === "undefined") return "Return links available inside SIPS.";
+    const base = window.location.origin;
+    return (
+      `Return to SIPS Dashboard: ${base}/dashboard\n` +
+      `Return to Admin: ${base}/dashboard?view=admin\n` +
+      `Return to Agent: ${base}/dashboard?view=agent\n` +
+      `Return to Household: ${base}/dashboard?view=household`
+    );
   }
 
   function updateAncillary(product, field, value) {
@@ -951,7 +1047,10 @@ export default function SipsDashboardPage() {
         `Agent: ${household.assignedAgent}\n` +
         `Current Coverage: ${household.currentCoverage || "-"}\n` +
         `Current Premium: ${household.currentPremium || "-"}\n` +
-        `Notes: ${household.notes || "-"}`,
+        `Group Size: ${household.groupSize || "-"}\n` +
+        `Notes: ${household.notes || "-"}\n\n` +
+        `RETURN LINKS:\n${getReturnLinks()}`,
+      returnLinks: getReturnLinks(),
     };
 
     setEvents((prev) => [event, ...prev]);
@@ -1006,7 +1105,8 @@ export default function SipsDashboardPage() {
           <p>Use this page to move between Admin Intake, Agent Status, Calendar, Clients, Today, and Household.</p>
           <div style={styles.nav}>
             <button type="button" style={styles.primaryButton} onClick={() => setView("admin")}>Open Admin Intake</button>
-            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open SIPS Calendar</button>
+            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Calendar</button>
             <button type="button" style={styles.button} onClick={() => setView("clients")}>Go to Clients</button>
             <button type="button" style={styles.button} onClick={() => setView("household")}>Go to Household</button>
           </div>
@@ -1024,7 +1124,8 @@ export default function SipsDashboardPage() {
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button type="button" style={styles.button} onClick={() => checkAgentStatus(agent.name)}>Check Status</button>
                   <button type="button" style={styles.button} onClick={() => { setSelectedAgent(agent.name); setView("agent"); }}>Go to Agent Page</button>
-                  <button type="button" style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+                  <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open SIPS Calendar</button>
+            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Calendar</button>
                 </div>
               </div>
             ))}
@@ -1041,7 +1142,8 @@ export default function SipsDashboardPage() {
           <h2 style={{ marginTop: 0 }}>Admin Intake</h2>
           <div style={styles.nav}>
             <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
-            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open SIPS Calendar</button>
+            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Calendar</button>
             <button type="button" style={styles.button} onClick={() => setView("household")}>Go to Household</button>
           </div>
         </section>
@@ -1069,7 +1171,16 @@ export default function SipsDashboardPage() {
 
           <div style={{ ...styles.grid3, marginTop: 12 }}>
             <input style={styles.input} value={household.referredBy} onChange={(e) => updateHousehold("referredBy", e.target.value)} placeholder="Referred By" />
-            <input style={styles.input} value={household.currentCoverage} onChange={(e) => updateHousehold("currentCoverage", e.target.value)} placeholder="Current Coverage" />
+            <select style={styles.input} value={household.currentCoverage} onChange={(e) => updateHousehold("currentCoverage", e.target.value)}>
+              <option value="">Current Coverage</option>
+              {COVERAGE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+            {household.currentCoverage === "Group" ? (
+              <select style={styles.input} value={household.groupSize} onChange={(e) => updateHousehold("groupSize", e.target.value)}>
+                <option value="">Group Size</option>
+                {GROUP_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            ) : null}
             <input style={styles.input} value={household.currentPremium} onChange={(e) => updateHousehold("currentPremium", e.target.value)} placeholder="Current Premium" />
           </div>
 
@@ -1125,12 +1236,42 @@ export default function SipsDashboardPage() {
             {Object.keys(EMAIL_TEMPLATES).map((name) => <option key={name} value={name}>{name}</option>)}
           </select>
           <textarea style={{ ...styles.textarea, marginTop: 12 }} value={EMAIL_TEMPLATES[emailTemplate]} readOnly />
-          <button type="button"
-            style={styles.button}
-            onClick={() => navigator.clipboard?.writeText(EMAIL_TEMPLATES[emailTemplate])}
-          >
-            Copy Email Template
-          </button>
+          <div style={{ ...styles.nav, marginTop: 12 }}>
+            <button type="button" style={styles.button} onClick={() => navigator.clipboard?.writeText(EMAIL_TEMPLATES[emailTemplate])}>Copy Email Template</button>
+            <button
+              type="button"
+              style={styles.button}
+              onClick={() => {
+                const to = household.client.email || "";
+                const subject = encodeURIComponent(`Senior Care Plus - ${emailTemplate}`);
+                const body = encodeURIComponent(EMAIL_TEMPLATES[emailTemplate]);
+                window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+              }}
+            >
+              Open Email Draft
+            </button>
+          </div>
+
+          <div style={{ marginTop: 16 }}>
+            <strong>Attachable Forms / Documents Needed</strong>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 8, marginTop: 10 }}>
+              {ATTACHABLE_FORMS.map((formName) => (
+                <label key={formName} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    type="checkbox"
+                    checked={(household.client.forms || "").split(", ").filter(Boolean).includes(formName)}
+                    onChange={(e) => {
+                      const current = (household.client.forms || "").split(", ").filter(Boolean);
+                      const next = e.target.checked ? [...current, formName] : current.filter((item) => item !== formName);
+                      updatePerson("client", "forms", next.join(", "));
+                    }}
+                  />
+                  {formName}
+                </label>
+              ))}
+            </div>
+            <p style={{ marginBottom: 0 }}>Selected: {household.client.forms || "None"}</p>
+          </div>
         </section>
 
         <section style={styles.card}>
@@ -1154,6 +1295,7 @@ export default function SipsDashboardPage() {
           <button type="button" style={styles.button} onClick={() => setView("admin")}>Back to Admin</button>
           <button type="button" style={styles.button} onClick={() => setView("agent")}>Back to Agent</button>
           <button type="button" style={styles.button} onClick={() => setView("household")}>Back to Household</button>
+          <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open sips4agents@gmail.com Calendar</button>
         </div>
         {events.length === 0 ? <p>No saved calendar events yet.</p> : null}
         {events.map((event) => (
@@ -1161,6 +1303,7 @@ export default function SipsDashboardPage() {
             <strong>{event.title}</strong>
             <p>{event.date} at {event.time} · {event.location}</p>
             <p>Agent: {event.agent}</p>
+            <pre style={{ whiteSpace: "pre-wrap", background: "#f8fafc", padding: 10, borderRadius: 10 }}>{event.returnLinks || "Return links will appear on newly created events."}</pre>
             <button type="button" style={styles.button} onClick={() => { const match = households.find((h) => h.id === event.householdId); if (match) loadHousehold(match); setView("household"); }}>Open Household</button>
           </div>
         ))}
@@ -1210,7 +1353,8 @@ export default function SipsDashboardPage() {
         <div style={styles.nav}>
           <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
           <button type="button" style={styles.button} onClick={() => setView("admin")}>Back to Admin</button>
-          <button type="button" style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+          <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open SIPS Calendar</button>
+            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Calendar</button>
         </div>
 
         <div style={styles.grid2}>
@@ -1259,13 +1403,23 @@ export default function SipsDashboardPage() {
             </select>
           </div>
           <div style={{ ...styles.grid2, marginTop: 12 }}>
-            <input style={styles.input} value={household.currentCoverage} onChange={(e) => updateHousehold("currentCoverage", e.target.value)} placeholder="Current Coverage" />
+            <select style={styles.input} value={household.currentCoverage} onChange={(e) => updateHousehold("currentCoverage", e.target.value)}>
+              <option value="">Current Coverage</option>
+              {COVERAGE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+            {household.currentCoverage === "Group" ? (
+              <select style={styles.input} value={household.groupSize} onChange={(e) => updateHousehold("groupSize", e.target.value)}>
+                <option value="">Group Size</option>
+                {GROUP_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            ) : null}
             <input style={styles.input} value={household.currentPremium} onChange={(e) => updateHousehold("currentPremium", e.target.value)} placeholder="Current Premium" />
           </div>
           <textarea style={{ ...styles.textarea, marginTop: 12 }} value={household.notes} onChange={(e) => updateHousehold("notes", e.target.value)} placeholder="Phone call notes / additional information" />
           <div style={{ ...styles.nav, marginTop: 12 }}>
             <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Household Updates</button>
-            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open SIPS Calendar</button>
+            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Calendar</button>
             <button type="button" style={styles.button} onClick={() => setView("agent")}>Go to Agent</button>
           </div>
         </div>
@@ -1323,7 +1477,8 @@ export default function SipsDashboardPage() {
             <button type="button" style={styles.button} onClick={() => setView("admin")}>Back to Admin</button>
             <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Go to Quick Rater</button>
             <button type="button" style={styles.button} onClick={() => setView("calculator")}>Go to Calculator</button>
-            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open SIPS Calendar</button>
+            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Calendar</button>
           </div>
 
           <div style={styles.grid2}>
