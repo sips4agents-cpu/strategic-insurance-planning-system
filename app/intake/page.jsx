@@ -232,7 +232,9 @@ function PersonSection({ title, data, age, onUpdate, phoneMatches }) {
   );
 }
 
-export default function IntakePage() {const searchParams = useSearchParams();
+export default function IntakePage() {
+  const searchParams = useSearchParams();
+
   const [client, setClient] = useState({ ...blankPerson });
   const [spouse, setSpouse] = useState({ ...blankPerson });
 
@@ -269,45 +271,46 @@ export default function IntakePage() {const searchParams = useSearchParams();
       const { data } = await supabase.auth.getUser();
       setUserId(data?.user?.id || null);
     }
+
     loadUser();
   }, []);
-    useEffect(() => {
-  const firstName = searchParams.get("firstName") || "";
-  const lastName = searchParams.get("lastName") || "";
-  const phone = searchParams.get("phone") || "";
-  const email = searchParams.get("email") || "";
-  const zip = searchParams.get("zip") || "";
-  const agentParam = searchParams.get("agent") || "";
-  const reasonParam = searchParams.get("reason") || "";
-  const referredByParam = searchParams.get("referredBy") || "";
-  const currentCoverageParam = searchParams.get("currentCoverage") || "";
-  const currentPremiumParam = searchParams.get("currentPremium") || "";
-  const appointmentDateParam = searchParams.get("appointmentDate") || "";
-  const appointmentTimeParam = searchParams.get("appointmentTime") || "";
-  const appointmentTypeParam = searchParams.get("appointmentType") || "";
-  const appointmentLocationParam = searchParams.get("appointmentLocation") || "";
 
-  if (firstName || lastName || phone || email || zip) {
-    setClient((prev) => ({
-      ...prev,
-      firstName: firstName || prev.firstName,
-      lastName: lastName || prev.lastName,
-      phone: phone ? formatPhone(phone) : prev.phone,
-      email: email || prev.email,
-      zip: zip || prev.zip,
-    }));
-  }
+  useEffect(() => {
+    const firstName = searchParams.get("firstName") || "";
+    const lastName = searchParams.get("lastName") || "";
+    const phone = searchParams.get("phone") || "";
+    const email = searchParams.get("email") || "";
+    const zip = searchParams.get("zip") || "";
 
-  if (agentParam) setSchedulerAgent(agentParam);
-  if (reasonParam) setAppointmentType(reasonParam);
-  if (referredByParam) setReferredBy(referredByParam);
-  if (currentCoverageParam) setCurrentCoverage(currentCoverageParam);
-  if (currentPremiumParam) setCurrentPremium(currentPremiumParam);
-  if (appointmentDateParam) setAppointmentDate(appointmentDateParam);
-  if (appointmentTimeParam) setAppointmentTime(appointmentTimeParam);
-  if (appointmentTypeParam) setAppointmentType(appointmentTypeParam);
-  if (appointmentLocationParam) setAppointmentLocation(appointmentLocationParam);
-}, [searchParams]);                                  
+    const agentParam = searchParams.get("agent") || "";
+    const appointmentTypeParam = searchParams.get("appointmentType") || searchParams.get("reason") || "";
+    const referredByParam = searchParams.get("referredBy") || "";
+    const currentCoverageParam = searchParams.get("currentCoverage") || "";
+    const currentPremiumParam = searchParams.get("currentPremium") || "";
+    const appointmentDateParam = searchParams.get("appointmentDate") || "";
+    const appointmentTimeParam = searchParams.get("appointmentTime") || "";
+    const appointmentLocationParam = searchParams.get("appointmentLocation") || "";
+
+    if (firstName || lastName || phone || email || zip) {
+      setClient((prev) => ({
+        ...prev,
+        firstName: firstName || prev.firstName,
+        lastName: lastName || prev.lastName,
+        phone: phone ? formatPhone(phone) : prev.phone,
+        email: email || prev.email,
+        zip: zip || prev.zip,
+      }));
+    }
+
+    if (agentParam) setSchedulerAgent(agentParam);
+    if (appointmentTypeParam) setAppointmentType(appointmentTypeParam);
+    if (referredByParam) setReferredBy(referredByParam);
+    if (currentCoverageParam) setCurrentCoverage(currentCoverageParam);
+    if (currentPremiumParam) setCurrentPremium(currentPremiumParam);
+    if (appointmentDateParam) setAppointmentDate(appointmentDateParam);
+    if (appointmentTimeParam) setAppointmentTime(appointmentTimeParam);
+    if (appointmentLocationParam) setAppointmentLocation(appointmentLocationParam);
+  }, [searchParams]);
 
   function updateClient(field, value) {
     let next = value;
