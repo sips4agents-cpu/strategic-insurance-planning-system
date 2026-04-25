@@ -359,6 +359,56 @@ export default function IntakePage() {
     );
   }
 
+  async function createCalendarEventOnly() {
+    const times = buildAppointmentTimes(appointmentDate, appointmentTime, appointmentDuration);
+
+    if (!times) {
+      alert("Please enter appointment date and time.");
+      return;
+    }
+
+    const clientName =
+      `${client.firstName || ""} ${client.lastName || ""}`.trim() || "Client";
+
+    const typeCode = appointmentCodeMap[appointmentType] || appointmentType;
+    const agentCode = agentInitialsMap[schedulerAgent] || schedulerAgent;
+    const aorCode = agentInitialsMap[agent] || agent || "-";
+    const healthSummary = health.length ? health.join(", ") : "None";
+
+    const description =
+      `Reason for Call: ${reason || appointmentType || "-"}\n` +
+      `Assigned Agent: ${schedulerAgent}\n` +
+      `Client: ${clientName}\n` +
+      `Phone: ${client.phone || "-"}\n` +
+      `Email: ${client.email || "-"}\n` +
+      `Age: ${clientAge || "-"}\n` +
+      `ZIP: ${client.zip || "-"}\n` +
+      `AOR: ${aorCode}\n\n` +
+      `Health Conditions:\n${healthSummary}\n\n` +
+      `Notes:\n${notes || "-"}`;
+
+    const res = await fetch("/api/calendar/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        agents: [schedulerAgent],
+        title: `[${typeCode}] ${clientName} | ${agentCode}`,
+        description,
+        location: appointmentLocation || "Office",
+        start: times.start.toISOString(),
+        end: times.end.toISOString(),
+      }),
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert("Calendar event created.");
+    } else {
+      alert("Error: " + data.error);
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
 
@@ -601,6 +651,10 @@ export default function IntakePage() {
           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
             <button type="button" onClick={checkAvailability} style={buttonStyle}>
               Check Availability
+            </button>
+
+            <button type="button" onClick={createCalendarEventOnly} style={buttonStyle}>
+              Create Calendar Event
             </button>
           </div>
 
