@@ -65,7 +65,7 @@ const EMAIL_TEMPLATES = {
 const COVERAGE_OPTIONS = ["Medicare", "Group", "Individual Health", "Cobra"];
 const GROUP_SIZE_OPTIONS = ["20 or more employees", "Less than 20 employees"];
 const PROPOSED_PREMIUM_SOURCES = ["Manual input", "Get premium from CSG rater"];
-const SIPS_GOOGLE_CALENDAR_URL = "https://calendar.google.com/calendar/u/sips4agents@gmail.com/r";
+const SIPS_GOOGLE_CALENDAR_URL = "https://calendar.google.com/calendar/u/0/r/day";
 
 const ATTACHABLE_FORMS = [
   "CMS-L564 Employer Coverage Form",
@@ -576,8 +576,8 @@ function FactFinderQuoter({ household, updatePerson, updateHousehold, updateAnci
           <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Fact Finder Updates</button>
           <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Open Quick Rater</button>
           <button type="button" style={styles.button} onClick={() => setView("calculator")}>Open Calculator</button>
-          <button type="button" style={styles.button} onClick={createCalendarEvent}>Create Calendar Event</button>
-          <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open Calendar</button>
+          <button type="button" style={styles.button} onClick={createCalendarEvent}>Create Appointment</button>
+          <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open Appointments</button>
         </div>
       </section>
     </>
@@ -858,11 +858,304 @@ function CalculatorPage({ household, updatePerson, updateAncillary, setView, sav
 }
 
 
+
+function buildIntegrationAutofillData(household) {
+  const client = household.client || {};
+  const spouse = household.spouse || {};
+
+  const baseAddress = [client.address, client.city, client.state, client.zip]
+    .filter(Boolean)
+    .join(", ");
+
+  return {
+    medicarePro: {
+      first_name: client.firstName || "",
+      last_name: client.lastName || "",
+      birthdate: client.birthdate || "",
+      email: client.email || "",
+      phone: client.phone || "",
+      zip_code: client.zip || "",
+      address: client.address || "",
+      city: client.city || "",
+      state: client.state || "",
+      full_address: baseAddress,
+      current_coverage: household.currentCoverage || "",
+      group_size: household.groupSize || "",
+      current_premium: household.currentPremium || client.currentMedSuppPremium || "",
+      assigned_agent: household.assignedAgent || "",
+      notes: household.notes || "",
+    },
+    monday: {
+      item_name: fullName(client) || "New Client",
+      first_name: client.firstName || "",
+      last_name: client.lastName || "",
+      birthdate: client.birthdate || "",
+      email: client.email || "",
+      phone: client.phone || "",
+      zip_code: client.zip || "",
+      address: client.address || "",
+      status: household.status || "New",
+      assigned_agent: household.assignedAgent || "",
+      appointment_type: household.reasonForCall || "",
+      current_coverage: household.currentCoverage || "",
+      group_size: household.groupSize || "",
+      current_premium: household.currentPremium || client.currentMedSuppPremium || "",
+    },
+    csgActuarial: {
+      applicant_first_name: client.firstName || "",
+      applicant_last_name: client.lastName || "",
+      applicant_birthdate: client.birthdate || "",
+      applicant_email: client.email || "",
+      applicant_phone: client.phone || "",
+      applicant_zip: client.zip || "",
+      applicant_address: client.address || "",
+      spouse_first_name: spouse.firstName || "",
+      spouse_last_name: spouse.lastName || "",
+      spouse_birthdate: spouse.birthdate || "",
+      spouse_email: spouse.email || "",
+      spouse_phone: spouse.phone || "",
+      spouse_zip: spouse.zip || "",
+      spouse_address: spouse.address || "",
+      client_tobacco: client.tobacco || "",
+      spouse_tobacco: spouse.tobacco || "",
+      current_premium: household.currentPremium || client.currentMedSuppPremium || "",
+    },
+  };
+}
+
+function downloadIntegrationCsv(household) {
+  const data = buildIntegrationAutofillData(household);
+  const rows = [
+    ["Platform", "Field", "Value"],
+    ...Object.entries(data).flatMap(([platform, fields]) =>
+      Object.entries(fields).map(([field, value]) => [platform, field, value || ""])
+    ),
+  ];
+
+  const csv = rows
+    .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
+    .join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `sips-autofill-${Date.now()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function IntegrationAutofillPanel({ household }) {
+  const data = buildIntegrationAutofillData(household);
+  const client = household.client || {};
+
+  function copyPlatform(platformKey) {
+    navigator.clipboard?.writeText(JSON.stringify(data[platformKey], null, 2));
+    alert("Autofill fields copied. Paste into the platform or your import/API tool.");
+  }
+
+  function copyAll() {
+    navigator.clipboard?.writeText(JSON.stringify(data, null, 2));
+    alert("All Medicare Pro, Monday, and CSG fields copied.");
+  }
+
+  function openExternal(url) {
+    if (typeof window !== "undefined") {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  }
+
+  const requiredReady = Boolean(
+    client.firstName &&
+    client.lastName &&
+    client.birthdate &&
+    client.email &&
+    client.phone &&
+    client.zip
+  );
+
+  return (
+    <section style={styles.card}>
+      <h2 style={{ marginTop: 0 }}>Medicare Pro / Monday / CSG Autofill</h2>
+      <p style={{ marginTop: 0 }}>
+        Required fields pull from the live Agent/Admin record: first name, last name, birthdate, email, phone, ZIP, and address when available.
+      </p>
+
+      <div style={{ ...styles.grid3, marginBottom: 12 }}>
+        <input style={styles.input} value={client.firstName || ""} readOnly placeholder="First Name" />
+        <input style={styles.input} value={client.lastName || ""} readOnly placeholder="Last Name" />
+        <input style={styles.input} value={client.birthdate || ""} readOnly placeholder="Birthdate" />
+      </div>
+      <div style={{ ...styles.grid3, marginBottom: 12 }}>
+        <input style={styles.input} value={client.email || ""} readOnly placeholder="Email" />
+        <input style={styles.input} value={client.phone || ""} readOnly placeholder="Phone" />
+        <input style={styles.input} value={client.zip || ""} readOnly placeholder="ZIP Code" />
+      </div>
+      <input
+        style={styles.input}
+        value={[client.address, client.city, client.state, client.zip].filter(Boolean).join(", ")}
+        readOnly
+        placeholder="Address if available"
+      />
+
+      <div style={{ marginTop: 12, padding: 12, border: "1px solid #d6dde8", borderRadius: 12, background: requiredReady ? "#ecfdf5" : "#fff7ed" }}>
+        {requiredReady
+          ? "Ready: all required autofill fields are present."
+          : "Missing required fields: add first name, last name, birthdate, email, phone, and ZIP before final platform entry."}
+      </div>
+
+      <div style={{ ...styles.nav, marginTop: 14 }}>
+        <button type="button" style={styles.button} onClick={() => copyPlatform("medicarePro")}>Copy Medicare Pro Fields</button>
+        <button type="button" style={styles.button} onClick={() => copyPlatform("monday")}>Copy Monday Fields</button>
+        <button type="button" style={styles.button} onClick={() => copyPlatform("csgActuarial")}>Copy CSG Actuarial Fields</button>
+        <button type="button" style={styles.primaryButton} onClick={copyAll}>Copy All Autofill Data</button>
+        <button type="button" style={styles.button} onClick={() => downloadIntegrationCsv(household)}>Download CSV Import</button>
+      </div>
+
+      <div style={{ ...styles.nav, marginTop: 8 }}>
+        <button type="button" style={styles.button} onClick={() => openExternal("https://www.monday.com/")}>Open Monday</button>
+        <button type="button" style={styles.button} onClick={() => openExternal("https://www.csgactuarial.com/")}>Open CSG Actuarial</button>
+      </div>
+
+      <textarea
+        style={{ ...styles.textarea, marginTop: 12 }}
+        readOnly
+        value={JSON.stringify(data, null, 2)}
+      />
+    </section>
+  );
+}
+
+
+function extractLeadFromMessage(text) {
+  const source = text || "";
+  const normalized = source.replace(/\r/g, "\n");
+  const emailMatch = normalized.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  const phoneMatch = normalized.match(/(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/);
+  const dobMatch = normalized.match(/(?:dob|birthdate|date of birth|born)\s*[:\-]?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i) || normalized.match(/\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})\b/);
+  const ageMatch = normalized.match(/(?:age)\s*[:\-]?\s*(\d{1,3})/i) || normalized.match(/\b(\d{2})\s*(?:years old|yo|yrs old)\b/i);
+  const zipMatch = normalized.match(/\b\d{5}(?:-\d{4})?\b/);
+
+  let firstName = "";
+  let lastName = "";
+  const nameLine = normalized.match(/(?:name|client|prospect)\s*[:\-]?\s*([A-Za-z][A-Za-z'\-]+(?:\s+[A-Za-z][A-Za-z'\-]+){0,3})/i);
+  if (nameLine) {
+    const parts = nameLine[1].trim().split(/\s+/);
+    firstName = parts[0] || "";
+    lastName = parts.slice(1).join(" ");
+  } else {
+    const candidate = normalized.split("\n").map((line) => line.trim()).find((line) => /^[A-Za-z][A-Za-z'\-]+\s+[A-Za-z][A-Za-z'\-]+/.test(line) && !/@/.test(line));
+    if (candidate) {
+      const cleaned = candidate.replace(/[^A-Za-z'\-\s]/g, " ").trim().split(/\s+/);
+      firstName = cleaned[0] || "";
+      lastName = cleaned.slice(1, 3).join(" ");
+    }
+  }
+
+  let address = "";
+  let city = "";
+  let state = "";
+  let zip = zipMatch ? zipMatch[0] : "";
+  const addressLine = normalized.split("\n").map((line) => line.trim()).find((line) => /^\d{2,6}\s+/.test(line) && /(street|st\b|road|rd\b|drive|dr\b|lane|ln\b|ave\b|avenue|blvd|circle|cir\b|court|ct\b|highway|hwy|way)/i.test(line));
+
+  if (addressLine) {
+    address = addressLine;
+    const cityStateZip = normalized.match(/([A-Za-z .'-]+),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)/);
+    if (cityStateZip) {
+      city = cityStateZip[1].trim();
+      state = cityStateZip[2];
+      zip = cityStateZip[3];
+    }
+  }
+
+  return { firstName, lastName, phone: phoneMatch ? formatPhone(phoneMatch[0]) : "", email: emailMatch ? emailMatch[0] : "", birthdate: dobMatch ? formatDate(dobMatch[1]) : "", age: ageMatch ? ageMatch[1] : "", address, city, state, zip };
+}
+
+function LeadCapturePage({ household, updatePerson, updateHousehold, saveIntake, setView }) {
+  const [incomingText, setIncomingText] = useState("");
+  const [leadSource, setLeadSource] = useState("Email");
+  const [captured, setCaptured] = useState(null);
+
+  function captureLead() {
+    setCaptured(extractLeadFromMessage(incomingText));
+  }
+
+  function applyCapturedToClient() {
+    const data = captured || extractLeadFromMessage(incomingText);
+    setCaptured(data);
+    Object.entries(data).forEach(([field, value]) => {
+      if (value && field !== "age") updatePerson("client", field, value);
+    });
+    updateHousehold("referredBy", leadSource);
+    updateHousehold("notes", (household.notes || "") + (household.notes ? "\n\n" : "") + "Incoming " + leadSource + " lead:\n" + incomingText);
+    saveIntake();
+  }
+
+  function applyCapturedToSpouse() {
+    const data = captured || extractLeadFromMessage(incomingText);
+    setCaptured(data);
+    Object.entries(data).forEach(([field, value]) => {
+      if (value && field !== "age") updatePerson("spouse", field, value);
+    });
+    updateHousehold("notes", (household.notes || "") + (household.notes ? "\n\n" : "") + "Incoming " + leadSource + " spouse/household info:\n" + incomingText);
+    saveIntake();
+  }
+
+  const preview = captured || extractLeadFromMessage(incomingText);
+
+  return (
+    <section style={styles.card}>
+      <h2 style={{ marginTop: 0 }}>Lead Capture</h2>
+      <p style={{ marginTop: 0 }}>Paste an incoming email, text, or WhatsApp message. SIPS will capture first name, last name, phone, email, birthdate or age, address, and ZIP when available.</p>
+      <div style={styles.nav}>
+        <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
+        <button type="button" style={styles.button} onClick={() => setView("admin")}>Go to Admin</button>
+        <button type="button" style={styles.button} onClick={() => setView("agent")}>Go to Agent</button>
+        <button type="button" style={styles.button} onClick={() => setView("household")}>Go to Household</button>
+      </div>
+      <div style={styles.grid2}>
+        <select style={styles.input} value={leadSource} onChange={(e) => setLeadSource(e.target.value)}>
+          <option value="Email">Email</option>
+          <option value="Text Message">Text Message</option>
+          <option value="WhatsApp">WhatsApp</option>
+          <option value="Website Lead">Website Lead</option>
+          <option value="Referral Message">Referral Message</option>
+        </select>
+        <select style={styles.input} value={household.assignedAgent} onChange={(e) => updateHousehold("assignedAgent", e.target.value)}>
+          {AGENTS.map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
+        </select>
+      </div>
+      <textarea style={{ ...styles.textarea, marginTop: 12, minHeight: 180 }} value={incomingText} onChange={(e) => setIncomingText(e.target.value)} placeholder="Paste incoming email, text, or WhatsApp message here..." />
+      <div style={{ ...styles.nav, marginTop: 12 }}>
+        <button type="button" style={styles.primaryButton} onClick={captureLead}>Capture Fields</button>
+        <button type="button" style={styles.button} onClick={applyCapturedToClient}>Apply to Client + Save</button>
+        <button type="button" style={styles.button} onClick={applyCapturedToSpouse}>Apply to Spouse + Save</button>
+      </div>
+      <div style={{ ...styles.card, marginTop: 16 }}>
+        <h3 style={{ marginTop: 0 }}>Captured Preview</h3>
+        <div style={styles.grid3}>
+          <input style={styles.input} value={preview.firstName || ""} readOnly placeholder="First Name" />
+          <input style={styles.input} value={preview.lastName || ""} readOnly placeholder="Last Name" />
+          <input style={styles.input} value={preview.phone || ""} readOnly placeholder="Phone" />
+          <input style={styles.input} value={preview.email || ""} readOnly placeholder="Email" />
+          <input style={styles.input} value={preview.birthdate || ""} readOnly placeholder="Birthdate" />
+          <input style={styles.input} value={preview.birthdate ? calculateAge(preview.birthdate) : preview.age || ""} readOnly placeholder="Age" />
+          <input style={styles.input} value={preview.address || ""} readOnly placeholder="Address" />
+          <input style={styles.input} value={preview.city || ""} readOnly placeholder="City" />
+          <input style={styles.input} value={preview.state || ""} readOnly placeholder="State" />
+          <input style={styles.input} value={preview.zip || ""} readOnly placeholder="ZIP" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function TopNav({ view, setView }) {
   const navItems = [
     ["dashboard", "Dashboard"],
     ["admin", "Admin Intake"],
-    ["calendar", "Calendar"],
+    ["leadCapture", "Lead Capture"],
+    ["calendar", "Appointments"],
     ["clients", "Clients"],
     ["today", "Today"],
     ["household", "Household"],
@@ -944,6 +1237,12 @@ export default function SipsDashboardPage() {
     }
   }
 
+  function openAppointmentsForType(type) {
+    updateHousehold("reasonForCall", type);
+    setView("calendar");
+    setMessage(`Appointment type selected: ${type}. Use Open sips4agents@gmail.com Appointments to view the Google calendar.`);
+  }
+
   function getReturnLinks() {
     if (typeof window === "undefined") return "Return links available inside SIPS.";
     const base = window.location.origin;
@@ -1013,7 +1312,7 @@ export default function SipsDashboardPage() {
 
     setSelectedHouseholdId(id);
     setHousehold(saved);
-    setMessage("Admin intake saved. Household, Clients, Today, and Calendar can now show this record.");
+    setMessage("Admin intake saved. Household, Clients, Today, and Appointments can now show this record.");
   }
 
   async function createCalendarEvent() {
@@ -1054,7 +1353,7 @@ export default function SipsDashboardPage() {
     };
 
     setEvents((prev) => [event, ...prev]);
-    setMessage("Calendar event created locally. If your Google Calendar API route is connected, this can also be sent there.");
+    setMessage("Appointment created locally. If your Google Calendar API route is connected, this can also be sent there.");
 
     try {
       const response = await fetch("/api/calendar/create", {
@@ -1072,7 +1371,7 @@ export default function SipsDashboardPage() {
 
       if (response.ok) {
         const data = await response.json();
-        if (data.success) setMessage("Calendar event created and sent to Google Calendar.");
+        if (data.success) setMessage("Appointment created and sent to Google Calendar.");
       }
     } catch (error) {
       // Local save remains active when API is not connected.
@@ -1097,16 +1396,31 @@ export default function SipsDashboardPage() {
     setSelectedHouseholdId(item.id);
   }
 
+  function renderLeadCapture() {
+    return (
+      <LeadCapturePage household={household} updatePerson={updatePerson} updateHousehold={updateHousehold} saveIntake={saveIntake} setView={setView} />
+    );
+  }
+
   function renderDashboard() {
     return (
       <>
         <section style={styles.card}>
           <h2 style={{ marginTop: 0 }}>Dashboard</h2>
-          <p>Use this page to move between Admin Intake, Agent Status, Calendar, Clients, Today, and Household.</p>
+          <p>Use this page to move between Admin Intake, Agent Status, Appointments, Clients, Today, and Household.</p>
           <div style={styles.nav}>
             <button type="button" style={styles.primaryButton} onClick={() => setView("admin")}>Open Admin Intake</button>
-            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open SIPS Calendar</button>
-            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Calendar</button>
+            <button type="button" style={styles.button} onClick={() => setView("leadCapture")}>Open Lead Capture</button>
+            <select
+              style={styles.input}
+              value={household.reasonForCall}
+              onChange={(e) => updateHousehold("reasonForCall", e.target.value)}
+              title="Select appointment type"
+            >
+              {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+            <button type="button" style={styles.button} onClick={() => openAppointmentsForType(household.reasonForCall)}>Open Appointments</button>
+            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Appointments</button>
             <button type="button" style={styles.button} onClick={() => setView("clients")}>Go to Clients</button>
             <button type="button" style={styles.button} onClick={() => setView("household")}>Go to Household</button>
           </div>
@@ -1124,8 +1438,16 @@ export default function SipsDashboardPage() {
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button type="button" style={styles.button} onClick={() => checkAgentStatus(agent.name)}>Check Status</button>
                   <button type="button" style={styles.button} onClick={() => { setSelectedAgent(agent.name); setView("agent"); }}>Go to Agent Page</button>
-                  <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open SIPS Calendar</button>
-            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Calendar</button>
+                  <select
+              style={styles.input}
+              value={household.reasonForCall}
+              onChange={(e) => updateHousehold("reasonForCall", e.target.value)}
+              title="Select appointment type"
+            >
+              {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+            <button type="button" style={styles.button} onClick={() => openAppointmentsForType(household.reasonForCall)}>Open Appointments</button>
+            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Appointments</button>
                 </div>
               </div>
             ))}
@@ -1142,8 +1464,16 @@ export default function SipsDashboardPage() {
           <h2 style={{ marginTop: 0 }}>Admin Intake</h2>
           <div style={styles.nav}>
             <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
-            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open SIPS Calendar</button>
-            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Calendar</button>
+            <select
+              style={styles.input}
+              value={household.reasonForCall}
+              onChange={(e) => updateHousehold("reasonForCall", e.target.value)}
+              title="Select appointment type"
+            >
+              {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+            <button type="button" style={styles.button} onClick={() => openAppointmentsForType(household.reasonForCall)}>Open Appointments</button>
+            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Appointments</button>
             <button type="button" style={styles.button} onClick={() => setView("household")}>Go to Household</button>
           </div>
         </section>
@@ -1203,6 +1533,11 @@ export default function SipsDashboardPage() {
 
         <section style={styles.card}>
           <h2 style={{ marginTop: 0 }}>Appointment Scheduler</h2>
+          <div style={{ marginBottom: 12 }}>
+            <select style={styles.input} value={household.reasonForCall} onChange={(e) => updateHousehold("reasonForCall", e.target.value)}>
+              {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+          </div>
           <div style={styles.grid2}>
             <input style={styles.input} type="date" value={appointmentDate} onChange={(e) => setAppointmentDate(e.target.value)} />
             <input style={styles.input} type="time" value={appointmentTime} onChange={(e) => setAppointmentTime(e.target.value)} />
@@ -1225,10 +1560,12 @@ export default function SipsDashboardPage() {
           </div>
           <div style={{ ...styles.nav, marginTop: 12 }}>
             <button type="button" style={styles.button} onClick={() => checkAgentStatus(household.assignedAgent)}>Check Agent Status</button>
-            <button type="button" style={styles.button} onClick={createCalendarEvent}>Create Calendar Event</button>
-            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open Calendar</button>
+            <button type="button" style={styles.button} onClick={createCalendarEvent}>Create Appointment</button>
+            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open Appointments</button>
           </div>
         </section>
+
+        <IntegrationAutofillPanel household={household} />
 
         <section style={styles.card}>
           <h2 style={{ marginTop: 0 }}>Email Template Option</h2>
@@ -1289,15 +1626,21 @@ export default function SipsDashboardPage() {
   function renderCalendar() {
     return (
       <section style={styles.card}>
-        <h2 style={{ marginTop: 0 }}>Calendar</h2>
+        <h2 style={{ marginTop: 0 }}>Appointments</h2>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontWeight: 700 }}>Appointment Type / Service</label>
+          <select style={{ ...styles.input, marginTop: 6 }} value={household.reasonForCall} onChange={(e) => updateHousehold("reasonForCall", e.target.value)}>
+            {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+          </select>
+        </div>
         <div style={styles.nav}>
           <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
           <button type="button" style={styles.button} onClick={() => setView("admin")}>Back to Admin</button>
           <button type="button" style={styles.button} onClick={() => setView("agent")}>Back to Agent</button>
           <button type="button" style={styles.button} onClick={() => setView("household")}>Back to Household</button>
-          <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open sips4agents@gmail.com Calendar</button>
+          <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open sips4agents@gmail.com Appointments</button>
         </div>
-        {events.length === 0 ? <p>No saved calendar events yet.</p> : null}
+        {events.length === 0 ? <p>No saved appointments yet.</p> : null}
         {events.map((event) => (
           <div key={event.id} style={{ border: "1px solid #d6dde8", borderRadius: 12, padding: 14, marginTop: 10 }}>
             <strong>{event.title}</strong>
@@ -1353,8 +1696,16 @@ export default function SipsDashboardPage() {
         <div style={styles.nav}>
           <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
           <button type="button" style={styles.button} onClick={() => setView("admin")}>Back to Admin</button>
-          <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open SIPS Calendar</button>
-            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Calendar</button>
+          <select
+              style={styles.input}
+              value={household.reasonForCall}
+              onChange={(e) => updateHousehold("reasonForCall", e.target.value)}
+              title="Select appointment type"
+            >
+              {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+            <button type="button" style={styles.button} onClick={() => openAppointmentsForType(household.reasonForCall)}>Open Appointments</button>
+            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Appointments</button>
         </div>
 
         <div style={styles.grid2}>
@@ -1418,8 +1769,16 @@ export default function SipsDashboardPage() {
           <textarea style={{ ...styles.textarea, marginTop: 12 }} value={household.notes} onChange={(e) => updateHousehold("notes", e.target.value)} placeholder="Phone call notes / additional information" />
           <div style={{ ...styles.nav, marginTop: 12 }}>
             <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Household Updates</button>
-            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open SIPS Calendar</button>
-            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Calendar</button>
+            <select
+              style={styles.input}
+              value={household.reasonForCall}
+              onChange={(e) => updateHousehold("reasonForCall", e.target.value)}
+              title="Select appointment type"
+            >
+              {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+            <button type="button" style={styles.button} onClick={() => openAppointmentsForType(household.reasonForCall)}>Open Appointments</button>
+            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Appointments</button>
             <button type="button" style={styles.button} onClick={() => setView("agent")}>Go to Agent</button>
           </div>
         </div>
@@ -1477,8 +1836,16 @@ export default function SipsDashboardPage() {
             <button type="button" style={styles.button} onClick={() => setView("admin")}>Back to Admin</button>
             <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Go to Quick Rater</button>
             <button type="button" style={styles.button} onClick={() => setView("calculator")}>Go to Calculator</button>
-            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open SIPS Calendar</button>
-            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Calendar</button>
+            <select
+              style={styles.input}
+              value={household.reasonForCall}
+              onChange={(e) => updateHousehold("reasonForCall", e.target.value)}
+              title="Select appointment type"
+            >
+              {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+            <button type="button" style={styles.button} onClick={() => openAppointmentsForType(household.reasonForCall)}>Open Appointments</button>
+            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Appointments</button>
           </div>
 
           <div style={styles.grid2}>
@@ -1488,6 +1855,8 @@ export default function SipsDashboardPage() {
             <button type="button" style={styles.button} onClick={() => checkAgentStatus(selectedAgent)}>Check This Agent Status</button>
           </div>
         </section>
+
+        <IntegrationAutofillPanel household={household} />
 
         <FactFinderQuoter
           household={household}
@@ -1500,7 +1869,7 @@ export default function SipsDashboardPage() {
         />
 
         <section style={styles.card}>
-          <h3 style={{ marginTop: 0 }}>{selectedAgent} Calendar Events</h3>
+          <h3 style={{ marginTop: 0 }}>{selectedAgent} Appointments</h3>
           {agentEvents.length === 0 ? <p>No saved events for this agent yet.</p> : null}
           {agentEvents.map((event) => (
             <div key={event.id} style={{ border: "1px solid #d6dde8", borderRadius: 12, padding: 14, marginTop: 10 }}>
@@ -1530,13 +1899,14 @@ export default function SipsDashboardPage() {
       <div style={styles.shell}>
         <header style={styles.header}>
           <h1 style={{ margin: 0 }}>SIPS Connect</h1>
-          <p style={{ marginBottom: 0 }}>Dashboard, Admin Intake, Agent Status, Calendar, Clients, Today, and Household in one file.</p>
+          <p style={{ marginBottom: 0 }}>Dashboard, Admin Intake, Agent Status, Appointments, Clients, Today, and Household in one file.</p>
         </header>
 
         <TopNav view={view} setView={setView} />
 
         {view === "dashboard" && renderDashboard()}
         {view === "admin" && renderAdmin()}
+        {view === "leadCapture" && renderLeadCapture()}
         {view === "calendar" && renderCalendar()}
         {view === "clients" && renderClients()}
         {view === "today" && renderToday()}
