@@ -1237,6 +1237,7 @@ function IntegrationAutofillPanel({ household }) {
   return (
     <section style={styles.card}>
       <h2 style={{ marginTop: 0 }}>Medicare Pro / Monday / CSG Autofill</h2>
+      <p style={styles.muted}>Uses first name, last name, birthdate or age, phone, email, ZIP, address, sex/gender, tobacco, agent, notes, and coverage details for client search/link or file import.</p>
       <p style={{ marginTop: 0 }}>
         Required fields pull from the live Agent/Admin record: first name, last name, birthdate, email, phone, ZIP, and address when available.
       </p>
@@ -1269,7 +1270,7 @@ function IntegrationAutofillPanel({ household }) {
         <button type="button" style={styles.button} onClick={() => copyPlatform("monday")}>Copy Monday Fields</button>
         <button type="button" style={styles.button} onClick={() => copyPlatform("csgActuarial")}>Copy CSG Actuarial Fields</button>
         <button type="button" style={styles.primaryButton} onClick={copyAll}>Copy All Autofill Data</button>
-        <button type="button" style={styles.button} onClick={() => downloadIntegrationCsv(household)}>Download CSV Import</button>
+        <button type="button" style={styles.button} onClick={() => downloadIntegrationCsv(household)}>Export Medicare Pro CSV</button>
       </div>
 
       <div style={{ ...styles.nav, marginTop: 8 }}>
@@ -1441,7 +1442,7 @@ function TopNav({ view, setView }) {
 }
 
 export default function SipsDashboardPage() {
-  const [view, setView] = useState("dashboard");
+  const [view, setView] = useState("admin");
   const [households, setHouseholds] = useState([]);
   const [selectedHouseholdId, setSelectedHouseholdId] = useState("");
   const [events, setEvents] = useState([]);
