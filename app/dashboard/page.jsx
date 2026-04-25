@@ -66,6 +66,38 @@ const COVERAGE_OPTIONS = ["Medicare", "Group", "Individual Health", "Cobra"];
 const GROUP_SIZE_OPTIONS = ["20 or more employees", "Less than 20 employees"];
 const PROPOSED_PREMIUM_SOURCES = ["Manual input", "Get premium from CSG rater"];
 const SIPS_GOOGLE_CALENDAR_URL = "https://calendar.google.com/calendar/u/0/r/day";
+const CSG_AGENCY_URL = "https://www.freemedicarereport.com/comparison_form/ainsurancepro.com";
+
+const CSG_COMPANY_OPTIONS = [
+  "AARP / UnitedHealthcare",
+  "Aetna",
+  "Aflac",
+  "Allstate / National General",
+  "American Continental",
+  "Bankers Fidelity",
+  "Blue Cross Blue Shield",
+  "Cigna",
+  "Continental Life",
+  "Globe Life",
+  "Humana",
+  "Liberty Bankers",
+  "ManhattanLife",
+  "Medico",
+  "Mutual of Omaha",
+  "Prosperity Life",
+  "Transamerica",
+  "United American",
+  "Wellabe",
+  "WoodmenLife",
+];
+
+const HOUSEHOLD_DISCOUNT_OPTIONS = [
+  { label: "No household discount", value: "0" },
+  { label: "5% household discount", value: "5" },
+  { label: "7% household discount", value: "7" },
+  { label: "10% household discount", value: "10" },
+  { label: "12% household discount", value: "12" },
+];
 
 const ATTACHABLE_FORMS = [
   "CMS-L564 Employer Coverage Form",
@@ -102,6 +134,15 @@ const blankPerson = {
   proposedPremiumSource: "Manual input",
   proposedMedSuppPremium: "",
   csgProposedPremium: "",
+  csgSelectedCompany: "",
+  csgSelectedBaseRate: "",
+  csgHouseholdDiscountPercent: "0",
+  csgRate1Company: "",
+  csgRate1: "",
+  csgRate2Company: "",
+  csgRate2: "",
+  csgRate3Company: "",
+  csgRate3: "",
   manualOverrideProposedRate: "",
   currentTotalPremium: "",
 };
@@ -273,6 +314,71 @@ function calculateAge(dateValue) {
   return String(age);
 }
 
+
+function csgGenderFromSex(sex) {
+  const value = String(sex || "").toLowerCase();
+  if (value.startsWith("m")) return "Male";
+  if (value.startsWith("f")) return "Female";
+  return "";
+}
+
+function csgTobaccoFromInput(tobacco) {
+  const value = String(tobacco || "").toLowerCase();
+  if (value === "yes" || value.includes("tobacco")) return "Tobacco user";
+  if (value === "no" || value.includes("non") || value.includes("none")) return "No tobacco use";
+  return "";
+}
+
+function buildCsgRaterUrl(person) {
+  const age = calculateAge(person.birthdate) || person.age || "";
+  const params = new URLSearchParams();
+
+  if (person.zip) {
+    params.set("zip", person.zip);
+    params.set("zipcode", person.zip);
+    params.set("zip_code", person.zip);
+  }
+
+  if (age) params.set("age", age);
+
+  const gender = csgGenderFromSex(person.sex);
+  if (gender) {
+    params.set("gender", gender);
+    params.set("sex", gender);
+  }
+
+  const tobacco = csgTobaccoFromInput(person.tobacco);
+  if (tobacco) {
+    params.set("tobacco", tobacco);
+    params.set("tobacco_use", tobacco);
+  }
+
+  const query = params.toString();
+  return query ? `${CSG_AGENCY_URL}?${query}` : CSG_AGENCY_URL;
+}
+
+function copyCsgRequiredFields(person, label) {
+  const data = {
+    applicant: label,
+    first_name: person.firstName || "",
+    last_name: person.lastName || "",
+    zip_code: person.zip || "",
+    age: calculateAge(person.birthdate) || person.age || "",
+    tobacco_use: csgTobaccoFromInput(person.tobacco),
+    gender: csgGenderFromSex(person.sex),
+  };
+
+  navigator.clipboard?.writeText(JSON.stringify(data, null, 2));
+  return data;
+}
+
+function openCsgRaterForPerson(person, label) {
+  copyCsgRequiredFields(person, label);
+  if (typeof window !== "undefined") {
+    window.open(buildCsgRaterUrl(person), "_blank", "noopener,noreferrer");
+  }
+}
+
 function fullName(person) {
   return `${person.firstName || ""} ${person.lastName || ""}`.trim() || "Client";
 }
@@ -291,13 +397,39 @@ function moneyDisplay(value) {
   return number.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
+function getCsgRateRows(person) {
+  return [
+    { rank: 1, company: person.csgRate1Company || "", rate: person.csgRate1 || "" },
+    { rank: 2, company: person.csgRate2Company || "", rate: person.csgRate2 || "" },
+    { rank: 3, company: person.csgRate3Company || "", rate: person.csgRate3 || "" },
+  ];
+}
+
+function getTopCsgRates(person) {
+  return getCsgRateRows(person)
+    .filter((row) => row.company && moneyValue(row.rate) > 0)
+    .sort((a, b) => moneyValue(a.rate) - moneyValue(b.rate))
+    .slice(0, 3);
+}
+
+function applyHouseholdDiscount(rate, discountPercent) {
+  const base = moneyValue(rate);
+  const percent = moneyValue(discountPercent);
+  if (base <= 0) return 0;
+  if (percent <= 0) return base;
+  return base * (1 - percent / 100);
+}
+
 function getEffectiveProposed(person) {
   const override = moneyValue(person.manualOverrideProposedRate);
   if (override > 0) return override;
 
   if (person.proposedPremiumSource === "Get premium from CSG rater") {
-    const csgRate = moneyValue(person.csgProposedPremium);
-    if (csgRate > 0) return csgRate;
+    const selectedRate = moneyValue(person.csgSelectedBaseRate);
+    const typedRate = moneyValue(person.csgProposedPremium);
+    const baseCsgRate = selectedRate > 0 ? selectedRate : typedRate;
+    const discountedRate = applyHouseholdDiscount(baseCsgRate, person.csgHouseholdDiscountPercent);
+    if (discountedRate > 0) return discountedRate;
   }
 
   return moneyValue(person.proposedMedSuppPremium);
@@ -576,6 +708,8 @@ function FactFinderQuoter({ household, updatePerson, updateHousehold, updateAnci
           <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Fact Finder Updates</button>
           <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Open Quick Rater</button>
           <button type="button" style={styles.button} onClick={() => setView("calculator")}>Open Calculator</button>
+          <button type="button" style={styles.button} onClick={() => openCsgRaterForPerson(household.client, "Client")}>Open CSG - Client</button>
+          <button type="button" style={styles.button} onClick={() => openCsgRaterForPerson(household.spouse, "Spouse")}>Open CSG - Spouse</button>
           <button type="button" style={styles.button} onClick={createCalendarEvent}>Create Appointment</button>
           <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open Appointments</button>
         </div>
@@ -596,6 +730,30 @@ function QuickRaterPage({ household, updatePerson, updateAncillary, setView, sav
 
   const quickPersonBlock = (label, type, person, side) => {
     const snapshot = calculatePremiumSnapshot(person, side, ancillary);
+    const topCsgRates = getTopCsgRates(person);
+
+    function selectCsgCompany(companyName) {
+      const selectedRow = getCsgRateRows(person).find((row) => row.company === companyName);
+      const baseRate = selectedRow?.rate || "";
+      const discountedRate = applyHouseholdDiscount(baseRate, person.csgHouseholdDiscountPercent);
+
+      updatePerson(type, "csgSelectedCompany", companyName);
+      updatePerson(type, "proposedCarrier", companyName);
+      updatePerson(type, "csgSelectedBaseRate", baseRate);
+      updatePerson(type, "csgProposedPremium", discountedRate ? discountedRate.toFixed(2) : baseRate);
+      updatePerson(type, "proposedPremiumSource", "Get premium from CSG rater");
+    }
+
+    function updateCsgDiscount(percent) {
+      const baseRate = moneyValue(person.csgSelectedBaseRate || person.csgProposedPremium);
+      const discountedRate = applyHouseholdDiscount(baseRate, percent);
+
+      updatePerson(type, "csgHouseholdDiscountPercent", percent);
+      if (baseRate > 0) {
+        updatePerson(type, "csgProposedPremium", discountedRate.toFixed(2));
+      }
+    }
+
     return (
       <section style={styles.card}>
         <h3 style={{ marginTop: 0 }}>{label}</h3>
@@ -636,20 +794,116 @@ function QuickRaterPage({ household, updatePerson, updateAncillary, setView, sav
                     {PROPOSED_PREMIUM_SOURCES.map((option) => <option key={option} value={option}>{option}</option>)}
                   </select>
                   {person.proposedPremiumSource === "Get premium from CSG rater" ? (
-                    <div style={{ marginTop: 8 }}>
+                    <div style={{ marginTop: 8, display: "grid", gap: 10 }}>
+                      <div style={styles.grid2}>
+                        <select
+                          style={styles.input}
+                          value={person.csgRate1Company}
+                          onChange={(e) => updatePerson(type, "csgRate1Company", e.target.value)}
+                        >
+                          <option value="">CSG company #1</option>
+                          {CSG_COMPANY_OPTIONS.map((company) => <option key={company} value={company}>{company}</option>)}
+                        </select>
+                        <input
+                          style={styles.input}
+                          value={person.csgRate1}
+                          onChange={(e) => updatePerson(type, "csgRate1", e.target.value)}
+                          placeholder="Rate #1"
+                        />
+                      </div>
+
+                      <div style={styles.grid2}>
+                        <select
+                          style={styles.input}
+                          value={person.csgRate2Company}
+                          onChange={(e) => updatePerson(type, "csgRate2Company", e.target.value)}
+                        >
+                          <option value="">CSG company #2</option>
+                          {CSG_COMPANY_OPTIONS.map((company) => <option key={company} value={company}>{company}</option>)}
+                        </select>
+                        <input
+                          style={styles.input}
+                          value={person.csgRate2}
+                          onChange={(e) => updatePerson(type, "csgRate2", e.target.value)}
+                          placeholder="Rate #2"
+                        />
+                      </div>
+
+                      <div style={styles.grid2}>
+                        <select
+                          style={styles.input}
+                          value={person.csgRate3Company}
+                          onChange={(e) => updatePerson(type, "csgRate3Company", e.target.value)}
+                        >
+                          <option value="">CSG company #3</option>
+                          {CSG_COMPANY_OPTIONS.map((company) => <option key={company} value={company}>{company}</option>)}
+                        </select>
+                        <input
+                          style={styles.input}
+                          value={person.csgRate3}
+                          onChange={(e) => updatePerson(type, "csgRate3", e.target.value)}
+                          placeholder="Rate #3"
+                        />
+                      </div>
+
+                      <div style={{ padding: 12, border: "1px solid #d6dde8", borderRadius: 10, background: "#f8fafc" }}>
+                        <strong>Top 3 by rate</strong>
+                        <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+                          {topCsgRates.length ? topCsgRates.map((row, index) => (
+                            <button
+                              key={row.company + row.rate}
+                              type="button"
+                              style={styles.button}
+                              onClick={() => selectCsgCompany(row.company)}
+                            >
+                              #{index + 1} {row.company} — {moneyDisplay(moneyValue(row.rate))}
+                            </button>
+                          )) : <span>Enter CSG company/rate rows above to rank the top 3.</span>}
+                        </div>
+                      </div>
+
+                      <div style={styles.grid2}>
+                        <select
+                          style={styles.input}
+                          value={person.csgSelectedCompany}
+                          onChange={(e) => selectCsgCompany(e.target.value)}
+                        >
+                          <option value="">Select company of choice</option>
+                          {CSG_COMPANY_OPTIONS.map((company) => <option key={company} value={company}>{company}</option>)}
+                        </select>
+                        <select
+                          style={styles.input}
+                          value={person.csgHouseholdDiscountPercent || "0"}
+                          onChange={(e) => updateCsgDiscount(e.target.value)}
+                        >
+                          {HOUSEHOLD_DISCOUNT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                        </select>
+                      </div>
+
                       <input
                         style={styles.input}
                         value={person.csgProposedPremium}
                         onChange={(e) => updatePerson(type, "csgProposedPremium", e.target.value)}
-                        placeholder="Premium from CSG Rater"
+                        placeholder="Selected / discounted premium to Quick Calculator"
                       />
-                      <button
-                        type="button"
-                        style={{ ...styles.button, marginTop: 8 }}
-                        onClick={() => window.open("https://csgactuarial.com", "_blank", "noopener,noreferrer")}
-                      >
-                        Open CSG Rater
-                      </button>
+
+                      <div style={styles.nav}>
+                        <button type="button" style={styles.button} onClick={() => openCsgRaterForPerson(person, label)}>
+                          Open CSG Rater for {label}
+                        </button>
+                        <button
+                          type="button"
+                          style={styles.primaryButton}
+                          onClick={() => {
+                            const baseRate = person.csgSelectedBaseRate || person.csgProposedPremium;
+                            const discounted = applyHouseholdDiscount(baseRate, person.csgHouseholdDiscountPercent);
+                            updatePerson(type, "csgProposedPremium", discounted ? discounted.toFixed(2) : person.csgProposedPremium);
+                            updatePerson(type, "proposedMedSuppPremium", discounted ? discounted.toFixed(2) : person.csgProposedPremium);
+                          }}
+                        >
+                          Apply Household Discount / Push to Calculator
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <input
@@ -902,6 +1156,12 @@ function buildIntegrationAutofillData(household) {
       current_premium: household.currentPremium || client.currentMedSuppPremium || "",
     },
     csgActuarial: {
+      client_csg_link: buildCsgRaterUrl(client),
+      spouse_csg_link: buildCsgRaterUrl(spouse),
+      client_csg_gender: csgGenderFromSex(client.sex),
+      spouse_csg_gender: csgGenderFromSex(spouse.sex),
+      client_csg_tobacco_use: csgTobaccoFromInput(client.tobacco),
+      spouse_csg_tobacco_use: csgTobaccoFromInput(spouse.tobacco),
       applicant_first_name: client.firstName || "",
       applicant_last_name: client.lastName || "",
       applicant_birthdate: client.birthdate || "",
@@ -1014,7 +1274,8 @@ function IntegrationAutofillPanel({ household }) {
 
       <div style={{ ...styles.nav, marginTop: 8 }}>
         <button type="button" style={styles.button} onClick={() => openExternal("https://www.monday.com/")}>Open Monday</button>
-        <button type="button" style={styles.button} onClick={() => openExternal("https://www.csgactuarial.com/")}>Open CSG Actuarial</button>
+        <button type="button" style={styles.button} onClick={() => openCsgRaterForPerson(household.client, "Client")}>Open CSG - Client</button>
+        <button type="button" style={styles.button} onClick={() => openCsgRaterForPerson(household.spouse, "Spouse")}>Open CSG - Spouse</button>
       </div>
 
       <textarea
