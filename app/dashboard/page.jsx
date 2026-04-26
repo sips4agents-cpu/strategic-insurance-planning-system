@@ -11,6 +11,36 @@ const AGENTS = [
   { name: "Christiana Grant", initials: "CG", color: "Purple" },
 ];
 
+const BUSINESS_STATUS_OPTIONS = [
+  "New",
+  "Written Business",
+  "Pending Business",
+  "Issued Business",
+  "Declined Business",
+  "Rate Increase Call",
+  "Needs Review",
+  "Scheduled",
+  "In Progress",
+  "Complete",
+];
+
+const PIPELINE_STATUS_OPTIONS = [
+  "Written Business",
+  "Pending Business",
+  "Issued Business",
+  "Declined Business",
+];
+
+const RATE_INCREASE_CALL_STATUSES = [
+  "Not Called",
+  "Left Message",
+  "Spoke With Client",
+  "Appointment Set",
+  "No Answer",
+  "Do Not Call",
+  "Completed",
+];
+
 const APPOINTMENT_TYPES = [
   "Phone appointment",
   "Office appointment",
@@ -312,6 +342,16 @@ const blankHousehold = {
   id: "",
   assignedAgent: "Admin",
   status: "New",
+  businessStatus: "New",
+  applicationDate: "",
+  carrier: "",
+  policyNumber: "",
+  rateIncreaseDate: "",
+  rateIncreaseAmount: "",
+  callStatus: "Not Called",
+  lastCallDate: "",
+  nextCallDate: "",
+  sheetRowId: "",
   referredBy: "",
   currentCoverage: "",
   groupSize: "",
@@ -415,6 +455,7 @@ const styles = {
     cursor: "pointer",
     fontWeight: 700,
   },
+  pipelineBadge: { display: "inline-block", padding: "6px 10px", borderRadius: 999, background: "#f8fafc", border: "1px solid #cbd5e1", fontSize: 12, fontWeight: 800, marginRight: 6, marginBottom: 6 },
   statusPill: {
     display: "inline-block",
     padding: "6px 10px",
@@ -1550,6 +1591,8 @@ function SidebarNav({ view, setView, message }) {
     ["leadCapture", "Lead Capture"],
     ["calendar", "Calendar / Availability"],
     ["clients", "Clients"],
+    ["currentClients", "Current Clients"],
+    ["status", "Status Pipeline"],
     ["today", "Today"],
     ["household", "Household"],
     ["agent", "Agent"],
@@ -1590,6 +1633,9 @@ export default function SipsDashboardPage() {
   const [appointmentsTypeFilter, setAppointmentsTypeFilter] = useState("All");
   const [calendarViewMode, setCalendarViewMode] = useState("Day View");
   const [clientsAgentFilter, setClientsAgentFilter] = useState("All");
+  const [pipelineStatusFilter, setPipelineStatusFilter] = useState("All");
+  const [currentClientSearch, setCurrentClientSearch] = useState("");
+  const [rateCallFilter, setRateCallFilter] = useState("All");
   const [appointmentSearchFrom, setAppointmentSearchFrom] = useState("");
   const [appointmentSearchTo, setAppointmentSearchTo] = useState("");
   const [appointmentSearchText, setAppointmentSearchText] = useState("");
@@ -1920,6 +1966,109 @@ export default function SipsDashboardPage() {
     setSelectedHouseholdId(item.id);
   }
 
+  function updateSavedHousehold(id, field, value) {
+    setHouseholds((prev) => prev.map((item) => item.id === id ? { ...item, [field]: value, updatedAt: new Date().toLocaleString() } : item));
+    if (household.id === id) updateHousehold(field, value);
+    setMessage("Client record updated in the dashboard sheet.");
+  }
+
+  function parseSheetRows(text) {
+    const lines = String(text || "").split(/\r?\n/).filter((line) => line.trim());
+    if (!lines.length) return [];
+    const splitLine = (line) => line.includes("\t") ? line.split("\t") : line.split(",");
+    const headers = splitLine(lines[0]).map((h) => h.trim().toLowerCase().replace(/[^a-z0-9]/g, ""));
+    const find = (row, names) => {
+      for (const name of names) {
+        const key = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const index = headers.indexOf(key);
+        if (index >= 0) return (row[index] || "").trim();
+      }
+      return "";
+    };
+
+    return lines.slice(1).map((line, index) => {
+      const row = splitLine(line).map((cell) => cell.replace(/^"|"$/g, "").trim());
+      const firstName = find(row, ["First Name", "First", "Client First Name"]);
+      const lastName = find(row, ["Last Name", "Last", "Client Last Name"]);
+      const full = find(row, ["Name", "Client Name", "Full Name"]);
+      const parts = full && !firstName ? full.split(/\s+/) : [];
+      const client = {
+        ...blankPerson,
+        firstName: firstName || parts[0] || "",
+        lastName: lastName || parts.slice(1).join(" ") || "",
+        phone: formatPhone(find(row, ["Phone", "Phone Number", "Client Phone"])),
+        email: find(row, ["Email", "Client Email"]),
+        birthdate: formatDate(find(row, ["DOB", "Birthdate", "Date of Birth"])),
+        address: find(row, ["Address", "Street Address"]),
+        city: find(row, ["City"]),
+        state: find(row, ["State"]),
+        zip: find(row, ["Zip", "ZIP Code", "Postal Code"]),
+        currentCarrier: find(row, ["Carrier", "Current Carrier", "Company"]),
+        currentMedSuppPremium: find(row, ["Current Premium", "Premium", "Monthly Premium"]),
+      };
+      return {
+        ...blankHousehold,
+        id: `CC-${Date.now()}-${index}`,
+        status: "Rate Increase Call",
+        businessStatus: find(row, ["Business Status", "Status"]) || "Rate Increase Call",
+        assignedAgent: find(row, ["Agent", "Assigned Agent"]) || "Admin",
+        currentPremium: client.currentMedSuppPremium,
+        carrier: client.currentCarrier,
+        policyNumber: find(row, ["Policy Number", "Policy #"]),
+        rateIncreaseDate: find(row, ["Rate Increase Date", "Increase Date", "Renewal Date"]),
+        rateIncreaseAmount: find(row, ["Rate Increase Amount", "Increase Amount", "New Premium"]),
+        callStatus: find(row, ["Call Status"]) || "Not Called",
+        nextCallDate: find(row, ["Next Call Date", "Call Date"]),
+        sheetRowId: find(row, ["Row ID", "ID"]) || `IMPORT-${Date.now()}-${index}`,
+        reasonForCall: "Rate increase review",
+        notes: find(row, ["Notes", "Comments"]),
+        client,
+        spouse: { ...blankPerson },
+        ancillary: { ...blankAncillary },
+        createdAt: new Date().toLocaleString(),
+      };
+    }).filter((item) => item.client.firstName || item.client.lastName || item.client.phone || item.client.email);
+  }
+
+  function handleCurrentClientUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const imported = parseSheetRows(reader.result);
+      setHouseholds((prev) => [...imported, ...prev]);
+      setMessage(`${imported.length} current client record(s) imported for rate-increase calls.`);
+    };
+    reader.readAsText(file);
+  }
+
+  function downloadCurrentClientSheetTemplate() {
+    const headers = ["First Name","Last Name","Phone","Email","DOB","Address","City","State","ZIP","Carrier","Policy Number","Current Premium","Rate Increase Date","Rate Increase Amount","Agent","Call Status","Next Call Date","Notes"];
+    const sample = ["Jane","Client","601-555-1212","jane@example.com","01/01/1955","123 Main St","Pearl","MS","39208","Aetna","POL123","185.00","06/01/2026","22.00","Admin","Not Called","","Upcoming rate increase review"];
+    const csv = [headers, sample].map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "sips-current-client-rate-increase-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportDashboardSheet() {
+    const headers = ["ID","First Name","Last Name","Phone","Email","Agent","Business Status","Call Status","Carrier","Policy Number","Current Premium","Rate Increase Date","Rate Increase Amount","Next Call Date","Notes"];
+    const rows = households.map((item) => [item.id, item.client?.firstName, item.client?.lastName, item.client?.phone, item.client?.email, item.assignedAgent, item.businessStatus || item.status, item.callStatus, item.carrier || item.client?.currentCarrier, item.policyNumber, item.currentPremium || item.client?.currentMedSuppPremium, item.rateIncreaseDate, item.rateIncreaseAmount, item.nextCallDate, item.notes]);
+    const csv = [headers, ...rows].map((row) => row.map((cell) => `"${String(cell || "").replaceAll('"', '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `sips-dashboard-sheet-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+
   function renderLeadCapture() {
     return (
       <LeadCapturePage household={household} updatePerson={updatePerson} updateHousehold={updateHousehold} saveIntake={saveIntake} setView={setView} />
@@ -1996,6 +2145,8 @@ export default function SipsDashboardPage() {
             <button type="button" style={styles.button} onClick={() => setView("calendar")}>Search Calendar</button>
             <button type="button" style={styles.button} onClick={() => { const today = new Date().toISOString().slice(0, 10); setAppointmentSearchFrom(today); setAppointmentSearchTo(today); setView("calendar"); }}>Today</button>
             <button type="button" style={styles.button} onClick={() => setView("clients")}>Clients</button>
+            <button type="button" style={styles.button} onClick={() => setView("currentClients")}>Current Clients / Rate Calls</button>
+            <button type="button" style={styles.button} onClick={() => setView("status")}>Status Pipeline</button>
             <button type="button" style={styles.button} onClick={() => setView("agent")}>Agent Page</button>
             <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Google Calendar</button>
           </div>
@@ -2008,9 +2159,16 @@ export default function SipsDashboardPage() {
             <div><strong>Client:</strong> {activeClient}</div>
             <div><strong>Phone:</strong> {household.client.phone || "-"}</div>
             <div><strong>Agent:</strong> {household.assignedAgent || "Admin"}</div>
-            <div><strong>Status:</strong> {household.status || "New"}</div>
+            <div><strong>Status:</strong> {household.businessStatus || household.status || "New"}</div>
             <div><strong>Reason:</strong> {household.reasonForCall || "-"}</div>
             <div><strong>Premium:</strong> {household.currentPremium || household.client.currentMedSuppPremium || "-"}</div>
+          </div>
+          <div style={{ ...styles.grid3, marginTop: 12 }}>
+            <select style={styles.input} value={household.businessStatus || household.status || "New"} onChange={(e) => updateHousehold("businessStatus", e.target.value)}>
+              {BUSINESS_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
+            </select>
+            <input style={styles.input} value={household.carrier || ""} onChange={(e) => updateHousehold("carrier", e.target.value)} placeholder="Carrier / Company" />
+            <input style={styles.input} value={household.policyNumber || ""} onChange={(e) => updateHousehold("policyNumber", e.target.value)} placeholder="Policy Number" />
           </div>
           <div style={{ ...styles.nav, marginTop: 12 }}>
             <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Current Record</button>
@@ -2393,6 +2551,111 @@ export default function SipsDashboardPage() {
   }
 
 
+
+  function renderStatusPipeline() {
+    const counts = PIPELINE_STATUS_OPTIONS.reduce((acc, status) => {
+      acc[status] = households.filter((item) => (item.businessStatus || item.status) === status).length;
+      return acc;
+    }, {});
+    const filtered = households.filter((item) => pipelineStatusFilter === "All" || (item.businessStatus || item.status) === pipelineStatusFilter);
+
+    return (
+      <section style={styles.card}>
+        <h2 style={{ marginTop: 0 }}>Status Pipeline</h2>
+        <p style={{ marginTop: 0 }}>Track applications from written business through pending, issued, or declined.</p>
+        <div style={{ marginBottom: 12 }}>
+          {PIPELINE_STATUS_OPTIONS.map((status) => <span key={status} style={styles.pipelineBadge}>{status}: {counts[status] || 0}</span>)}
+        </div>
+        <div style={{ ...styles.grid2, marginBottom: 12 }}>
+          <select style={styles.input} value={pipelineStatusFilter} onChange={(e) => setPipelineStatusFilter(e.target.value)}>
+            <option value="All">All Statuses</option>
+            {PIPELINE_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
+          </select>
+          <button type="button" style={styles.button} onClick={exportDashboardSheet}>Export Sheet Update</button>
+        </div>
+        {filtered.length === 0 ? <p>No records in this status.</p> : null}
+        {filtered.map((item) => (
+          <div key={item.id} style={{ border: "1px solid #d6dde8", borderRadius: 12, padding: 14, marginTop: 10 }}>
+            <div style={styles.grid3}>
+              <div><strong>{fullName(item.client)}</strong><br />{item.client?.phone || "No phone"}</div>
+              <select style={styles.input} value={item.businessStatus || item.status || "New"} onChange={(e) => updateSavedHousehold(item.id, "businessStatus", e.target.value)}>
+                {BUSINESS_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
+              </select>
+              <input style={styles.input} value={item.policyNumber || ""} onChange={(e) => updateSavedHousehold(item.id, "policyNumber", e.target.value)} placeholder="Policy Number" />
+              <input style={styles.input} value={item.carrier || item.client?.currentCarrier || ""} onChange={(e) => updateSavedHousehold(item.id, "carrier", e.target.value)} placeholder="Carrier" />
+              <input style={styles.input} value={item.applicationDate || ""} onChange={(e) => updateSavedHousehold(item.id, "applicationDate", e.target.value)} placeholder="Application Date" />
+              <select style={styles.input} value={item.assignedAgent || "Admin"} onChange={(e) => updateSavedHousehold(item.id, "assignedAgent", e.target.value)}>
+                {AGENTS.map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
+              </select>
+            </div>
+            <textarea style={{ ...styles.textarea, marginTop: 10, minHeight: 70 }} value={item.notes || ""} onChange={(e) => updateSavedHousehold(item.id, "notes", e.target.value)} placeholder="Status notes / application updates" />
+            <div style={{ ...styles.nav, marginTop: 10 }}>
+              <button type="button" style={styles.button} onClick={() => { loadHousehold(item); setView("household"); }}>Open Household</button>
+              <button type="button" style={styles.button} onClick={() => { loadHousehold(item); setView("initialIntake"); }}>Schedule Follow Up</button>
+            </div>
+          </div>
+        ))}
+      </section>
+    );
+  }
+
+  function renderCurrentClients() {
+    const search = currentClientSearch.toLowerCase();
+    const rateClients = households.filter((item) => {
+      const text = `${fullName(item.client)} ${item.client?.phone || ""} ${item.client?.email || ""} ${item.carrier || ""} ${item.policyNumber || ""}`.toLowerCase();
+      const matchesSearch = !search || text.includes(search);
+      const matchesCall = rateCallFilter === "All" || (item.callStatus || "Not Called") === rateCallFilter;
+      const isCurrentClient = item.status === "Rate Increase Call" || item.businessStatus === "Rate Increase Call" || item.rateIncreaseDate || item.rateIncreaseAmount;
+      return matchesSearch && matchesCall && isCurrentClient;
+    });
+
+    return (
+      <section style={styles.card}>
+        <h2 style={{ marginTop: 0 }}>Current Clients — Rate Increase Calls</h2>
+        <p style={{ marginTop: 0 }}>Upload an Excel-saved CSV to create phone-call records for clients with upcoming rate increases.</p>
+        <div style={styles.nav}>
+          <button type="button" style={styles.primaryButton} onClick={downloadCurrentClientSheetTemplate}>Download Sheet Template</button>
+          <label style={{ ...styles.button, display: "inline-block" }}>
+            Upload Excel / CSV
+            <input type="file" accept=".csv,.txt" onChange={handleCurrentClientUpload} style={{ display: "none" }} />
+          </label>
+          <button type="button" style={styles.button} onClick={exportDashboardSheet}>Export Updated Sheet</button>
+        </div>
+        <div style={{ ...styles.grid3, marginTop: 12 }}>
+          <input style={styles.input} value={currentClientSearch} onChange={(e) => setCurrentClientSearch(e.target.value)} placeholder="Search name, phone, carrier, policy" />
+          <select style={styles.input} value={rateCallFilter} onChange={(e) => setRateCallFilter(e.target.value)}>
+            <option value="All">All Call Statuses</option>
+            {RATE_INCREASE_CALL_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+          </select>
+          <button type="button" style={styles.button} onClick={() => setView("calendar")}>View Calendar Availability</button>
+        </div>
+        {rateClients.length === 0 ? <p>No rate-increase call records loaded yet.</p> : null}
+        {rateClients.map((item) => (
+          <div key={item.id} style={{ border: "1px solid #d6dde8", borderRadius: 12, padding: 14, marginTop: 10 }}>
+            <div style={styles.grid3}>
+              <div><strong>{fullName(item.client)}</strong><br />{item.client?.phone || "No phone"}<br />{item.client?.email || "No email"}</div>
+              <div><strong>Carrier:</strong> {item.carrier || item.client?.currentCarrier || "-"}<br /><strong>Policy:</strong> {item.policyNumber || "-"}<br /><strong>Premium:</strong> {item.currentPremium || item.client?.currentMedSuppPremium || "-"}</div>
+              <div><strong>Increase Date:</strong> {item.rateIncreaseDate || "-"}<br /><strong>Increase Amount:</strong> {item.rateIncreaseAmount || "-"}</div>
+              <select style={styles.input} value={item.callStatus || "Not Called"} onChange={(e) => updateSavedHousehold(item.id, "callStatus", e.target.value)}>
+                {RATE_INCREASE_CALL_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+              </select>
+              <input style={styles.input} value={item.nextCallDate || ""} onChange={(e) => updateSavedHousehold(item.id, "nextCallDate", e.target.value)} placeholder="Next Call Date" />
+              <select style={styles.input} value={item.assignedAgent || "Admin"} onChange={(e) => updateSavedHousehold(item.id, "assignedAgent", e.target.value)}>
+                {AGENTS.map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
+              </select>
+            </div>
+            <textarea style={{ ...styles.textarea, marginTop: 10, minHeight: 70 }} value={item.notes || ""} onChange={(e) => updateSavedHousehold(item.id, "notes", e.target.value)} placeholder="Call notes / rate increase notes" />
+            <div style={{ ...styles.nav, marginTop: 10 }}>
+              <button type="button" style={styles.primaryButton} onClick={() => { loadHousehold(item); setAppointmentLocation("Phone Call"); setView("initialIntake"); }}>Set Phone Call</button>
+              <button type="button" style={styles.button} onClick={() => { loadHousehold(item); setView("household"); }}>Open Client</button>
+              <button type="button" style={styles.button} onClick={() => { loadHousehold(item); setView("calendar"); }}>Check Calendar</button>
+            </div>
+          </div>
+        ))}
+      </section>
+    );
+  }
+
   function renderClients() {
     const filteredHouseholds = households.filter((item) => {
       return clientsAgentFilter === "All" || item.assignedAgent === clientsAgentFilter;
@@ -2688,6 +2951,8 @@ export default function SipsDashboardPage() {
         {view === "leadCapture" && renderLeadCapture()}
         {view === "calendar" && renderCalendar()}
         {view === "clients" && renderClients()}
+        {view === "currentClients" && renderCurrentClients()}
+        {view === "status" && renderStatusPipeline()}
         {view === "today" && renderToday()}
         {view === "household" && renderHousehold()}
         {view === "agent" && renderAgentPage()}
