@@ -35,6 +35,23 @@ const APPOINTMENT_CODE = {
   "Business/HR director": "HR",
 };
 
+
+const CALENDAR_VIEW_OPTIONS = [
+  "Day View",
+  "Week View",
+  "Month View",
+  "Agent View",
+  "All Agents View",
+  "Open Slots View",
+  "Appointment Type View",
+];
+
+const APPOINTMENT_TIME_SLOTS = [
+  "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
+  "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
+  "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
+];
+
 const HEALTH_OPTIONS = [
   "C-PAP",
   "Receiving therapy",
@@ -1531,7 +1548,7 @@ function SidebarNav({ view, setView, message }) {
     ["admin", "Admin Hub"],
     ["initialIntake", "Initial Intake"],
     ["leadCapture", "Lead Capture"],
-    ["calendar", "Appointments"],
+    ["calendar", "Calendar / Availability"],
     ["clients", "Clients"],
     ["today", "Today"],
     ["household", "Household"],
@@ -1571,6 +1588,7 @@ export default function SipsDashboardPage() {
   const [selectedAgent, setSelectedAgent] = useState("Admin");
   const [appointmentsAgentFilter, setAppointmentsAgentFilter] = useState("All");
   const [appointmentsTypeFilter, setAppointmentsTypeFilter] = useState("All");
+  const [calendarViewMode, setCalendarViewMode] = useState("Day View");
   const [clientsAgentFilter, setClientsAgentFilter] = useState("All");
   const [appointmentSearchFrom, setAppointmentSearchFrom] = useState("");
   const [appointmentSearchTo, setAppointmentSearchTo] = useState("");
@@ -2041,7 +2059,7 @@ export default function SipsDashboardPage() {
           <div style={styles.nav}>
             <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Intake</button>
             <button type="button" style={styles.primaryButton} onClick={createCalendarEvent}>Schedule Appointment</button>
-            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
+            <button type="button" style={styles.button} onClick={() => { setCalendarViewMode("Open Slots View"); setAppointmentSearchFrom(appointmentDate || new Date().toISOString().slice(0, 10)); setAppointmentSearchTo(appointmentDate || new Date().toISOString().slice(0, 10)); setView("calendar"); }}>Check Availability / Open Slots</button>
             <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Calendar</button>
             <button type="button" style={styles.button} onClick={() => setView("admin")}>Return to Admin</button>
           </div>
@@ -2131,104 +2149,212 @@ export default function SipsDashboardPage() {
 
 
   function renderCalendar() {
+    const today = new Date().toISOString().slice(0, 10);
+    const activeDate = appointmentSearchFrom || appointmentDate || today;
+
+    function addDays(dateString, days) {
+      const date = new Date(`${dateString}T00:00:00`);
+      date.setDate(date.getDate() + days);
+      return date.toISOString().slice(0, 10);
+    }
+
+    function getRangeForView() {
+      if (calendarViewMode === "Week View") return { from: activeDate, to: addDays(activeDate, 6) };
+      if (calendarViewMode === "Month View") return { from: activeDate.slice(0, 8) + "01", to: addDays(activeDate.slice(0, 8) + "01", 34) };
+      if (appointmentSearchFrom || appointmentSearchTo) return { from: appointmentSearchFrom, to: appointmentSearchTo };
+      return { from: activeDate, to: activeDate };
+    }
+
+    const range = getRangeForView();
     const filteredEvents = events.filter((event) => {
-      const agentMatch = appointmentsAgentFilter === "All" || event.agent === appointmentsAgentFilter;
+      const viewForcesAllAgents = calendarViewMode === "All Agents View";
+      const agentMatch = viewForcesAllAgents || appointmentsAgentFilter === "All" || event.agent === appointmentsAgentFilter;
       const typeMatch = appointmentsTypeFilter === "All" || event.appointmentType === appointmentsTypeFilter;
-      const fromMatch = !appointmentSearchFrom || event.date >= appointmentSearchFrom;
-      const toMatch = !appointmentSearchTo || event.date <= appointmentSearchTo;
+      const fromMatch = !range.from || event.date >= range.from;
+      const toMatch = !range.to || event.date <= range.to;
       const text = appointmentSearchText.toLowerCase().trim();
       const textMatch = !text || [event.title, event.clientName, event.agent, event.appointmentType, event.location, event.description].join(" ").toLowerCase().includes(text);
       return agentMatch && typeMatch && fromMatch && toMatch && textMatch;
-    });
+    }).sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+
+    const dateList = [];
+    if (range.from && range.to) {
+      let cursor = range.from;
+      let guard = 0;
+      while (cursor <= range.to && guard < 35) {
+        dateList.push(cursor);
+        cursor = addDays(cursor, 1);
+        guard += 1;
+      }
+    } else {
+      dateList.push(activeDate);
+    }
+
+    const visibleAgents = calendarViewMode === "All Agents View"
+      ? AGENTS.map((agent) => agent.name)
+      : [appointmentsAgentFilter === "All" ? (household.assignedAgent || selectedAgent || "Admin") : appointmentsAgentFilter];
+
+    function isSlotBooked(date, time, agentName) {
+      return events.some((event) => event.date === date && event.time === time && event.agent === agentName);
+    }
+
+    function bookSlot(date, time, agentName) {
+      setAppointmentDate(date);
+      setAppointmentTime(time);
+      updateHousehold("assignedAgent", agentName);
+      setAppointmentsAgentFilter(agentName);
+      setView("initialIntake");
+      setMessage(`Selected ${date} at ${time} for ${agentName}. Complete Initial Intake, then click Schedule Appointment.`);
+    }
+
+    function setQuickView(mode) {
+      setCalendarViewMode(mode);
+      const baseDate = appointmentSearchFrom || appointmentDate || today;
+      if (mode === "Day View" || mode === "Agent View" || mode === "All Agents View" || mode === "Open Slots View" || mode === "Appointment Type View") {
+        setAppointmentSearchFrom(baseDate);
+        setAppointmentSearchTo(baseDate);
+      }
+      if (mode === "Week View") {
+        setAppointmentSearchFrom(baseDate);
+        setAppointmentSearchTo(addDays(baseDate, 6));
+      }
+      if (mode === "Month View") {
+        const first = baseDate.slice(0, 8) + "01";
+        setAppointmentSearchFrom(first);
+        setAppointmentSearchTo(addDays(first, 34));
+      }
+    }
+
+    const groupedByDate = dateList.map((date) => ({
+      date,
+      events: filteredEvents.filter((event) => event.date === date),
+    }));
 
     return (
-      <section style={styles.card}>
-        <h2 style={{ marginTop: 0 }}>Appointments</h2>
+      <>
+        <section style={styles.card}>
+          <h2 style={{ marginTop: 0 }}>Calendar / Availability</h2>
+          <p style={{ marginTop: 0 }}>Choose Day, Week, Month, Agent, All Agents, Appointment Type, or Open Slots. Admin can see booked times and pick an open slot before scheduling from Initial Intake.</p>
 
-        <div style={{ ...styles.grid3, marginBottom: 14 }}>
-          <div>
-            <label style={{ fontWeight: 700 }}>Search From</label>
-            <input style={{ ...styles.input, marginTop: 6 }} type="date" value={appointmentSearchFrom} onChange={(e) => setAppointmentSearchFrom(e.target.value)} />
-          </div>
-          <div>
-            <label style={{ fontWeight: 700 }}>Search To</label>
-            <input style={{ ...styles.input, marginTop: 6 }} type="date" value={appointmentSearchTo} onChange={(e) => setAppointmentSearchTo(e.target.value)} />
-          </div>
-          <div>
-            <label style={{ fontWeight: 700 }}>Search Text</label>
-            <input style={{ ...styles.input, marginTop: 6 }} value={appointmentSearchText} onChange={(e) => setAppointmentSearchText(e.target.value)} placeholder="Client, agent, phone, type" />
-          </div>
-        </div>
-        <div style={{ ...styles.nav, marginBottom: 14 }}>
-          <button type="button" style={styles.primaryButton} onClick={() => { const today = new Date().toISOString().slice(0, 10); setAppointmentSearchFrom(today); setAppointmentSearchTo(today); }}>Today</button>
-          <button type="button" style={styles.button} onClick={() => { setAppointmentSearchFrom(""); setAppointmentSearchTo(""); setAppointmentSearchText(""); }}>Clear Appointment Search</button>
-        </div>
-
-        <div style={styles.grid3}>
-          <div>
-            <label style={{ fontWeight: 700 }}>View Agent</label>
-            <select
-              style={{ ...styles.input, marginTop: 6 }}
-              value={appointmentsAgentFilter}
-              onChange={(e) => setAppointmentsAgentFilter(e.target.value)}
-            >
-              <option value="All">All Agents</option>
-              {AGENTS.map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
-            </select>
+          <div style={{ ...styles.nav, marginBottom: 12 }}>
+            {CALENDAR_VIEW_OPTIONS.map((mode) => (
+              <button key={mode} type="button" style={calendarViewMode === mode ? styles.primaryButton : styles.button} onClick={() => setQuickView(mode)}>
+                {mode.replace(" View", "")}
+              </button>
+            ))}
           </div>
 
-          <div>
-            <label style={{ fontWeight: 700 }}>Appointment Type / Service</label>
-            <select
-              style={{ ...styles.input, marginTop: 6 }}
-              value={appointmentsTypeFilter}
-              onChange={(e) => {
-                setAppointmentsTypeFilter(e.target.value);
-                if (e.target.value !== "All") updateHousehold("reasonForCall", e.target.value);
-              }}
-            >
-              <option value="All">All Appointment Types</option>
-              {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label style={{ fontWeight: 700 }}>Set New Appointment Type</label>
-            <select
-              style={{ ...styles.input, marginTop: 6 }}
-              value={household.reasonForCall}
-              onChange={(e) => updateHousehold("reasonForCall", e.target.value)}
-            >
-              {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div style={{ ...styles.nav, marginTop: 12 }}>
-          <button type="button" style={styles.button} onClick={() => setView("admin")}>Return to Admin</button>
-          <button type="button" style={styles.button} onClick={() => setView("household")}>Return to Household</button>
-          <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Return to Quick Rater</button>
-          <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open sips4agents@gmail.com Appointments</button>
-        </div>
-
-        {filteredEvents.length === 0 ? <p>No saved appointments match this view.</p> : null}
-        {filteredEvents.map((event) => (
-          <div key={event.id} style={{ border: "1px solid #d6dde8", borderRadius: 12, padding: 14, marginTop: 10 }}>
-            <strong>{event.title}</strong>
-            <p>{event.date} at {event.time} · {event.location}</p>
-            <p>Agent: {event.agent}</p>
-            <p>Type: {event.appointmentType || "-"}</p>
-            <div style={styles.nav}>
-              <button type="button" style={styles.button} onClick={() => setView("admin")}>Return to Admin</button>
-              <button type="button" style={styles.button} onClick={() => { const match = households.find((h) => h.id === event.householdId); if (match) loadHousehold(match); setView("household"); }}>Return to Household</button>
-              <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Return to Quick Rater</button>
-              <button type="button" style={styles.button} onClick={() => { setSelectedAgent(event.agent || selectedAgent); setView("agent"); }}>Return to Agent</button>
+          <div style={{ ...styles.grid3, marginBottom: 14 }}>
+            <div>
+              <label style={{ fontWeight: 700 }}>Search From</label>
+              <input style={{ ...styles.input, marginTop: 6 }} type="date" value={appointmentSearchFrom} onChange={(e) => setAppointmentSearchFrom(e.target.value)} />
+            </div>
+            <div>
+              <label style={{ fontWeight: 700 }}>Search To</label>
+              <input style={{ ...styles.input, marginTop: 6 }} type="date" value={appointmentSearchTo} onChange={(e) => setAppointmentSearchTo(e.target.value)} />
+            </div>
+            <div>
+              <label style={{ fontWeight: 700 }}>Search Text</label>
+              <input style={{ ...styles.input, marginTop: 6 }} value={appointmentSearchText} onChange={(e) => setAppointmentSearchText(e.target.value)} placeholder="Client, agent, phone, type" />
             </div>
           </div>
-        ))}
-      </section>
+
+          <div style={styles.grid3}>
+            <div>
+              <label style={{ fontWeight: 700 }}>Agent Calendar</label>
+              <select style={{ ...styles.input, marginTop: 6 }} value={appointmentsAgentFilter} onChange={(e) => setAppointmentsAgentFilter(e.target.value)}>
+                <option value="All">All Agents</option>
+                {AGENTS.map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontWeight: 700 }}>Appointment Type</label>
+              <select style={{ ...styles.input, marginTop: 6 }} value={appointmentsTypeFilter} onChange={(e) => { setAppointmentsTypeFilter(e.target.value); if (e.target.value !== "All") updateHousehold("reasonForCall", e.target.value); }}>
+                <option value="All">All Appointment Types</option>
+                {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontWeight: 700 }}>New Appointment Type</label>
+              <select style={{ ...styles.input, marginTop: 6 }} value={household.reasonForCall} onChange={(e) => updateHousehold("reasonForCall", e.target.value)}>
+                {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ ...styles.nav, marginTop: 12 }}>
+            <button type="button" style={styles.primaryButton} onClick={() => { setAppointmentSearchFrom(today); setAppointmentSearchTo(today); setCalendarViewMode("Day View"); }}>Today</button>
+            <button type="button" style={styles.button} onClick={() => setView("initialIntake")}>Schedule From Intake</button>
+            <button type="button" style={styles.button} onClick={() => { setAppointmentSearchFrom(""); setAppointmentSearchTo(""); setAppointmentSearchText(""); }}>Clear Search</button>
+            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Calendar</button>
+            <button type="button" style={styles.button} onClick={() => setView("admin")}>Return to Admin</button>
+          </div>
+        </section>
+
+        {(calendarViewMode === "Open Slots View" || calendarViewMode === "All Agents View" || calendarViewMode === "Agent View" || calendarViewMode === "Day View" || calendarViewMode === "Week View") ? (
+          <section style={styles.card}>
+            <h3 style={{ marginTop: 0 }}>Open Slots / Availability</h3>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #d6dde8" }}>Date</th>
+                    <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #d6dde8" }}>Agent</th>
+                    <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #d6dde8" }}>Available Times</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dateList.slice(0, calendarViewMode === "Month View" ? 31 : 7).flatMap((date) => visibleAgents.map((agentName) => {
+                    const openSlots = APPOINTMENT_TIME_SLOTS.filter((time) => !isSlotBooked(date, time, agentName));
+                    return (
+                      <tr key={`${date}-${agentName}`}>
+                        <td style={{ padding: 8, borderBottom: "1px solid #eef2f6", fontWeight: 700 }}>{date}</td>
+                        <td style={{ padding: 8, borderBottom: "1px solid #eef2f6" }}>{agentName}</td>
+                        <td style={{ padding: 8, borderBottom: "1px solid #eef2f6" }}>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {openSlots.slice(0, 10).map((time) => (
+                              <button key={time} type="button" style={{ ...styles.button, padding: "7px 9px", fontSize: 12 }} onClick={() => bookSlot(date, time, agentName)}>{time}</button>
+                            ))}
+                            {openSlots.length > 10 ? <span style={{ padding: 8 }}>+{openSlots.length - 10} more</span> : null}
+                            {!openSlots.length ? <strong>Fully booked</strong> : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
+
+        <section style={styles.card}>
+          <h3 style={{ marginTop: 0 }}>Booked Appointments</h3>
+          {filteredEvents.length === 0 ? <p>No saved appointments match this view.</p> : null}
+          {groupedByDate.map((group) => (
+            <div key={group.date} style={{ marginTop: 12 }}>
+              <h4 style={{ marginBottom: 8 }}>{group.date}</h4>
+              {group.events.length === 0 ? <p style={{ marginTop: 0 }}>No appointments saved for this date.</p> : null}
+              {group.events.map((event) => (
+                <div key={event.id} style={{ border: "1px solid #d6dde8", borderRadius: 12, padding: 14, marginTop: 10 }}>
+                  <strong>{event.title}</strong>
+                  <p>{event.date} at {event.time} · {event.location}</p>
+                  <p>Agent: {event.agent} · Type: {event.appointmentType || "-"}</p>
+                  <p>{event.description?.split("\\n").slice(0, 4).join(" | ")}</p>
+                  <div style={styles.nav}>
+                    <button type="button" style={styles.button} onClick={() => { const match = households.find((h) => h.id === event.householdId); if (match) loadHousehold(match); setView("household"); }}>Open Household</button>
+                    <button type="button" style={styles.button} onClick={() => { setSelectedAgent(event.agent || selectedAgent); setView("agent"); }}>Open Agent</button>
+                    <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Quick Rater</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </section>
+      </>
     );
   }
+
 
   function renderClients() {
     const filteredHouseholds = households.filter((item) => {
@@ -2516,7 +2642,7 @@ export default function SipsDashboardPage() {
       <section style={styles.mainPanel}>
         <header style={styles.header}>
           <h1 style={{ margin: 0 }}>SIPS Connect</h1>
-          <p style={{ marginBottom: 0 }}>Compact command center: Admin hub, separate Initial Intake scheduling form, calendar, clients, agent tools, Quick Rater, Calculator, and Integrations.</p>
+          <p style={{ marginBottom: 0 }}>Compact command center: Admin hub, separate Initial Intake scheduling form, multi-view calendar availability, clients, agent tools, Quick Rater, Calculator, and Integrations.</p>
         </header>
 
         {view === "dashboard" && renderDashboard()}
