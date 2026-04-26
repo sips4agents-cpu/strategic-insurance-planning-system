@@ -50,16 +50,144 @@ const HEALTH_OPTIONS = [
 ];
 
 const EMAIL_TEMPLATES = {
-  "Plan Review":
-    "Hi, this is Senior Care Plus. We noticed your premium may have increased and would like to schedule a quick plan review to make sure your coverage is still the best fit.",
-  "Claims Follow Up":
-    "Hi, this is Senior Care Plus following up on your claims issue. Please send any EOBs, unpaid claim notices, or provider contact information so we can assist.",
-  "Appointment Reminder":
-    "Hi, this is Senior Care Plus reminding you of your upcoming appointment. Please have your Medicare card, current insurance information, medications, and provider list available.",
-  "L564 Employer Form":
-    "Please forward the attached CMS-L564 employer form to HR. Once HR completes and signs it, send it back so we can attach it to your Medicare file.",
-  "Policy Review Documents":
-    "Please send a copy of your current policy, premium notice, prescription list, and doctor list so we can complete your review.",
+  "Plan Review": `Hi {{clientFirstName}},
+
+This is Senior Care Plus. We noticed your current premium is {{currentPremium}} and would like to schedule a quick plan review to make sure your coverage is still the best fit.
+
+Appointment: {{appointmentDate}} at {{appointmentTime}}
+Assigned Agent: {{assignedAgent}}
+
+Please have your Medicare card, current policy, premium notice, medication list, and doctor list available.
+
+Regards,
+{{agentSignature}}`,
+
+  "Claims Follow Up": `Hi {{clientFirstName}},
+
+This is Senior Care Plus following up on your claims issue.
+
+Please send any EOBs, unpaid claim notices, provider contact information, date of service, and claim amount so we can assist.
+
+Client: {{clientFullName}}
+Phone: {{clientPhone}}
+Assigned Agent: {{assignedAgent}}
+
+Regards,
+{{agentSignature}}`,
+
+  "Appointment Reminder": `Hi {{clientFirstName}},
+
+This is Senior Care Plus reminding you of your upcoming appointment.
+
+Appointment: {{appointmentDate}} at {{appointmentTime}}
+Location/Type: {{appointmentLocation}}
+Assigned Agent: {{assignedAgent}}
+
+Please have your Medicare card, current insurance information, medications, doctor list, and any requested forms available.
+
+Regards,
+{{agentSignature}}`,
+
+  "L564 Employer Form": `To avoid Medicare Part B enrollment penalties, please have your current employer admin or HR complete the CMS L564 form.
+
+✅ Step 1 — Download the Form
+➡️ CMS L564 — Request for Employment Information
+
+Click the link below and download the CMS L564 form (PDF). This is the official form:
+
+Download CMS L564 Form
+
+Please forward this email to your HR department. They will complete the form with the necessary information and return the signed document to you.
+
+Once you receive the completed form:
+1. If my team is helping you enroll in Part B, email the completed, signed L564 to sales@ainsurancepro.com
+2. If you are enrolling yourself or have enrolled already, please follow the instructions on the L564 form.
+
+Client: {{clientFullName}}
+Phone: {{clientPhone}}
+Email: {{clientEmail}}
+
+If you require any further assistance, please don't hesitate to reach out. Our entire team is fully qualified to help, and Christiana will ensure that someone gets back to you promptly.
+
+Thank you, and we look forward to assisting you with this process.
+
+Regards,
+Loyd Richardson
+Senior Care Plus / Associated Insurance Professionals
+Office Address: 3 Country Place, Pearl, MS 39208
+Phone: 601-962-4428
+Email: sales@ainsurancepro.com
+Visit us: www.ainsurancepro.com
+
+________________________________________
+We are not affiliated with or endorsed by Medicare, the federal government, or the Social Security Administration. We do not offer every plan available in your area. For all available options, please visit Medicare.gov or call 1-800-MEDICARE (1-800-633-4227).`,
+
+  "Policy Review Documents": `Hi {{clientFirstName}},
+
+To complete your policy review, please send the following:
+
+- Current policy
+- Current premium notice
+- Prescription list
+- Doctor/provider list
+- Medicare card
+
+Current Premium on file: {{currentPremium}}
+Spouse: {{spouseFullName}}
+Spouse Health Notes: {{spouseHealth}}
+
+You can reply directly to this email with the documents.
+
+Regards,
+{{agentSignature}}`,
+
+  "Prescription Drug Plan Review": `Hi {{clientFirstName}},
+
+We would like to review your prescription drug coverage.
+
+Please send:
+- Medication list
+- Preferred pharmacy
+- Medicare card
+
+Appointment: {{appointmentDate}} at {{appointmentTime}}
+Assigned Agent: {{assignedAgent}}
+
+Regards,
+{{agentSignature}}`,
+
+  "New Client Intake Follow Up": `Hi {{clientFirstName}},
+
+Thank you for speaking with Senior Care Plus.
+
+Next steps:
+- Confirm your appointment: {{appointmentDate}} at {{appointmentTime}}
+- Send any requested documents/forms
+- Have your Medicare card, current insurance information, medication list, and doctor list ready
+
+Assigned Agent: {{assignedAgent}}
+Reason for Call: {{reasonForCall}}
+
+Regards,
+{{agentSignature}}`,
+};
+
+const EMAIL_TEMPLATE_SUBJECTS = {
+  "Plan Review": "Medicare Plan Review",
+  "Claims Follow Up": "Claims Assistance Follow Up",
+  "Appointment Reminder": "Appointment Reminder from Senior Care Plus",
+  "L564 Employer Form": "Download the CMS L564 Form for Requesting Employment Information",
+  "Policy Review Documents": "Documents Needed for Your Policy Review",
+  "Prescription Drug Plan Review": "Prescription Drug Plan Review",
+  "New Client Intake Follow Up": "Next Steps from Senior Care Plus",
+};
+
+const EMAIL_TEMPLATE_DEFAULT_FORMS = {
+  "L564 Employer Form": ["CMS-L564 Employer Coverage Form"],
+  "Policy Review Documents": ["Current Policy / Premium Notice", "Prescription Drug List", "Provider List"],
+  "Appointment Reminder": ["Current Policy / Premium Notice", "Prescription Drug List", "Provider List"],
+  "Prescription Drug Plan Review": ["Prescription Drug List"],
+  "Claims Follow Up": ["Claims / EOB Documents"],
 };
 
 const COVERAGE_OPTIONS = ["Medicare", "Group", "Individual Health", "Cobra"];
@@ -392,6 +520,42 @@ function openCsgRaterForPerson(person, label) {
 
 function fullName(person) {
   return `${person.firstName || ""} ${person.lastName || ""}`.trim() || "Client";
+}
+
+function buildAgentSignature(agentName) {
+  const name = agentName && agentName !== "Admin" ? agentName : "Loyd Richardson";
+  return `${name}
+Senior Care Plus / Associated Insurance Professionals
+Office Address: 3 Country Place, Pearl, MS 39208
+Phone: 601-962-4428
+Email: sales@ainsurancepro.com
+www.ainsurancepro.com`;
+}
+
+function buildTemplateVariables(household, appointmentDate, appointmentTime, appointmentLocation) {
+  const client = household.client || {};
+  const spouse = household.spouse || {};
+  return {
+    clientFirstName: client.firstName || "",
+    clientFullName: fullName(client),
+    clientPhone: client.phone || "",
+    clientEmail: client.email || "",
+    spouseFullName: personHasData(spouse) ? fullName(spouse) : "None listed",
+    spouseHealth: spouse.health || "None listed",
+    currentPremium: household.currentPremium || client.currentMedSuppPremium || "Not listed",
+    assignedAgent: household.assignedAgent || "Admin",
+    appointmentDate: appointmentDate || "To be scheduled",
+    appointmentTime: appointmentTime || "To be scheduled",
+    appointmentLocation: appointmentLocation || "Phone Call",
+    reasonForCall: household.reasonForCall || "Service",
+    agentSignature: buildAgentSignature(household.assignedAgent),
+  };
+}
+
+function renderEmailTemplate(templateName, household, appointmentDate, appointmentTime, appointmentLocation) {
+  const template = EMAIL_TEMPLATES[templateName] || "";
+  const variables = buildTemplateVariables(household, appointmentDate, appointmentTime, appointmentLocation);
+  return template.replace(/{{(.*?)}}/g, (_, key) => variables[key.trim()] ?? "");
 }
 
 function personHasData(person) {
@@ -1410,13 +1574,12 @@ export default function SipsDashboardPage() {
   const [appointmentSearchFrom, setAppointmentSearchFrom] = useState("");
   const [appointmentSearchTo, setAppointmentSearchTo] = useState("");
   const [appointmentSearchText, setAppointmentSearchText] = useState("");
-  const [customEmailBody, setCustomEmailBody] = useState(EMAIL_TEMPLATES["Plan Review"]);
-  const [emailSubject, setEmailSubject] = useState("Senior Care Plus - Plan Review");
+  const [customEmailBody, setCustomEmailBody] = useState(() => renderEmailTemplate("Plan Review", household, appointmentDate, appointmentTime, appointmentLocation));
+  const [emailSubject, setEmailSubject] = useState(EMAIL_TEMPLATE_SUBJECTS["Plan Review"]);
   const [emailAttachmentFiles, setEmailAttachmentFiles] = useState([]);
   const [automationLog, setAutomationLog] = useState([]);
   const [autoCreateAppointment, setAutoCreateAppointment] = useState(true);
-  const [autoPushMedicarePro, setAutoPushMedicarePro] = useState(true);
-  const [autoPushMonday, setAutoPushMonday] = useState(true);
+  const [autoPrepareEmail, setAutoPrepareEmail] = useState(true);
   const [autoSendEmail, setAutoSendEmail] = useState(false);
 
   const selectedHousehold = useMemo(
@@ -1508,10 +1671,26 @@ export default function SipsDashboardPage() {
     updatePerson("client", "forms", next.join(", "));
   }
 
+  function applyDefaultFormsForTemplate(templateName) {
+    const defaults = EMAIL_TEMPLATE_DEFAULT_FORMS[templateName] || [];
+    if (!defaults.length) return;
+    const current = selectedAttachableForms();
+    const next = [...new Set([...current, ...defaults])];
+    updatePerson("client", "forms", next.join(", "));
+  }
+
   function handleEmailTemplateChange(templateName) {
     setEmailTemplate(templateName);
-    setEmailSubject(`Senior Care Plus - ${templateName}`);
-    setCustomEmailBody(EMAIL_TEMPLATES[templateName] || "");
+    setEmailSubject(EMAIL_TEMPLATE_SUBJECTS[templateName] || `Senior Care Plus - ${templateName}`);
+    setCustomEmailBody(renderEmailTemplate(templateName, household, appointmentDate, appointmentTime, appointmentLocation));
+    applyDefaultFormsForTemplate(templateName);
+  }
+
+  function refreshEmailTemplateWithLatestData() {
+    setEmailSubject(EMAIL_TEMPLATE_SUBJECTS[emailTemplate] || `Senior Care Plus - ${emailTemplate}`);
+    setCustomEmailBody(renderEmailTemplate(emailTemplate, household, appointmentDate, appointmentTime, appointmentLocation));
+    applyDefaultFormsForTemplate(emailTemplate);
+    setMessage("Email template refreshed with latest client, spouse, appointment, premium, and agent data.");
   }
 
   function buildEmailPackageBody() {
@@ -1572,51 +1751,6 @@ export default function SipsDashboardPage() {
     setAutomationLog((prev) => [`${new Date().toLocaleTimeString()} - ${item}`, ...prev].slice(0, 10));
   }
 
-  async function postJsonToRoute(route, payload, successText, fallbackText) {
-    try {
-      const response = await fetch(route, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (response.ok) {
-        addAutomationLog(successText);
-        return true;
-      }
-
-      addAutomationLog(fallbackText);
-      return false;
-    } catch (error) {
-      addAutomationLog(fallbackText);
-      return false;
-    }
-  }
-
-  async function pushMedicareProRecord() {
-    const data = buildIntegrationAutofillData(household).medicarePro;
-    const sent = await postJsonToRoute(
-      "/api/medicare-pro/upsert",
-      data,
-      "Medicare Pro record sent/updated.",
-      "Medicare Pro route not connected yet; fields are ready in Copy Medicare Pro Fields / CSV export."
-    );
-    if (!sent) navigator.clipboard?.writeText(JSON.stringify(data, null, 2));
-    return sent;
-  }
-
-  async function pushMondayRecord() {
-    const data = buildIntegrationAutofillData(household).monday;
-    const sent = await postJsonToRoute(
-      "/api/monday/upsert",
-      data,
-      "Monday item sent/updated.",
-      "Monday route not connected yet; Monday fields copied for manual paste/import."
-    );
-    if (!sent) navigator.clipboard?.writeText(JSON.stringify(data, null, 2));
-    return sent;
-  }
-
   async function runAdminAutomation() {
     if (!household.client.firstName && !household.client.lastName) {
       setMessage("Enter at least the client first or last name before running automation.");
@@ -1635,18 +1769,19 @@ export default function SipsDashboardPage() {
       }
     }
 
-    if (autoPushMedicarePro) await pushMedicareProRecord();
-    if (autoPushMonday) await pushMondayRecord();
+    addAutomationLog("Medicare Pro and Monday auto-push intentionally skipped for stability. Use manual copy/export buttons when ready.");
 
     if (autoSendEmail) {
       await sendEmailWithForms();
       addAutomationLog("Email send attempted with selected form list and uploaded files.");
-    } else {
+    } else if (autoPrepareEmail) {
       copyEmailPackage();
-      addAutomationLog("Email package copied instead of sending. Turn on Auto-send email to use /api/email/send.");
+      addAutomationLog("Email package copied/prepared. Attach selected files manually if sending through regular email.");
+    } else {
+      addAutomationLog("Email step skipped by Admin setting.");
     }
 
-    setMessage("Admin automation complete. Check the automation log for anything that needs manual follow-up.");
+    setMessage("Stable Admin automation complete: saved record, handled appointment, prepared email, and skipped Medicare Pro/Monday auto-push.");
   }
 
   function resetIntake() {
@@ -1833,10 +1968,10 @@ export default function SipsDashboardPage() {
       <>
         <section style={{ ...styles.card, border: "2px solid #0f2a44" }}>
           <h2 style={{ marginTop: 0 }}>Admin Command Hub</h2>
-          <p style={{ marginTop: 0 }}>Central place for intake, appointment search, Medicare Pro access, client/agent notes, email templates, and forms.</p>
+          <p style={{ marginTop: 0 }}>Central place for intake, appointment search, client/agent notes, email templates, forms, and stable manual Medicare Pro/Monday export.</p>
           <div style={styles.nav}>
             <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Admin Record</button>
-            <button type="button" style={styles.primaryButton} onClick={runAdminAutomation}>Run Full Automation</button>
+            <button type="button" style={styles.primaryButton} onClick={runAdminAutomation}>Save + Schedule + Prepare Email</button>
             <button type="button" style={styles.button} onClick={() => setView("calendar")}>Search Appointments</button>
             <button type="button" style={styles.button} onClick={() => setView("clients")}>Open Clients</button>
             <button type="button" style={styles.button} onClick={() => setView("agent")}>Open Agent Page</button>
@@ -1847,30 +1982,30 @@ export default function SipsDashboardPage() {
         </section>
 
         <section style={{ ...styles.card, background: "#f8fafc" }}>
-          <h2 style={{ marginTop: 0 }}>One-Click Admin Automation</h2>
-          <p style={{ marginTop: 0 }}>Save the record, create the appointment, push Medicare Pro/Monday fields, and prepare or send the email package from one button.</p>
+          <h2 style={{ marginTop: 0 }}>Stable One-Click Admin Flow</h2>
+          <p style={{ marginTop: 0 }}>Save the record, create the appointment when date/time are entered, and prepare the email package. Medicare Pro and Monday stay manual/export only for now so the dashboard stays fast and does not hang.</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 8 }}>
             <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <input type="checkbox" checked={autoCreateAppointment} onChange={(e) => setAutoCreateAppointment(e.target.checked)} />
               Auto-create appointment
             </label>
             <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input type="checkbox" checked={autoPushMedicarePro} onChange={(e) => setAutoPushMedicarePro(e.target.checked)} />
-              Auto-push Medicare Pro fields
-            </label>
-            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input type="checkbox" checked={autoPushMonday} onChange={(e) => setAutoPushMonday(e.target.checked)} />
-              Auto-push Monday fields
+              <input type="checkbox" checked={autoPrepareEmail} onChange={(e) => setAutoPrepareEmail(e.target.checked)} />
+              Auto-prepare email package
             </label>
             <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <input type="checkbox" checked={autoSendEmail} onChange={(e) => setAutoSendEmail(e.target.checked)} />
-              Auto-send email when API is connected
+              Try direct email send only if email API is connected
             </label>
           </div>
+          <div style={{ marginTop: 12, padding: 12, border: "1px solid #f59e0b", borderRadius: 12, background: "#fff7ed" }}>
+            <strong>Stability setting:</strong> Medicare Pro and Monday auto-push are turned off. Use Copy Medicare Pro Fields, Export CSV, Copy Monday Fields, or Open Monday when ready.
+          </div>
           <div style={{ ...styles.nav, marginTop: 14 }}>
-            <button type="button" style={styles.primaryButton} onClick={runAdminAutomation}>Run Full Admin Automation</button>
-            <button type="button" style={styles.button} onClick={pushMedicareProRecord}>Push Medicare Pro Only</button>
-            <button type="button" style={styles.button} onClick={pushMondayRecord}>Push Monday Only</button>
+            <button type="button" style={styles.primaryButton} onClick={runAdminAutomation}>Save + Schedule + Prepare Email</button>
+            <button type="button" style={styles.button} onClick={() => navigator.clipboard?.writeText(JSON.stringify(buildIntegrationAutofillData(household).medicarePro, null, 2))}>Copy Medicare Pro Fields</button>
+            <button type="button" style={styles.button} onClick={() => navigator.clipboard?.writeText(JSON.stringify(buildIntegrationAutofillData(household).monday, null, 2))}>Copy Monday Fields</button>
+            <button type="button" style={styles.button} onClick={() => downloadIntegrationCsv(household)}>Export CSV</button>
           </div>
           <div style={{ marginTop: 12, padding: 12, border: "1px solid #d6dde8", borderRadius: 12, background: "white" }}>
             <strong>Automation Log</strong>
@@ -2021,7 +2156,11 @@ export default function SipsDashboardPage() {
             </select>
             <input style={styles.input} value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} placeholder="Email Subject" />
           </div>
-          <textarea style={{ ...styles.textarea, marginTop: 12, minHeight: 160 }} value={customEmailBody} onChange={(e) => setCustomEmailBody(e.target.value)} placeholder="Editable email template body" />
+          <div style={{ ...styles.nav, marginTop: 12 }}>
+            <button type="button" style={styles.button} onClick={refreshEmailTemplateWithLatestData}>Refresh Template With Client Data</button>
+            <span style={{ alignSelf: "center", fontSize: 13, color: "#475569" }}>Auto-fills name, spouse, appointment, premium, agent, and forms.</span>
+          </div>
+          <textarea style={{ ...styles.textarea, marginTop: 12, minHeight: 180 }} value={customEmailBody} onChange={(e) => setCustomEmailBody(e.target.value)} placeholder="Editable email template body" />
 
           <div style={{ marginTop: 16 }}>
             <strong>Forms / Documents to Attach or Request</strong>
