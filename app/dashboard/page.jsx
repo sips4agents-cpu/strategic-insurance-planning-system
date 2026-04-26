@@ -2194,11 +2194,20 @@ export default function SipsDashboardPage() {
       ? AGENTS.map((agent) => agent.name)
       : [appointmentsAgentFilter === "All" ? (household.assignedAgent || selectedAgent || "Admin") : appointmentsAgentFilter];
 
+    function getBookedSlotEvent(date, time, agentName) {
+      return events.find((event) => event.date === date && event.time === time && event.agent === agentName);
+    }
+
     function isSlotBooked(date, time, agentName) {
-      return events.some((event) => event.date === date && event.time === time && event.agent === agentName);
+      return Boolean(getBookedSlotEvent(date, time, agentName));
     }
 
     function bookSlot(date, time, agentName) {
+      const bookedEvent = getBookedSlotEvent(date, time, agentName);
+      if (bookedEvent) {
+        setMessage(`${date} at ${time} is already booked for ${agentName}: ${bookedEvent.clientName || bookedEvent.title}. Choose an open slot.`);
+        return;
+      }
       setAppointmentDate(date);
       setAppointmentTime(time);
       updateHousehold("assignedAgent", agentName);
@@ -2234,7 +2243,7 @@ export default function SipsDashboardPage() {
       <>
         <section style={styles.card}>
           <h2 style={{ marginTop: 0 }}>Calendar / Availability</h2>
-          <p style={{ marginTop: 0 }}>Choose Day, Week, Month, Agent, All Agents, Appointment Type, or Open Slots. Admin can see booked times and pick an open slot before scheduling from Initial Intake.</p>
+          <p style={{ marginTop: 0 }}>Choose Day, Week, Month, Agent, All Agents, Appointment Type, or Open Slots. Admin can see open slots in green and booked slots in red before scheduling from Initial Intake.</p>
 
           <div style={{ ...styles.nav, marginBottom: 12 }}>
             {CALENDAR_VIEW_OPTIONS.map((mode) => (
@@ -2300,23 +2309,51 @@ export default function SipsDashboardPage() {
                   <tr>
                     <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #d6dde8" }}>Date</th>
                     <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #d6dde8" }}>Agent</th>
-                    <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #d6dde8" }}>Available Times</th>
+                    <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #d6dde8" }}>Time Slots</th>
                   </tr>
                 </thead>
                 <tbody>
                   {dateList.slice(0, calendarViewMode === "Month View" ? 31 : 7).flatMap((date) => visibleAgents.map((agentName) => {
-                    const openSlots = APPOINTMENT_TIME_SLOTS.filter((time) => !isSlotBooked(date, time, agentName));
+                    const slotStatus = APPOINTMENT_TIME_SLOTS.map((time) => ({ time, bookedEvent: getBookedSlotEvent(date, time, agentName) }));
+                    const openSlotsCount = slotStatus.filter((slot) => !slot.bookedEvent).length;
                     return (
                       <tr key={`${date}-${agentName}`}>
                         <td style={{ padding: 8, borderBottom: "1px solid #eef2f6", fontWeight: 700 }}>{date}</td>
                         <td style={{ padding: 8, borderBottom: "1px solid #eef2f6" }}>{agentName}</td>
                         <td style={{ padding: 8, borderBottom: "1px solid #eef2f6" }}>
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            {openSlots.slice(0, 10).map((time) => (
-                              <button key={time} type="button" style={{ ...styles.button, padding: "7px 9px", fontSize: 12 }} onClick={() => bookSlot(date, time, agentName)}>{time}</button>
+                            {slotStatus.map((slot) => (
+                              slot.bookedEvent ? (
+                                <button
+                                  key={slot.time}
+                                  type="button"
+                                  title={`${slot.time} booked: ${slot.bookedEvent.clientName || slot.bookedEvent.title}`}
+                                  style={{
+                                    ...styles.button,
+                                    padding: "7px 9px",
+                                    fontSize: 12,
+                                    background: "#fee2e2",
+                                    border: "1px solid #ef4444",
+                                    color: "#991b1b",
+                                    cursor: "not-allowed",
+                                    textDecoration: "line-through",
+                                  }}
+                                  onClick={() => setMessage(`${date} at ${slot.time} is booked for ${agentName}: ${slot.bookedEvent.clientName || slot.bookedEvent.title}.`)}
+                                >
+                                  {slot.time} Booked
+                                </button>
+                              ) : (
+                                <button
+                                  key={slot.time}
+                                  type="button"
+                                  style={{ ...styles.button, padding: "7px 9px", fontSize: 12, background: "#ecfdf5", border: "1px solid #10b981", color: "#065f46" }}
+                                  onClick={() => bookSlot(date, slot.time, agentName)}
+                                >
+                                  {slot.time} Open
+                                </button>
+                              )
                             ))}
-                            {openSlots.length > 10 ? <span style={{ padding: 8 }}>+{openSlots.length - 10} more</span> : null}
-                            {!openSlots.length ? <strong>Fully booked</strong> : null}
+                            {!openSlotsCount ? <strong style={{ color: "#991b1b" }}>Fully booked</strong> : null}
                           </div>
                         </td>
                       </tr>
