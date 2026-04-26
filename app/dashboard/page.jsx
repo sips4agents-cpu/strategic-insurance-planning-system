@@ -474,6 +474,45 @@ const styles = {
   mainPanel: { flex: 1, minWidth: 0, padding: 14, overflowY: "auto" },
 };
 
+
+const NAV_ITEMS = [
+  ["dashboard", "Dashboard"],
+  ["admin", "Admin Hub"],
+  ["initialIntake", "Initial Intake"],
+  ["leadCapture", "Lead Capture"],
+  ["calendar", "Calendar / Availability"],
+  ["clients", "Clients"],
+  ["currentClients", "Current Clients"],
+  ["dailyTasks", "Daily Tasks"],
+  ["performance", "Performance"],
+  ["status", "Status Pipeline"],
+  ["today", "Today"],
+  ["household", "Household"],
+  ["agent", "Agent"],
+  ["quickRater", "Quick Rater"],
+  ["calculator", "Calculator"],
+  ["integrations", "Integrations / Export"],
+  ["permissions", "Agent Permissions"],
+];
+
+const ADMIN_ONLY_VIEWS = new Set(["admin", "initialIntake", "leadCapture", "clients", "currentClients", "dailyTasks", "performance", "status", "integrations", "permissions"]);
+
+const ROLE_ACCESS = {
+  Agent: new Set(["calendar", "today", "household", "agent", "quickRater", "calculator"]),
+  "Senior Agent": new Set(NAV_ITEMS.map(([key]) => key)),
+  Admin: new Set(NAV_ITEMS.map(([key]) => key)),
+};
+
+function hasFullSystemAccess(activeUserRole) {
+  return activeUserRole === "Admin" || activeUserRole === "Senior Agent";
+}
+
+function visibleNavItemsForRole(activeUserRole) {
+  if (hasFullSystemAccess(activeUserRole)) return NAV_ITEMS;
+  const allowed = ROLE_ACCESS.Agent;
+  return NAV_ITEMS.filter(([key]) => allowed.has(key));
+}
+
 function formatPhone(value) {
   const digits = String(value || "").replace(/\D/g, "").slice(0, 10);
   if (digits.length <= 3) return digits;
@@ -1583,30 +1622,23 @@ function LeadCapturePage({ household, updatePerson, updateHousehold, saveIntake,
   );
 }
 
-function SidebarNav({ view, setView, message }) {
-  const navItems = [
-    ["dashboard", "Dashboard"],
-    ["admin", "Admin Hub"],
-    ["initialIntake", "Initial Intake"],
-    ["leadCapture", "Lead Capture"],
-    ["calendar", "Calendar / Availability"],
-    ["clients", "Clients"],
-    ["currentClients", "Current Clients"],
-    ["dailyTasks", "Daily Tasks"],
-    ["performance", "Performance"],
-    ["status", "Status Pipeline"],
-    ["today", "Today"],
-    ["household", "Household"],
-    ["agent", "Agent"],
-    ["quickRater", "Quick Rater"],
-    ["calculator", "Calculator"],
-    ["integrations", "Integrations / Export"],
-  ];
+function SidebarNav({ view, setView, message, activeUserRole, activeUserName, setActiveUserRole, setActiveUserName }) {
+  const navItems = visibleNavItemsForRole(activeUserRole);
 
   return (
     <aside style={styles.sidebar}>
       <div style={styles.sidebarTitle}>SIPS Command Hub</div>
-      <div style={styles.sidebarSub}>Admin, appointments, clients, agents, rater, calculator, and Medicare Pro/Monday export.</div>
+      <div style={styles.sidebarSub}>Simple roles: Agent sees only his work tools/data. Senior Agent and Admin have full access.</div>
+      <select style={{ ...styles.input, padding: "7px 8px", fontSize: 12 }} value={activeUserRole} onChange={(e) => { setActiveUserRole(e.target.value); setView(e.target.value === "Agent" ? "agent" : "admin"); }}>
+        <option value="Agent">Agent</option>
+        <option value="Senior Agent">Senior Agent</option>
+        <option value="Admin">Admin</option>
+      </select>
+      {activeUserRole !== "Admin" ? (
+        <select style={{ ...styles.input, padding: "7px 8px", fontSize: 12 }} value={activeUserName} onChange={(e) => { setActiveUserName(e.target.value); if (activeUserRole === "Agent") setView("agent"); }}>
+          {AGENTS.filter((agent) => agent.name !== "Admin").map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
+        </select>
+      ) : null}
       {navItems.map(([key, label]) => (
         <button key={key} type="button" onClick={() => setView(key)} style={view === key ? styles.sideButtonActive : styles.sideButton}>{label}</button>
       ))}
@@ -1617,6 +1649,8 @@ function SidebarNav({ view, setView, message }) {
 
 export default function SipsDashboardPage() {
   const [view, setView] = useState("admin");
+  const [activeUserRole, setActiveUserRole] = useState("Admin");
+  const [activeUserName, setActiveUserName] = useState("Loyd Richardson");
   const [households, setHouseholds] = useState([]);
   const [selectedHouseholdId, setSelectedHouseholdId] = useState("");
   const [events, setEvents] = useState([]);
@@ -1653,6 +1687,30 @@ export default function SipsDashboardPage() {
     () => households.find((item) => item.id === selectedHouseholdId) || households[0] || null,
     [households, selectedHouseholdId]
   );
+
+  function canSeeView(key) {
+    if (hasFullSystemAccess(activeUserRole)) return true;
+    return ROLE_ACCESS.Agent.has(key);
+  }
+
+  function getVisibleHouseholds() {
+    if (hasFullSystemAccess(activeUserRole)) return households;
+    return households.filter((item) => (item.assignedAgent || "Admin") === activeUserName);
+  }
+
+  function getVisibleEvents() {
+    if (hasFullSystemAccess(activeUserRole)) return events;
+    return events.filter((event) => event.agent === activeUserName);
+  }
+
+  function safeSetView(key) {
+    if (canSeeView(key)) {
+      setView(key);
+      return;
+    }
+    setMessage("Access restricted for this agent. Admin can change this under Agent Permissions.");
+    setView(hasFullSystemAccess(activeUserRole) ? "admin" : "agent");
+  }
 
   function updatePerson(type, field, value) {
     setHousehold((prev) => ({
@@ -2112,8 +2170,8 @@ export default function SipsDashboardPage() {
 
   function getDailyTasks() {
     const today = new Date().toISOString().slice(0, 10);
-    const todaysEvents = events.filter((event) => event.date === today).map((event) => ({ id: event.id, type: "Appointment", title: event.title, detail: `${event.time} · ${event.agent} · ${event.location}`, source: event }));
-    const followUps = households.flatMap((item) => {
+    const todaysEvents = getVisibleEvents().filter((event) => event.date === today).map((event) => ({ id: event.id, type: "Appointment", title: event.title, detail: `${event.time} · ${event.agent} · ${event.location}`, source: event }));
+    const followUps = getVisibleHouseholds().flatMap((item) => {
       const tasks = [];
       getRecordAlerts(item).forEach((alert, index) => tasks.push({ id: `${item.id}-alert-${index}`, type: "Alert", title: fullName(item.client), detail: alert, source: item }));
       if (item.nextCallDate === today) tasks.push({ id: `${item.id}-call`, type: "Call", title: fullName(item.client), detail: `${item.client?.phone || "No phone"} · ${item.callStatus || "Not Called"}`, source: item });
@@ -2123,10 +2181,10 @@ export default function SipsDashboardPage() {
   }
 
   function getAgentPerformanceRows() {
-    return AGENTS.map((agent) => {
-      const assigned = households.filter((item) => (item.assignedAgent || "Admin") === agent.name);
+    return (hasFullSystemAccess(activeUserRole) ? AGENTS : AGENTS.filter((agent) => agent.name === activeUserName)).map((agent) => {
+      const assigned = getVisibleHouseholds().filter((item) => (item.assignedAgent || "Admin") === agent.name);
       const countBy = (status) => assigned.filter((item) => (item.businessStatus || item.status) === status).length;
-      return { agent: agent.name, total: assigned.length, written: countBy("Written Business"), pending: countBy("Pending Business"), issued: countBy("Issued Business"), declined: countBy("Declined Business"), rateCalls: assigned.filter((item) => item.status === "Rate Increase Call" || item.businessStatus === "Rate Increase Call" || item.rateIncreaseDate).length, appointments: events.filter((event) => event.agent === agent.name).length };
+      return { agent: agent.name, total: assigned.length, written: countBy("Written Business"), pending: countBy("Pending Business"), issued: countBy("Issued Business"), declined: countBy("Declined Business"), rateCalls: assigned.filter((item) => item.status === "Rate Increase Call" || item.businessStatus === "Rate Increase Call" || item.rateIncreaseDate).length, appointments: getVisibleEvents().filter((event) => event.agent === agent.name).length };
     });
   }
 
@@ -2175,6 +2233,38 @@ export default function SipsDashboardPage() {
       <LeadCapturePage household={household} updatePerson={updatePerson} updateHousehold={updateHousehold} saveIntake={saveIntake} setView={setView} />
     );
   }
+
+
+  function renderPermissions() {
+    return (
+      <>
+        <section style={styles.card}>
+          <h2 style={{ marginTop: 0 }}>Role Access Control</h2>
+          <p style={{ marginTop: 0 }}>Permissions are simplified into three roles so you do not have to manage individual page checkboxes.</p>
+          <div style={styles.grid3}>
+            <div style={{ padding: 12, border: "1px solid #d6dde8", borderRadius: 12, background: "#f8fafc" }}><strong>Agent</strong><br />Agent page, Calendar, Household, Quick Rater, Calculator. Data is filtered to that agent only.</div>
+            <div style={{ padding: 12, border: "1px solid #d6dde8", borderRadius: 12, background: "#f8fafc" }}><strong>Senior Agent</strong><br />Full system access and all agency records.</div>
+            <div style={{ padding: 12, border: "1px solid #d6dde8", borderRadius: 12, background: "#f8fafc" }}><strong>Admin</strong><br />Full unrestricted access, role preview, imports, exports, and tracking.</div>
+          </div>
+          <div style={{ ...styles.nav, marginTop: 14 }}>
+            <button type="button" style={styles.button} onClick={() => { setActiveUserRole("Agent"); setView("agent"); }}>Preview Agent</button>
+            <button type="button" style={styles.button} onClick={() => { setActiveUserRole("Senior Agent"); setView("admin"); }}>Preview Senior Agent</button>
+            <button type="button" style={styles.primaryButton} onClick={() => { setActiveUserRole("Admin"); setView("admin"); }}>Return to Admin</button>
+          </div>
+        </section>
+
+        <section style={styles.card}>
+          <h3 style={{ marginTop: 0 }}>Agent Data Filtering</h3>
+          <p style={{ marginTop: 0 }}>When the role is Agent, the dashboard automatically limits calendar appointments, household records, and visible pipeline data to the selected agent. Senior Agent and Admin see everything.</p>
+          <div style={styles.grid2}>
+            <div><strong>Current Role:</strong> {activeUserRole}</div>
+            <div><strong>Selected Agent:</strong> {activeUserRole === "Admin" ? "All agency data" : activeUserName}</div>
+          </div>
+        </section>
+      </>
+    );
+  }
+
 
   function renderDashboard() {
     return (
@@ -2230,7 +2320,7 @@ export default function SipsDashboardPage() {
 
 
   function renderAdmin() {
-    const todaysAppointments = events.filter((event) => event.date === new Date().toISOString().slice(0, 10));
+    const todaysAppointments = getVisibleEvents().filter((event) => event.date === new Date().toISOString().slice(0, 10));
     const activeClient = fullName(household.client);
 
     return (
@@ -2250,6 +2340,7 @@ export default function SipsDashboardPage() {
             <button type="button" style={styles.button} onClick={() => setView("dailyTasks")}>Daily Admin Tasks</button>
             <button type="button" style={styles.button} onClick={() => setView("performance")}>Agent Performance</button>
             <button type="button" style={styles.button} onClick={() => setView("status")}>Status Pipeline</button>
+            <button type="button" style={styles.button} onClick={() => setView("permissions")}>Agent Permissions</button>
             <button type="button" style={styles.button} onClick={() => setView("agent")}>Agent Page</button>
             <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Google Calendar</button>
           </div>
@@ -2260,7 +2351,7 @@ export default function SipsDashboardPage() {
           <h2 style={{ marginTop: 0 }}>Admin Alerts / Today</h2>
           <div style={styles.grid3}>
             <div><strong>Tasks Today:</strong> {getDailyTasks().length}</div>
-            <div><strong>Pending Alerts:</strong> {households.filter((item) => getRecordAlerts(item).length).length}</div>
+            <div><strong>Pending Alerts:</strong> {getVisibleHouseholds().filter((item) => getRecordAlerts(item).length).length}</div>
             <div><strong>Appointments:</strong> {todaysAppointments.length}</div>
           </div>
           <div style={{ ...styles.nav, marginTop: 12 }}>
@@ -2440,9 +2531,9 @@ export default function SipsDashboardPage() {
     }
 
     const range = getRangeForView();
-    const filteredEvents = events.filter((event) => {
+    const filteredEvents = getVisibleEvents().filter((event) => {
       const viewForcesAllAgents = calendarViewMode === "All Agents View";
-      const agentMatch = viewForcesAllAgents || appointmentsAgentFilter === "All" || event.agent === appointmentsAgentFilter;
+      const agentMatch = activeUserRole === "Agent" ? event.agent === activeUserName : (viewForcesAllAgents || appointmentsAgentFilter === "All" || event.agent === appointmentsAgentFilter);
       const typeMatch = appointmentsTypeFilter === "All" || event.appointmentType === appointmentsTypeFilter;
       const fromMatch = !range.from || event.date >= range.from;
       const toMatch = !range.to || event.date <= range.to;
@@ -2670,10 +2761,10 @@ export default function SipsDashboardPage() {
 
   function renderStatusPipeline() {
     const counts = PIPELINE_STATUS_OPTIONS.reduce((acc, status) => {
-      acc[status] = households.filter((item) => (item.businessStatus || item.status) === status).length;
+      acc[status] = getVisibleHouseholds().filter((item) => (item.businessStatus || item.status) === status).length;
       return acc;
     }, {});
-    const filtered = households.filter((item) => pipelineStatusFilter === "All" || (item.businessStatus || item.status) === pipelineStatusFilter);
+    const filtered = getVisibleHouseholds().filter((item) => pipelineStatusFilter === "All" || (item.businessStatus || item.status) === pipelineStatusFilter);
 
     return (
       <section style={styles.card}>
@@ -2721,7 +2812,7 @@ export default function SipsDashboardPage() {
 
   function renderCurrentClients() {
     const search = currentClientSearch.toLowerCase();
-    const rateClients = households.filter((item) => {
+    const rateClients = getVisibleHouseholds().filter((item) => {
       const text = `${fullName(item.client)} ${item.client?.phone || ""} ${item.client?.email || ""} ${item.carrier || ""} ${item.policyNumber || ""}`.toLowerCase();
       const matchesSearch = !search || text.includes(search);
       const matchesCall = rateCallFilter === "All" || (item.callStatus || "Not Called") === rateCallFilter;
@@ -2777,8 +2868,8 @@ export default function SipsDashboardPage() {
   }
 
   function renderClients() {
-    const filteredHouseholds = households.filter((item) => {
-      return clientsAgentFilter === "All" || item.assignedAgent === clientsAgentFilter;
+    const filteredHouseholds = getVisibleHouseholds().filter((item) => {
+      return activeUserRole === "Agent" ? item.assignedAgent === activeUserName : (clientsAgentFilter === "All" || item.assignedAgent === clientsAgentFilter);
     });
 
     return (
@@ -2829,7 +2920,7 @@ export default function SipsDashboardPage() {
 
   function renderToday() {
     const today = new Date().toISOString().slice(0, 10);
-    const todaysEvents = events.filter((event) => event.date === today);
+    const todaysEvents = getVisibleEvents().filter((event) => event.date === today);
     return (
       <section style={styles.card}>
         <h2 style={{ marginTop: 0 }}>Today’s Appointments</h2>
@@ -2978,8 +3069,8 @@ export default function SipsDashboardPage() {
   }
 
   function renderAgentPage() {
-    const agentEvents = events.filter((event) => event.agent === selectedAgent);
-    const agentHouseholds = households.filter((item) => item.assignedAgent === selectedAgent);
+    const agentEvents = getVisibleEvents().filter((event) => event.agent === selectedAgent);
+    const agentHouseholds = getVisibleHouseholds().filter((item) => item.assignedAgent === selectedAgent);
 
     return (
       <>
@@ -3056,31 +3147,43 @@ export default function SipsDashboardPage() {
     );
   }
 
+  function renderAccessRestricted() {
+    return (
+      <section style={styles.card}>
+        <h2 style={{ marginTop: 0 }}>Access Restricted</h2>
+        <p>This page is not visible in the selected agent view. Switch to Senior Agent/Admin view to see this area.</p>
+        <button type="button" style={styles.primaryButton} onClick={() => { setActiveUserRole("Admin"); setView("permissions"); }}>Open Role Access</button>
+      </section>
+    );
+  }
+
   return (
     <main style={styles.layout}>
-      <SidebarNav view={view} setView={setView} message={message} />
+      <SidebarNav view={view} setView={safeSetView} message={message} activeUserRole={activeUserRole} activeUserName={activeUserName} setActiveUserRole={setActiveUserRole} setActiveUserName={setActiveUserName} />
       <section style={styles.mainPanel}>
         <header style={styles.header}>
           <h1 style={{ margin: 0 }}>SIPS Connect</h1>
-          <p style={{ marginBottom: 0 }}>Compact command center: Admin hub, daily tasks, status pipeline, rate-increase calls, performance, intake scheduling, calendar availability, Quick Rater, Calculator, and Integrations.</p>
+          <p style={{ marginBottom: 0 }}>Compact command center with Admin/Agent visibility controls. Current role: {activeUserRole}. {activeUserRole === "Agent" ? "Showing only " + activeUserName + " records." : "Full agency access."}</p>
         </header>
 
-        {view === "dashboard" && renderDashboard()}
-        {view === "admin" && renderAdmin()}
-        {view === "initialIntake" && renderInitialIntake()}
-        {view === "leadCapture" && renderLeadCapture()}
-        {view === "calendar" && renderCalendar()}
-        {view === "clients" && renderClients()}
-        {view === "currentClients" && renderCurrentClients()}
-        {view === "dailyTasks" && renderDailyTasks()}
-        {view === "performance" && renderPerformance()}
-        {view === "status" && renderStatusPipeline()}
-        {view === "today" && renderToday()}
-        {view === "household" && renderHousehold()}
-        {view === "agent" && renderAgentPage()}
-        {view === "quickRater" && renderQuickRater()}
-        {view === "calculator" && renderCalculator()}
-        {view === "integrations" && renderIntegrations()}
+        {!canSeeView(view) ? renderAccessRestricted() : null}
+        {canSeeView(view) && view === "dashboard" && renderDashboard()}
+        {canSeeView(view) && view === "admin" && renderAdmin()}
+        {canSeeView(view) && view === "initialIntake" && renderInitialIntake()}
+        {canSeeView(view) && view === "leadCapture" && renderLeadCapture()}
+        {canSeeView(view) && view === "calendar" && renderCalendar()}
+        {canSeeView(view) && view === "clients" && renderClients()}
+        {canSeeView(view) && view === "currentClients" && renderCurrentClients()}
+        {canSeeView(view) && view === "dailyTasks" && renderDailyTasks()}
+        {canSeeView(view) && view === "performance" && renderPerformance()}
+        {canSeeView(view) && view === "status" && renderStatusPipeline()}
+        {canSeeView(view) && view === "today" && renderToday()}
+        {canSeeView(view) && view === "household" && renderHousehold()}
+        {canSeeView(view) && view === "agent" && renderAgentPage()}
+        {canSeeView(view) && view === "quickRater" && renderQuickRater()}
+        {canSeeView(view) && view === "calculator" && renderCalculator()}
+        {canSeeView(view) && view === "integrations" && renderIntegrations()}
+        {canSeeView(view) && view === "permissions" && renderPermissions()}
       </section>
     </main>
   );
