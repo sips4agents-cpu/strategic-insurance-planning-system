@@ -1592,6 +1592,8 @@ function SidebarNav({ view, setView, message }) {
     ["calendar", "Calendar / Availability"],
     ["clients", "Clients"],
     ["currentClients", "Current Clients"],
+    ["dailyTasks", "Daily Tasks"],
+    ["performance", "Performance"],
     ["status", "Status Pipeline"],
     ["today", "Today"],
     ["household", "Household"],
@@ -1872,6 +1874,7 @@ export default function SipsDashboardPage() {
       client: { ...household.client, age: calculateAge(household.client.birthdate) },
       spouse: { ...household.spouse, age: calculateAge(household.spouse.birthdate) },
       createdAt: new Date().toLocaleString(),
+      statusUpdatedAt: household.statusUpdatedAt || new Date().toLocaleString(),
     };
 
     setHouseholds((prev) => {
@@ -1967,8 +1970,12 @@ export default function SipsDashboardPage() {
   }
 
   function updateSavedHousehold(id, field, value) {
-    setHouseholds((prev) => prev.map((item) => item.id === id ? { ...item, [field]: value, updatedAt: new Date().toLocaleString() } : item));
-    if (household.id === id) updateHousehold(field, value);
+    const stamp = new Date().toLocaleString();
+    setHouseholds((prev) => prev.map((item) => item.id === id ? { ...item, [field]: value, updatedAt: stamp, ...(field === "businessStatus" || field === "status" ? { statusUpdatedAt: stamp } : {}) } : item));
+    if (household.id === id) {
+      updateHousehold(field, value);
+      if (field === "businessStatus" || field === "status") setHousehold((prev) => ({ ...prev, statusUpdatedAt: stamp }));
+    }
     setMessage("Client record updated in the dashboard sheet.");
   }
 
@@ -2069,6 +2076,100 @@ export default function SipsDashboardPage() {
   }
 
 
+  function daysSince(value) {
+    if (!value) return 0;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return 0;
+    return Math.floor((Date.now() - parsed.getTime()) / 86400000);
+  }
+
+  function getRecordAlerts(item) {
+    const alerts = [];
+    const status = item.businessStatus || item.status || "New";
+    const ageDays = daysSince(item.statusUpdatedAt || item.applicationDate || item.createdAt);
+    if (status === "Pending Business" && ageDays >= 5) alerts.push(`Pending ${ageDays} days — follow up with carrier`);
+    if ((item.status === "Rate Increase Call" || item.businessStatus === "Rate Increase Call" || item.rateIncreaseDate) && (item.callStatus || "Not Called") === "Not Called") alerts.push("Rate increase client not contacted yet");
+    if (item.nextCallDate && item.nextCallDate <= new Date().toISOString().slice(0, 10) && !["Completed", "Do Not Call"].includes(item.callStatus || "")) alerts.push("Call due today or overdue");
+    if (status === "Written Business" && !item.applicationDate) alerts.push("Written business missing application date");
+    if (status === "Issued Business" && !item.policyNumber) alerts.push("Issued business missing policy number");
+    return alerts;
+  }
+
+  function moveCurrentApplicationStatus(nextStatus) {
+    const id = household.id || selectedHouseholdId;
+    const stamp = new Date().toLocaleString();
+    setHousehold((prev) => ({ ...prev, businessStatus: nextStatus, status: nextStatus, statusUpdatedAt: stamp }));
+    if (id) setHouseholds((prev) => prev.map((item) => item.id === id ? { ...item, businessStatus: nextStatus, status: nextStatus, statusUpdatedAt: stamp, updatedAt: stamp } : item));
+    setMessage(`Application moved to ${nextStatus}.`);
+  }
+
+  function advanceSavedApplication(id, nextStatus) {
+    const stamp = new Date().toLocaleString();
+    setHouseholds((prev) => prev.map((item) => item.id === id ? { ...item, businessStatus: nextStatus, status: nextStatus, statusUpdatedAt: stamp, updatedAt: stamp } : item));
+    if (household.id === id) setHousehold((prev) => ({ ...prev, businessStatus: nextStatus, status: nextStatus, statusUpdatedAt: stamp }));
+    setMessage(`Record moved to ${nextStatus}.`);
+  }
+
+  function getDailyTasks() {
+    const today = new Date().toISOString().slice(0, 10);
+    const todaysEvents = events.filter((event) => event.date === today).map((event) => ({ id: event.id, type: "Appointment", title: event.title, detail: `${event.time} · ${event.agent} · ${event.location}`, source: event }));
+    const followUps = households.flatMap((item) => {
+      const tasks = [];
+      getRecordAlerts(item).forEach((alert, index) => tasks.push({ id: `${item.id}-alert-${index}`, type: "Alert", title: fullName(item.client), detail: alert, source: item }));
+      if (item.nextCallDate === today) tasks.push({ id: `${item.id}-call`, type: "Call", title: fullName(item.client), detail: `${item.client?.phone || "No phone"} · ${item.callStatus || "Not Called"}`, source: item });
+      return tasks;
+    });
+    return [...todaysEvents, ...followUps];
+  }
+
+  function getAgentPerformanceRows() {
+    return AGENTS.map((agent) => {
+      const assigned = households.filter((item) => (item.assignedAgent || "Admin") === agent.name);
+      const countBy = (status) => assigned.filter((item) => (item.businessStatus || item.status) === status).length;
+      return { agent: agent.name, total: assigned.length, written: countBy("Written Business"), pending: countBy("Pending Business"), issued: countBy("Issued Business"), declined: countBy("Declined Business"), rateCalls: assigned.filter((item) => item.status === "Rate Increase Call" || item.businessStatus === "Rate Increase Call" || item.rateIncreaseDate).length, appointments: events.filter((event) => event.agent === agent.name).length };
+    });
+  }
+
+  function renderDailyTasks() {
+    const tasks = getDailyTasks();
+    return (
+      <section style={styles.card}>
+        <h2 style={{ marginTop: 0 }}>Daily Admin Task List</h2>
+        <p style={{ marginTop: 0 }}>Shows today’s appointments, pending business alerts, rate-increase clients not contacted, and due call-backs.</p>
+        <div style={styles.nav}>
+          <button type="button" style={styles.button} onClick={() => setView("calendar")}>Calendar / Availability</button>
+          <button type="button" style={styles.button} onClick={() => setView("status")}>Status Pipeline</button>
+          <button type="button" style={styles.button} onClick={() => setView("currentClients")}>Rate Calls</button>
+        </div>
+        {tasks.length === 0 ? <p>No urgent admin tasks for today.</p> : null}
+        {tasks.map((task) => (
+          <div key={task.id} style={{ border: "1px solid #d6dde8", borderRadius: 12, padding: 14, marginTop: 10, background: task.type === "Alert" ? "#fff7ed" : "white" }}>
+            <strong>{task.type}: {task.title}</strong>
+            <p style={{ marginBottom: 8 }}>{task.detail}</p>
+            {task.source?.client ? <button type="button" style={styles.button} onClick={() => { loadHousehold(task.source); setView("household"); }}>Open Client</button> : null}
+          </div>
+        ))}
+      </section>
+    );
+  }
+
+  function renderPerformance() {
+    const rows = getAgentPerformanceRows();
+    return (
+      <section style={styles.card}>
+        <h2 style={{ marginTop: 0 }}>Agent Performance View</h2>
+        <p style={{ marginTop: 0 }}>Tracks written, pending, issued, declined, rate-increase call records, and appointments by agent.</p>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 840 }}>
+            <thead><tr>{["Agent", "Total", "Written", "Pending", "Issued", "Declined", "Rate Calls", "Appointments"].map((head) => <th key={head} style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #d6dde8" }}>{head}</th>)}</tr></thead>
+            <tbody>{rows.map((row) => (<tr key={row.agent}><td style={{ padding: 8, fontWeight: 700 }}>{row.agent}</td><td style={{ padding: 8 }}>{row.total}</td><td style={{ padding: 8 }}>{row.written}</td><td style={{ padding: 8 }}>{row.pending}</td><td style={{ padding: 8 }}>{row.issued}</td><td style={{ padding: 8 }}>{row.declined}</td><td style={{ padding: 8 }}>{row.rateCalls}</td><td style={{ padding: 8 }}>{row.appointments}</td></tr>))}</tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+
   function renderLeadCapture() {
     return (
       <LeadCapturePage household={household} updatePerson={updatePerson} updateHousehold={updateHousehold} saveIntake={saveIntake} setView={setView} />
@@ -2146,11 +2247,26 @@ export default function SipsDashboardPage() {
             <button type="button" style={styles.button} onClick={() => { const today = new Date().toISOString().slice(0, 10); setAppointmentSearchFrom(today); setAppointmentSearchTo(today); setView("calendar"); }}>Today</button>
             <button type="button" style={styles.button} onClick={() => setView("clients")}>Clients</button>
             <button type="button" style={styles.button} onClick={() => setView("currentClients")}>Current Clients / Rate Calls</button>
+            <button type="button" style={styles.button} onClick={() => setView("dailyTasks")}>Daily Admin Tasks</button>
+            <button type="button" style={styles.button} onClick={() => setView("performance")}>Agent Performance</button>
             <button type="button" style={styles.button} onClick={() => setView("status")}>Status Pipeline</button>
             <button type="button" style={styles.button} onClick={() => setView("agent")}>Agent Page</button>
             <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Google Calendar</button>
           </div>
           {message ? <p><strong>{message}</strong></p> : null}
+        </section>
+
+        <section style={styles.card}>
+          <h2 style={{ marginTop: 0 }}>Admin Alerts / Today</h2>
+          <div style={styles.grid3}>
+            <div><strong>Tasks Today:</strong> {getDailyTasks().length}</div>
+            <div><strong>Pending Alerts:</strong> {households.filter((item) => getRecordAlerts(item).length).length}</div>
+            <div><strong>Appointments:</strong> {todaysAppointments.length}</div>
+          </div>
+          <div style={{ ...styles.nav, marginTop: 12 }}>
+            <button type="button" style={styles.primaryButton} onClick={() => setView("dailyTasks")}>Open Daily Task List</button>
+            <button type="button" style={styles.button} onClick={() => setView("performance")}>Open Performance View</button>
+          </div>
         </section>
 
         <section style={styles.card}>
@@ -2581,6 +2697,9 @@ export default function SipsDashboardPage() {
               <select style={styles.input} value={item.businessStatus || item.status || "New"} onChange={(e) => updateSavedHousehold(item.id, "businessStatus", e.target.value)}>
                 {BUSINESS_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
               </select>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {PIPELINE_STATUS_OPTIONS.map((status) => <button key={status} type="button" style={{ ...styles.button, padding: "8px 9px", fontSize: 12 }} onClick={() => advanceSavedApplication(item.id, status)}>{status.replace(" Business", "")}</button>)}
+              </div>
               <input style={styles.input} value={item.policyNumber || ""} onChange={(e) => updateSavedHousehold(item.id, "policyNumber", e.target.value)} placeholder="Policy Number" />
               <input style={styles.input} value={item.carrier || item.client?.currentCarrier || ""} onChange={(e) => updateSavedHousehold(item.id, "carrier", e.target.value)} placeholder="Carrier" />
               <input style={styles.input} value={item.applicationDate || ""} onChange={(e) => updateSavedHousehold(item.id, "applicationDate", e.target.value)} placeholder="Application Date" />
@@ -2589,6 +2708,7 @@ export default function SipsDashboardPage() {
               </select>
             </div>
             <textarea style={{ ...styles.textarea, marginTop: 10, minHeight: 70 }} value={item.notes || ""} onChange={(e) => updateSavedHousehold(item.id, "notes", e.target.value)} placeholder="Status notes / application updates" />
+            {getRecordAlerts(item).length ? <div style={{ marginTop: 10, padding: 10, borderRadius: 10, background: "#fff7ed", border: "1px solid #fed7aa" }}><strong>Alerts:</strong> {getRecordAlerts(item).join(" | ")}</div> : null}
             <div style={{ ...styles.nav, marginTop: 10 }}>
               <button type="button" style={styles.button} onClick={() => { loadHousehold(item); setView("household"); }}>Open Household</button>
               <button type="button" style={styles.button} onClick={() => { loadHousehold(item); setView("initialIntake"); }}>Schedule Follow Up</button>
@@ -2942,7 +3062,7 @@ export default function SipsDashboardPage() {
       <section style={styles.mainPanel}>
         <header style={styles.header}>
           <h1 style={{ margin: 0 }}>SIPS Connect</h1>
-          <p style={{ marginBottom: 0 }}>Compact command center: Admin hub, separate Initial Intake scheduling form, multi-view calendar availability, clients, agent tools, Quick Rater, Calculator, and Integrations.</p>
+          <p style={{ marginBottom: 0 }}>Compact command center: Admin hub, daily tasks, status pipeline, rate-increase calls, performance, intake scheduling, calendar availability, Quick Rater, Calculator, and Integrations.</p>
         </header>
 
         {view === "dashboard" && renderDashboard()}
@@ -2952,6 +3072,8 @@ export default function SipsDashboardPage() {
         {view === "calendar" && renderCalendar()}
         {view === "clients" && renderClients()}
         {view === "currentClients" && renderCurrentClients()}
+        {view === "dailyTasks" && renderDailyTasks()}
+        {view === "performance" && renderPerformance()}
         {view === "status" && renderStatusPipeline()}
         {view === "today" && renderToday()}
         {view === "household" && renderHousehold()}
