@@ -331,7 +331,7 @@ const styles = {
   header: {
     background: "#0f2a44",
     color: "white",
-    padding: "22px 24px",
+    padding: "14px 16px",
     borderRadius: 16,
     marginBottom: 18,
   },
@@ -345,7 +345,7 @@ const styles = {
     background: "white",
     border: "1px solid #d6dde8",
     borderRadius: 14,
-    padding: 18,
+    padding: 12,
     marginBottom: 16,
     boxShadow: "0 2px 8px rgba(15, 42, 68, 0.06)",
   },
@@ -362,7 +362,7 @@ const styles = {
   input: {
     width: "100%",
     boxSizing: "border-box",
-    padding: "12px 13px",
+    padding: "8px 9px",
     border: "1px solid #c8d1dc",
     borderRadius: 10,
     fontSize: 14,
@@ -408,12 +408,12 @@ const styles = {
     fontWeight: 700,
   },
   layout: { minHeight: "100vh", display: "flex", background: "#f4f7fb", fontFamily: "Arial, sans-serif", color: "#111827" },
-  sidebar: { width: 270, flexShrink: 0, background: "#0f2a44", color: "white", padding: 18, display: "flex", flexDirection: "column", gap: 8, position: "sticky", top: 0, height: "100vh", overflowY: "auto", boxSizing: "border-box" },
-  sidebarTitle: { fontSize: 20, fontWeight: 800, marginBottom: 4 },
-  sidebarSub: { fontSize: 12, opacity: 0.8, marginBottom: 12, lineHeight: 1.4 },
-  sideButton: { width: "100%", border: "1px solid rgba(255,255,255,.14)", borderRadius: 11, padding: "12px 13px", background: "rgba(255,255,255,.06)", color: "white", cursor: "pointer", fontWeight: 750, textAlign: "left" },
-  sideButtonActive: { width: "100%", border: "1px solid #93c5fd", borderRadius: 11, padding: "12px 13px", background: "#1d4ed8", color: "white", cursor: "pointer", fontWeight: 800, textAlign: "left", boxShadow: "0 8px 18px rgba(0,0,0,.18)" },
-  mainPanel: { flex: 1, minWidth: 0, padding: 24, overflowY: "auto" },
+  sidebar: { width: 190, flexShrink: 0, background: "#0f2a44", color: "white", padding: 10, display: "flex", flexDirection: "column", gap: 5, position: "sticky", top: 0, height: "100vh", overflowY: "auto", boxSizing: "border-box" },
+  sidebarTitle: { fontSize: 16, fontWeight: 800, marginBottom: 2 },
+  sidebarSub: { fontSize: 11, opacity: 0.8, marginBottom: 6, lineHeight: 1.25 },
+  sideButton: { width: "100%", border: "1px solid rgba(255,255,255,.14)", borderRadius: 8, padding: "7px 8px", background: "rgba(255,255,255,.06)", color: "white", cursor: "pointer", fontWeight: 750, textAlign: "left", fontSize: 12 },
+  sideButtonActive: { width: "100%", border: "1px solid #93c5fd", borderRadius: 8, padding: "7px 8px", background: "#1d4ed8", color: "white", cursor: "pointer", fontWeight: 800, textAlign: "left", boxShadow: "0 4px 10px rgba(0,0,0,.16)", fontSize: 12 },
+  mainPanel: { flex: 1, minWidth: 0, padding: 14, overflowY: "auto" },
 };
 
 function formatPhone(value) {
@@ -826,7 +826,7 @@ function FactFinderQuoter({ household, updatePerson, updateHousehold, updateAnci
       <section style={styles.card}>
         <h3 style={{ marginTop: 0 }}>Premium Snapshot</h3>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 620 }}>
             <thead>
               <tr>
                 {["Metric", "Applicant", "Spouse", "Total"].map((head) => <th key={head} style={{ textAlign: "left", padding: 10, borderBottom: "1px solid #d6dde8" }}>{head}</th>)}
@@ -906,7 +906,7 @@ function QuickRaterPage({ household, updatePerson, updateAncillary, setView, sav
           <input style={styles.input} value={person.health} onChange={(e) => updatePerson(type, "health", e.target.value)} placeholder="Current Health" />
         </div>
         <div style={{ overflowX: "auto", marginTop: 14 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 620 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
             <thead>
               <tr>
                 {["Field", "Current", "Proposed"].map((head) => (
@@ -1528,7 +1528,8 @@ function LeadCapturePage({ household, updatePerson, updateHousehold, saveIntake,
 function SidebarNav({ view, setView, message }) {
   const navItems = [
     ["dashboard", "Dashboard"],
-    ["admin", "Admin Command Hub"],
+    ["admin", "Admin Hub"],
+    ["initialIntake", "Initial Intake"],
     ["leadCapture", "Lead Capture"],
     ["calendar", "Appointments"],
     ["clients", "Clients"],
@@ -1959,81 +1960,114 @@ export default function SipsDashboardPage() {
     );
   }
 
+
   function renderAdmin() {
-    const selectedForms = selectedAttachableForms();
+    const todaysAppointments = events.filter((event) => event.date === new Date().toISOString().slice(0, 10));
+    const activeClient = fullName(household.client);
+
+    return (
+      <>
+        <section style={{ ...styles.card, border: "2px solid #0f2a44" }}>
+          <h2 style={{ marginTop: 0 }}>Admin Hub — Clean Command Center</h2>
+          <p style={{ marginTop: 0 }}>
+            Admin stays simple: start intake, search appointments, open clients, prepare emails, or export Medicare Pro/Monday fields.
+            Scheduling details now live in the separate Initial Intake form.
+          </p>
+          <div style={styles.nav}>
+            <button type="button" style={styles.primaryButton} onClick={() => setView("initialIntake")}>Initial Intake Form</button>
+            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Search Calendar</button>
+            <button type="button" style={styles.button} onClick={() => { const today = new Date().toISOString().slice(0, 10); setAppointmentSearchFrom(today); setAppointmentSearchTo(today); setView("calendar"); }}>Today</button>
+            <button type="button" style={styles.button} onClick={() => setView("clients")}>Clients</button>
+            <button type="button" style={styles.button} onClick={() => setView("agent")}>Agent Page</button>
+            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Google Calendar</button>
+          </div>
+          {message ? <p><strong>{message}</strong></p> : null}
+        </section>
+
+        <section style={styles.card}>
+          <h2 style={{ marginTop: 0 }}>Current Working File</h2>
+          <div style={styles.grid3}>
+            <div><strong>Client:</strong> {activeClient}</div>
+            <div><strong>Phone:</strong> {household.client.phone || "-"}</div>
+            <div><strong>Agent:</strong> {household.assignedAgent || "Admin"}</div>
+            <div><strong>Status:</strong> {household.status || "New"}</div>
+            <div><strong>Reason:</strong> {household.reasonForCall || "-"}</div>
+            <div><strong>Premium:</strong> {household.currentPremium || household.client.currentMedSuppPremium || "-"}</div>
+          </div>
+          <div style={{ ...styles.nav, marginTop: 12 }}>
+            <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Current Record</button>
+            <button type="button" style={styles.button} onClick={() => setView("initialIntake")}>Continue Intake / Schedule</button>
+            <button type="button" style={styles.button} onClick={resetIntake}>Clear Intake</button>
+          </div>
+        </section>
+
+        <section style={styles.card}>
+          <h2 style={{ marginTop: 0 }}>Admin Quick Actions</h2>
+          <div style={styles.nav}>
+            <button type="button" style={styles.button} onClick={refreshEmailTemplateWithLatestData}>Refresh Email Template</button>
+            <button type="button" style={styles.button} onClick={copyEmailPackage}>Copy Email Package</button>
+            <button type="button" style={styles.button} onClick={openEmailDraft}>Open Email Draft</button>
+            <button type="button" style={styles.button} onClick={() => navigator.clipboard?.writeText(JSON.stringify(buildIntegrationAutofillData(household).medicarePro, null, 2))}>Copy Medicare Pro Fields</button>
+            <button type="button" style={styles.button} onClick={() => navigator.clipboard?.writeText(JSON.stringify(buildIntegrationAutofillData(household).monday, null, 2))}>Copy Monday Fields</button>
+            <button type="button" style={styles.button} onClick={() => downloadIntegrationCsv(household)}>Export CSV</button>
+          </div>
+        </section>
+
+        <section style={styles.card}>
+          <h2 style={{ marginTop: 0 }}>Today Snapshot</h2>
+          {todaysAppointments.length === 0 ? <p>No saved appointments for today yet.</p> : null}
+          {todaysAppointments.slice(0, 6).map((event) => (
+            <div key={event.id} style={{ border: "1px solid #d6dde8", borderRadius: 10, padding: 10, marginTop: 8 }}>
+              <strong>{event.time || "No time"} — {event.title}</strong>
+              <div>{event.agent || "Unassigned"} · {event.location || "Phone Call"}</div>
+            </div>
+          ))}
+        </section>
+      </>
+    );
+  }
+
+  function renderInitialIntake() {
     const clientSnapshot = calculatePremiumSnapshot(household.client, "client", household.ancillary || blankAncillary);
     const spouseSnapshot = calculatePremiumSnapshot(household.spouse, "spouse", household.ancillary || blankAncillary);
 
     return (
       <>
         <section style={{ ...styles.card, border: "2px solid #0f2a44" }}>
-          <h2 style={{ marginTop: 0 }}>Admin Command Hub</h2>
-          <p style={{ marginTop: 0 }}>Central place for intake, appointment search, client/agent notes, email templates, forms, and stable manual Medicare Pro/Monday export.</p>
+          <h2 style={{ marginTop: 0 }}>Initial Intake Form — Call-In Appointment</h2>
+          <p style={{ marginTop: 0 }}>
+            Use this screen when a client calls in. Enter client/spouse information, assign the agent, schedule the appointment, then save.
+          </p>
           <div style={styles.nav}>
-            <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Admin Record</button>
-            <button type="button" style={styles.primaryButton} onClick={runAdminAutomation}>Save + Schedule + Prepare Email</button>
-            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Search Appointments</button>
-            <button type="button" style={styles.button} onClick={() => setView("clients")}>Open Clients</button>
-            <button type="button" style={styles.button} onClick={() => setView("agent")}>Open Agent Page</button>
+            <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Intake</button>
+            <button type="button" style={styles.primaryButton} onClick={createCalendarEvent}>Schedule Appointment</button>
+            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Go to Calendar</button>
             <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Calendar</button>
-            <button type="button" style={styles.button} onClick={resetIntake}>Clear Intake</button>
+            <button type="button" style={styles.button} onClick={() => setView("admin")}>Return to Admin</button>
           </div>
           {message ? <p><strong>{message}</strong></p> : null}
         </section>
 
-        <section style={{ ...styles.card, background: "#f8fafc" }}>
-          <h2 style={{ marginTop: 0 }}>Stable One-Click Admin Flow</h2>
-          <p style={{ marginTop: 0 }}>Save the record, create the appointment when date/time are entered, and prepare the email package. Medicare Pro and Monday stay manual/export only for now so the dashboard stays fast and does not hang.</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 8 }}>
-            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input type="checkbox" checked={autoCreateAppointment} onChange={(e) => setAutoCreateAppointment(e.target.checked)} />
-              Auto-create appointment
-            </label>
-            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input type="checkbox" checked={autoPrepareEmail} onChange={(e) => setAutoPrepareEmail(e.target.checked)} />
-              Auto-prepare email package
-            </label>
-            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input type="checkbox" checked={autoSendEmail} onChange={(e) => setAutoSendEmail(e.target.checked)} />
-              Try direct email send only if email API is connected
-            </label>
-          </div>
-          <div style={{ marginTop: 12, padding: 12, border: "1px solid #f59e0b", borderRadius: 12, background: "#fff7ed" }}>
-            <strong>Stability setting:</strong> Medicare Pro and Monday auto-push are turned off. Use Copy Medicare Pro Fields, Export CSV, Copy Monday Fields, or Open Monday when ready.
-          </div>
-          <div style={{ ...styles.nav, marginTop: 14 }}>
-            <button type="button" style={styles.primaryButton} onClick={runAdminAutomation}>Save + Schedule + Prepare Email</button>
-            <button type="button" style={styles.button} onClick={() => navigator.clipboard?.writeText(JSON.stringify(buildIntegrationAutofillData(household).medicarePro, null, 2))}>Copy Medicare Pro Fields</button>
-            <button type="button" style={styles.button} onClick={() => navigator.clipboard?.writeText(JSON.stringify(buildIntegrationAutofillData(household).monday, null, 2))}>Copy Monday Fields</button>
-            <button type="button" style={styles.button} onClick={() => downloadIntegrationCsv(household)}>Export CSV</button>
-          </div>
-          <div style={{ marginTop: 12, padding: 12, border: "1px solid #d6dde8", borderRadius: 12, background: "white" }}>
-            <strong>Automation Log</strong>
-            {automationLog.length ? automationLog.map((item) => <div key={item} style={{ marginTop: 6 }}>{item}</div>) : <div style={{ marginTop: 6 }}>No automation run yet.</div>}
-          </div>
-        </section>
-
         <section style={styles.card}>
-          <h2 style={{ marginTop: 0 }}>Appointment Search + Schedule</h2>
+          <h2 style={{ marginTop: 0 }}>Appointment Scheduler</h2>
           <div style={styles.grid3}>
-            <input style={styles.input} type="date" value={appointmentSearchFrom} onChange={(e) => setAppointmentSearchFrom(e.target.value)} title="Search from date" />
-            <input style={styles.input} type="date" value={appointmentSearchTo} onChange={(e) => setAppointmentSearchTo(e.target.value)} title="Search to date" />
-            <input style={styles.input} value={appointmentSearchText} onChange={(e) => setAppointmentSearchText(e.target.value)} placeholder="Search name, phone, agent, type, notes" />
-          </div>
-          <div style={{ ...styles.nav, marginTop: 12 }}>
-            <button type="button" style={styles.primaryButton} onClick={() => setView("calendar")}>Run Appointment Search</button>
-            <button type="button" style={styles.button} onClick={() => { const today = new Date().toISOString().slice(0, 10); setAppointmentSearchFrom(today); setAppointmentSearchTo(today); setView("calendar"); }}>Today Search</button>
-            <button type="button" style={styles.button} onClick={() => { setAppointmentSearchFrom(""); setAppointmentSearchTo(""); setAppointmentSearchText(""); }}>Clear Search</button>
-          </div>
-
-          <div style={{ ...styles.grid3, marginTop: 14 }}>
             <select style={styles.input} value={household.reasonForCall} onChange={(e) => updateHousehold("reasonForCall", e.target.value)}>
               {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
             </select>
-            <input style={styles.input} type="date" value={appointmentDate} onChange={(e) => setAppointmentDate(e.target.value)} />
-            <input style={styles.input} type="time" value={appointmentTime} onChange={(e) => setAppointmentTime(e.target.value)} />
+            <select style={styles.input} value={household.assignedAgent} onChange={(e) => updateHousehold("assignedAgent", e.target.value)}>
+              {AGENTS.map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
+            </select>
+            <select style={styles.input} value={household.status} onChange={(e) => updateHousehold("status", e.target.value)}>
+              <option value="New">New</option>
+              <option value="Working">Working</option>
+              <option value="Scheduled">Scheduled</option>
+              <option value="Pending">Pending</option>
+              <option value="Completed">Completed</option>
+            </select>
           </div>
           <div style={{ ...styles.grid3, marginTop: 12 }}>
+            <input style={styles.input} type="date" value={appointmentDate} onChange={(e) => setAppointmentDate(e.target.value)} />
+            <input style={styles.input} type="time" value={appointmentTime} onChange={(e) => setAppointmentTime(e.target.value)} />
             <select style={styles.input} value={appointmentDuration} onChange={(e) => setAppointmentDuration(e.target.value)}>
               <option value="15">15 minutes</option>
               <option value="30">30 minutes</option>
@@ -2041,6 +2075,8 @@ export default function SipsDashboardPage() {
               <option value="60">1 hour</option>
               <option value="90">1.5 hours</option>
             </select>
+          </div>
+          <div style={{ ...styles.grid3, marginTop: 12 }}>
             <select style={styles.input} value={appointmentLocation} onChange={(e) => setAppointmentLocation(e.target.value)}>
               <option value="Phone Call">Phone Call</option>
               <option value="Office">Office</option>
@@ -2048,6 +2084,7 @@ export default function SipsDashboardPage() {
               <option value="Zoom / Virtual">Zoom / Virtual</option>
               <option value="Other">Other</option>
             </select>
+            <input style={styles.input} value={household.referredBy} onChange={(e) => updateHousehold("referredBy", e.target.value)} placeholder="Referral source / Referred by" />
             <button type="button" style={styles.primaryButton} onClick={createCalendarEvent}>Create Appointment</button>
           </div>
         </section>
@@ -2058,21 +2095,8 @@ export default function SipsDashboardPage() {
         </div>
 
         <section style={styles.card}>
-          <h2 style={{ marginTop: 0 }}>Status, Coverage, Premiums, Referral</h2>
+          <h2 style={{ marginTop: 0 }}>Coverage, Premium, Health, and Notes</h2>
           <div style={styles.grid3}>
-            <select style={styles.input} value={household.status} onChange={(e) => updateHousehold("status", e.target.value)}>
-              <option value="New">New</option>
-              <option value="Working">Working</option>
-              <option value="Scheduled">Scheduled</option>
-              <option value="Pending">Pending</option>
-              <option value="Completed">Completed</option>
-            </select>
-            <select style={styles.input} value={household.assignedAgent} onChange={(e) => updateHousehold("assignedAgent", e.target.value)}>
-              {AGENTS.map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
-            </select>
-            <input style={styles.input} value={household.referredBy} onChange={(e) => updateHousehold("referredBy", e.target.value)} placeholder="Referral source / Referred by" />
-          </div>
-          <div style={{ ...styles.grid3, marginTop: 12 }}>
             <select style={styles.input} value={household.currentCoverage} onChange={(e) => updateHousehold("currentCoverage", e.target.value)}>
               <option value="">Current Coverage</option>
               {COVERAGE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
@@ -2090,121 +2114,21 @@ export default function SipsDashboardPage() {
             <input style={styles.input} value={household.spouse.currentMedSuppPremium} onChange={(e) => updatePerson("spouse", "currentMedSuppPremium", e.target.value)} placeholder="Spouse Current Premium" />
             <input style={styles.input} readOnly value={moneyDisplay(clientSnapshot.currentMonthly + spouseSnapshot.currentMonthly)} placeholder="Current Household Total" />
           </div>
-        </section>
-
-        <section style={styles.card}>
-          <h2 style={{ marginTop: 0 }}>Client + Spouse Health Review</h2>
-          <div style={styles.grid2}>
+          <div style={{ ...styles.grid2, marginTop: 12 }}>
             <textarea style={styles.textarea} value={household.client.health} onChange={(e) => updatePerson("client", "health", e.target.value)} placeholder="Client health, medications, underwriting notes" />
             <textarea style={styles.textarea} value={household.spouse.health} onChange={(e) => updatePerson("spouse", "health", e.target.value)} placeholder="Spouse health, medications, underwriting notes" />
           </div>
-          <div style={{ ...styles.grid2, marginTop: 12 }}>
-            <select style={styles.input} value={household.client.status} onChange={(e) => updatePerson("client", "status", e.target.value)}>
-              <option value="">Client Health Status</option>
-              <option value="Good Health">Good Health</option>
-              <option value="Needs Review">Needs Review</option>
-              <option value="Underwriting Concern">Underwriting Concern</option>
-              <option value="Decline Risk">Decline Risk</option>
-            </select>
-            <select style={styles.input} value={household.spouse.status} onChange={(e) => updatePerson("spouse", "status", e.target.value)}>
-              <option value="">Spouse Health Status</option>
-              <option value="Good Health">Good Health</option>
-              <option value="Needs Review">Needs Review</option>
-              <option value="Underwriting Concern">Underwriting Concern</option>
-              <option value="Decline Risk">Decline Risk</option>
-            </select>
-          </div>
-          <h3>Household Health Flags</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
-            {HEALTH_OPTIONS.map((option) => (
-              <label key={option} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <input type="checkbox" checked={(household.healthFlags || []).includes(option)} onChange={() => toggleHealth(option)} />
-                {option}
-              </label>
-            ))}
-          </div>
-        </section>
-
-        <section style={styles.card}>
-          <h2 style={{ marginTop: 0 }}>Medicare Pro / Client-Agent Access</h2>
-          <div style={styles.grid3}>
-            <select style={styles.input} value={household.medicareProStatus || "Not started"} onChange={(e) => updateHousehold("medicareProStatus", e.target.value)}>
-              <option value="Not started">Not started</option>
-              <option value="Search needed">Search needed</option>
-              <option value="Client found">Client found</option>
-              <option value="Client created">Client created</option>
-              <option value="Needs update">Needs update</option>
-              <option value="Complete">Complete</option>
-            </select>
-            <input style={styles.input} value={household.medicareProClientId || ""} onChange={(e) => updateHousehold("medicareProClientId", e.target.value)} placeholder="Medicare Pro Client ID / Search Name" />
-            <input style={styles.input} value={household.medicareProAgentAccess || ""} onChange={(e) => updateHousehold("medicareProAgentAccess", e.target.value)} placeholder="Agent access / permissions / login note" />
-          </div>
-          <textarea style={{ ...styles.textarea, marginTop: 12 }} value={household.clientAgentNotes || ""} onChange={(e) => updateHousehold("clientAgentNotes", e.target.value)} placeholder="Client-agent information admin needs to pass to the agent" />
+          <textarea style={{ ...styles.textarea, marginTop: 12 }} value={household.notes} onChange={(e) => updateHousehold("notes", e.target.value)} placeholder="Call notes / appointment notes / what agent needs to know" />
           <div style={{ ...styles.nav, marginTop: 12 }}>
-            <button type="button" style={styles.button} onClick={() => navigator.clipboard?.writeText(JSON.stringify(buildIntegrationAutofillData(household).medicarePro, null, 2))}>Copy Medicare Pro Fields</button>
-            <button type="button" style={styles.button} onClick={() => downloadIntegrationCsv(household)}>Export Medicare Pro CSV</button>
-          </div>
-        </section>
-
-        <IntegrationAutofillPanel household={household} />
-
-        <section style={styles.card}>
-          <h2 style={{ marginTop: 0 }}>Email Template + Form Attachments</h2>
-          <div style={styles.grid2}>
-            <select style={styles.input} value={emailTemplate} onChange={(e) => handleEmailTemplateChange(e.target.value)}>
-              {Object.keys(EMAIL_TEMPLATES).map((name) => <option key={name} value={name}>{name}</option>)}
-            </select>
-            <input style={styles.input} value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} placeholder="Email Subject" />
-          </div>
-          <div style={{ ...styles.nav, marginTop: 12 }}>
-            <button type="button" style={styles.button} onClick={refreshEmailTemplateWithLatestData}>Refresh Template With Client Data</button>
-            <span style={{ alignSelf: "center", fontSize: 13, color: "#475569" }}>Auto-fills name, spouse, appointment, premium, agent, and forms.</span>
-          </div>
-          <textarea style={{ ...styles.textarea, marginTop: 12, minHeight: 180 }} value={customEmailBody} onChange={(e) => setCustomEmailBody(e.target.value)} placeholder="Editable email template body" />
-
-          <div style={{ marginTop: 16 }}>
-            <strong>Forms / Documents to Attach or Request</strong>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 8, marginTop: 10 }}>
-              {ATTACHABLE_FORMS.map((formName) => (
-                <label key={formName} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input type="checkbox" checked={selectedForms.includes(formName)} onChange={(e) => toggleAttachableForm(formName, e.target.checked)} />
-                  {formName}
-                </label>
-              ))}
-            </div>
-            <p>Selected form list: {selectedForms.length ? selectedForms.join(", ") : "None"}</p>
-          </div>
-
-          <div style={{ marginTop: 12 }}>
-            <label style={{ fontWeight: 700 }}>Upload actual files to attach when email API is connected</label>
-            <input
-              style={{ ...styles.input, marginTop: 8 }}
-              type="file"
-              multiple
-              onChange={(e) => setEmailAttachmentFiles(Array.from(e.target.files || []))}
-            />
-            <p style={{ marginBottom: 0 }}>Files selected: {emailAttachmentFiles.length ? emailAttachmentFiles.map((file) => file.name).join(", ") : "None"}</p>
-          </div>
-
-          <textarea style={{ ...styles.textarea, marginTop: 12 }} readOnly value={buildEmailPackageBody()} />
-          <div style={{ ...styles.nav, marginTop: 12 }}>
-            <button type="button" style={styles.button} onClick={copyEmailPackage}>Copy Email Package</button>
-            <button type="button" style={styles.button} onClick={openEmailDraft}>Open Email Draft</button>
-            <button type="button" style={styles.primaryButton} onClick={sendEmailWithForms}>Send Email With Forms</button>
-          </div>
-        </section>
-
-        <section style={styles.card}>
-          <h2 style={{ marginTop: 0 }}>Admin Notes</h2>
-          <textarea style={styles.textarea} value={household.notes} onChange={(e) => updateHousehold("notes", e.target.value)} placeholder="Phone call notes / general admin information for agent" />
-          <div style={{ ...styles.nav, marginTop: 12 }}>
-            <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Admin Intake</button>
-            <button type="button" style={styles.button} onClick={resetIntake}>Clear Intake</button>
+            <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Intake</button>
+            <button type="button" style={styles.button} onClick={() => setView("agent")}>Send to Agent Page</button>
+            <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Go to Quick Rater</button>
           </div>
         </section>
       </>
     );
   }
+
 
   function renderCalendar() {
     const filteredEvents = events.filter((event) => {
@@ -2592,11 +2516,12 @@ export default function SipsDashboardPage() {
       <section style={styles.mainPanel}>
         <header style={styles.header}>
           <h1 style={{ margin: 0 }}>SIPS Connect</h1>
-          <p style={{ marginBottom: 0 }}>Full sidebar command center: Admin automation, appointment search, clients, Today, Household, Agent, Quick Rater, Calculator, and Integrations.</p>
+          <p style={{ marginBottom: 0 }}>Compact command center: Admin hub, separate Initial Intake scheduling form, calendar, clients, agent tools, Quick Rater, Calculator, and Integrations.</p>
         </header>
 
         {view === "dashboard" && renderDashboard()}
         {view === "admin" && renderAdmin()}
+        {view === "initialIntake" && renderInitialIntake()}
         {view === "leadCapture" && renderLeadCapture()}
         {view === "calendar" && renderCalendar()}
         {view === "clients" && renderClients()}
