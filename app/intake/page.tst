@@ -1,8 +1,7 @@
+"use client";
 <button style={styles.primaryButton}>
   + NEW CLIENT INTAKE
 </button>
-
-"use client";
 
 import { useMemo, useState } from "react";
 
