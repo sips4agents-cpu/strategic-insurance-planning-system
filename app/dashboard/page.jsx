@@ -649,45 +649,6 @@ function FactFinderQuoter({ household, updatePerson, updateHousehold, updateAnci
       </div>
 
       <section style={styles.card}>
-        <h3 style={{ marginTop: 0 }}>Ancillary Products — Keep / Replace / Remove</h3>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
-            <thead>
-              <tr>
-                {["Product", "Applicant Current", "Applicant Action", "Applicant Proposed", "Spouse Current", "Spouse Action", "Spouse Proposed"].map((head) => (
-                  <th key={head} style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #d6dde8" }}>{head}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {Object.keys(blankAncillary).map((product) => {
-                const row = ancillary[product] || blankAncillaryRow;
-                return (
-                  <tr key={product}>
-                    <td style={{ padding: 8, borderBottom: "1px solid #eef2f6", fontWeight: 700 }}>{product}</td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #eef2f6" }}><input style={styles.input} value={row.clientCurrent} onChange={(e) => updateAncillary(product, "clientCurrent", e.target.value)} placeholder="$" /></td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #eef2f6" }}>
-                      <select style={styles.input} value={row.clientAction} onChange={(e) => updateAncillary(product, "clientAction", e.target.value)}>
-                        <option value="">Action</option><option value="Keep">Keep</option><option value="Replace">Replace</option><option value="Remove">Remove</option><option value="Add">Add</option>
-                      </select>
-                    </td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #eef2f6" }}><input style={styles.input} value={row.clientProposed} onChange={(e) => updateAncillary(product, "clientProposed", e.target.value)} placeholder="$" /></td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #eef2f6" }}><input style={styles.input} value={row.spouseCurrent} onChange={(e) => updateAncillary(product, "spouseCurrent", e.target.value)} placeholder="$" /></td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #eef2f6" }}>
-                      <select style={styles.input} value={row.spouseAction} onChange={(e) => updateAncillary(product, "spouseAction", e.target.value)}>
-                        <option value="">Action</option><option value="Keep">Keep</option><option value="Replace">Replace</option><option value="Remove">Remove</option><option value="Add">Add</option>
-                      </select>
-                    </td>
-                    <td style={{ padding: 8, borderBottom: "1px solid #eef2f6" }}><input style={styles.input} value={row.spouseProposed} onChange={(e) => updateAncillary(product, "spouseProposed", e.target.value)} placeholder="$" /></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section style={styles.card}>
         <h3 style={{ marginTop: 0 }}>Premium Snapshot</h3>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
@@ -706,12 +667,9 @@ function FactFinderQuoter({ household, updatePerson, updateHousehold, updateAnci
         </div>
         <div style={{ ...styles.nav, marginTop: 14 }}>
           <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Fact Finder Updates</button>
-          <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Open Quick Rater</button>
-          <button type="button" style={styles.button} onClick={() => setView("calculator")}>Open Calculator</button>
           <button type="button" style={styles.button} onClick={() => openCsgRaterForPerson(household.client, "Client")}>Open CSG - Client</button>
           <button type="button" style={styles.button} onClick={() => openCsgRaterForPerson(household.spouse, "Spouse")}>Open CSG - Spouse</button>
           <button type="button" style={styles.button} onClick={createCalendarEvent}>Create Appointment</button>
-          <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open Appointments</button>
         </div>
       </section>
     </>
@@ -957,11 +915,6 @@ function QuickRaterPage({ household, updatePerson, updateAncillary, setView, sav
       <section style={styles.card}>
         <h2 style={{ marginTop: 0 }}>Quick Rater</h2>
         <p style={{ marginTop: 0 }}>Linked to the Agent Fact Finder. Changes made here update the Agent page and Calculator automatically.</p>
-        <div style={styles.nav}>
-          <button type="button" style={styles.button} onClick={() => setView("agent")}>Return to Agent</button>
-          <button type="button" style={styles.button} onClick={() => setView("calculator")}>View Calculator</button>
-          <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
-        </div>
       </section>
 
       <div style={styles.grid2}>
@@ -979,8 +932,6 @@ function QuickRaterPage({ household, updatePerson, updateAncillary, setView, sav
         </div>
         <div style={{ ...styles.nav, marginTop: 14 }}>
           <button type="button" style={styles.primaryButton} onClick={() => { saveIntake(); }}>Save / Enter Quick Rater Updates</button>
-          <button type="button" style={styles.button} onClick={() => setView("agent")}>Return to Agent</button>
-          <button type="button" style={styles.button} onClick={() => setView("calculator")}>View Calculator</button>
         </div>
       </section>
     </>
@@ -1035,11 +986,6 @@ function CalculatorPage({ household, updatePerson, updateAncillary, setView, sav
       <section style={styles.card}>
         <h2 style={{ marginTop: 0 }}>Calculator</h2>
         <p style={{ marginTop: 0 }}>Original Medicare / Premium Comparison linked directly from Quick Rater and Agent Fact Finder.</p>
-        <div style={styles.nav}>
-          <button type="button" style={styles.button} onClick={() => setView("agent")}>Return to Agent</button>
-          <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Back to Quick Rater</button>
-          <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
-        </div>
       </section>
 
       <section style={styles.card}>
@@ -1103,8 +1049,6 @@ function CalculatorPage({ household, updatePerson, updateAncillary, setView, sav
         </div>
         <div style={{ ...styles.nav, marginTop: 14 }}>
           <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Calculator Updates</button>
-          <button type="button" style={styles.button} onClick={() => setView("agent")}>Return to Agent</button>
-          <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Back to Quick Rater</button>
         </div>
       </section>
     </>
@@ -1369,12 +1313,6 @@ function LeadCapturePage({ household, updatePerson, updateHousehold, saveIntake,
     <section style={styles.card}>
       <h2 style={{ marginTop: 0 }}>Lead Capture</h2>
       <p style={{ marginTop: 0 }}>Paste an incoming email, text, or WhatsApp message. SIPS will capture first name, last name, phone, email, birthdate or age, address, and ZIP when available.</p>
-      <div style={styles.nav}>
-        <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
-        <button type="button" style={styles.button} onClick={() => setView("admin")}>Go to Admin</button>
-        <button type="button" style={styles.button} onClick={() => setView("agent")}>Go to Agent</button>
-        <button type="button" style={styles.button} onClick={() => setView("household")}>Go to Household</button>
-      </div>
       <div style={styles.grid2}>
         <select style={styles.input} value={leadSource} onChange={(e) => setLeadSource(e.target.value)}>
           <option value="Email">Email</option>
@@ -1421,6 +1359,7 @@ function TopNav({ view, setView }) {
     ["clients", "Clients"],
     ["today", "Today"],
     ["household", "Household"],
+    ["agent", "Agent"],
     ["quickRater", "Quick Rater"],
     ["calculator", "Calculator"],
   ];
@@ -1671,7 +1610,6 @@ export default function SipsDashboardPage() {
           <p>Use this page to move between Admin Intake, Agent Status, Appointments, Clients, Today, and Household.</p>
           <div style={styles.nav}>
             <button type="button" style={styles.primaryButton} onClick={() => setView("admin")}>Open Admin Intake</button>
-            <button type="button" style={styles.button} onClick={() => setView("leadCapture")}>Open Lead Capture</button>
             <select
               style={styles.input}
               value={household.reasonForCall}
@@ -1682,8 +1620,6 @@ export default function SipsDashboardPage() {
             </select>
             <button type="button" style={styles.button} onClick={() => openAppointmentsForType(household.reasonForCall)}>Open Appointments</button>
             <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Appointments</button>
-            <button type="button" style={styles.button} onClick={() => setView("clients")}>Go to Clients</button>
-            <button type="button" style={styles.button} onClick={() => setView("household")}>Go to Household</button>
           </div>
         </section>
 
@@ -1724,7 +1660,6 @@ export default function SipsDashboardPage() {
         <section style={styles.card}>
           <h2 style={{ marginTop: 0 }}>Admin Intake</h2>
           <div style={styles.nav}>
-            <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
             <select
               style={styles.input}
               value={household.reasonForCall}
@@ -1735,7 +1670,6 @@ export default function SipsDashboardPage() {
             </select>
             <button type="button" style={styles.button} onClick={() => openAppointmentsForType(household.reasonForCall)}>Open Appointments</button>
             <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Appointments</button>
-            <button type="button" style={styles.button} onClick={() => setView("household")}>Go to Household</button>
           </div>
         </section>
 
@@ -1822,8 +1756,7 @@ export default function SipsDashboardPage() {
           <div style={{ ...styles.nav, marginTop: 12 }}>
             <button type="button" style={styles.button} onClick={() => checkAgentStatus(household.assignedAgent)}>Check Agent Status</button>
             <button type="button" style={styles.button} onClick={createCalendarEvent}>Create Appointment</button>
-            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Open Appointments</button>
-          </div>
+            </div>
         </section>
 
         <IntegrationAutofillPanel household={household} />
@@ -1876,7 +1809,6 @@ export default function SipsDashboardPage() {
           <div style={styles.nav}>
             <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Admin Intake</button>
             <button type="button" style={styles.button} onClick={resetIntake}>Clear Intake</button>
-            <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
           </div>
           {message ? <p><strong>{message}</strong></p> : null}
         </section>
@@ -1939,7 +1871,6 @@ export default function SipsDashboardPage() {
           <button type="button" style={styles.button} onClick={() => setView("admin")}>Return to Admin</button>
           <button type="button" style={styles.button} onClick={() => setView("household")}>Return to Household</button>
           <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Return to Quick Rater</button>
-          <button type="button" style={styles.button} onClick={() => setView("agent")}>Return to Agent</button>
           <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open sips4agents@gmail.com Appointments</button>
         </div>
 
@@ -2036,8 +1967,6 @@ export default function SipsDashboardPage() {
       <section style={styles.card}>
         <h2 style={{ marginTop: 0 }}>Household Snapshot</h2>
         <div style={styles.nav}>
-          <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
-          <button type="button" style={styles.button} onClick={() => setView("admin")}>Back to Admin</button>
           <select
               style={styles.input}
               value={household.reasonForCall}
@@ -2174,10 +2103,6 @@ export default function SipsDashboardPage() {
         <section style={styles.card}>
           <h2 style={{ marginTop: 0 }}>Agent Page</h2>
           <div style={styles.nav}>
-            <button type="button" style={styles.button} onClick={() => setView("dashboard")}>Back to Dashboard</button>
-            <button type="button" style={styles.button} onClick={() => setView("admin")}>Back to Admin</button>
-            <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Go to Quick Rater</button>
-            <button type="button" style={styles.button} onClick={() => setView("calculator")}>Go to Calculator</button>
             <select
               style={styles.input}
               value={household.reasonForCall}
@@ -2241,7 +2166,7 @@ export default function SipsDashboardPage() {
       <div style={styles.shell}>
         <header style={styles.header}>
           <h1 style={{ margin: 0 }}>SIPS Connect</h1>
-          <p style={{ marginBottom: 0 }}>Dashboard, Admin Intake, Agent Status, Appointments, Clients, Today, and Household in one file.</p>
+          <p style={{ marginBottom: 0 }}>Dashboard, Admin Intake, Agent, Appointments, Clients, Today, Household, Quick Rater, and Calculator in one clean file.</p>
         </header>
 
         <TopNav view={view} setView={setView} />
