@@ -279,6 +279,13 @@ const styles = {
     fontSize: 13,
     fontWeight: 700,
   },
+  layout: { minHeight: "100vh", display: "flex", background: "#f4f7fb", fontFamily: "Arial, sans-serif", color: "#111827" },
+  sidebar: { width: 270, flexShrink: 0, background: "#0f2a44", color: "white", padding: 18, display: "flex", flexDirection: "column", gap: 8, position: "sticky", top: 0, height: "100vh", overflowY: "auto", boxSizing: "border-box" },
+  sidebarTitle: { fontSize: 20, fontWeight: 800, marginBottom: 4 },
+  sidebarSub: { fontSize: 12, opacity: 0.8, marginBottom: 12, lineHeight: 1.4 },
+  sideButton: { width: "100%", border: "1px solid rgba(255,255,255,.14)", borderRadius: 11, padding: "12px 13px", background: "rgba(255,255,255,.06)", color: "white", cursor: "pointer", fontWeight: 750, textAlign: "left" },
+  sideButtonActive: { width: "100%", border: "1px solid #93c5fd", borderRadius: 11, padding: "12px 13px", background: "#1d4ed8", color: "white", cursor: "pointer", fontWeight: 800, textAlign: "left", boxShadow: "0 8px 18px rgba(0,0,0,.18)" },
+  mainPanel: { flex: 1, minWidth: 0, padding: 24, overflowY: "auto" },
 };
 
 function formatPhone(value) {
@@ -1354,10 +1361,10 @@ function LeadCapturePage({ household, updatePerson, updateHousehold, saveIntake,
   );
 }
 
-function TopNav({ view, setView }) {
+function SidebarNav({ view, setView, message }) {
   const navItems = [
     ["dashboard", "Dashboard"],
-    ["admin", "Admin Intake"],
+    ["admin", "Admin Command Hub"],
     ["leadCapture", "Lead Capture"],
     ["calendar", "Appointments"],
     ["clients", "Clients"],
@@ -1366,21 +1373,18 @@ function TopNav({ view, setView }) {
     ["agent", "Agent"],
     ["quickRater", "Quick Rater"],
     ["calculator", "Calculator"],
+    ["integrations", "Integrations / Export"],
   ];
 
   return (
-    <div style={styles.nav}>
+    <aside style={styles.sidebar}>
+      <div style={styles.sidebarTitle}>SIPS Command Hub</div>
+      <div style={styles.sidebarSub}>Admin, appointments, clients, agents, rater, calculator, and Medicare Pro/Monday export.</div>
       {navItems.map(([key, label]) => (
-        <button
-          key={key}
-          type="button"
-          onClick={() => setView(key)}
-          style={view === key ? styles.primaryButton : styles.button}
-        >
-          {label}
-        </button>
+        <button key={key} type="button" onClick={() => setView(key)} style={view === key ? styles.sideButtonActive : styles.sideButton}>{label}</button>
       ))}
-    </div>
+      {message ? <div style={{ marginTop: 14, padding: 12, borderRadius: 12, background: "rgba(255,255,255,.10)", fontSize: 13, lineHeight: 1.35 }}><strong>System Note</strong><br />{message}</div> : null}
+    </aside>
   );
 }
 
@@ -2431,15 +2435,26 @@ export default function SipsDashboardPage() {
     );
   }
 
+  function renderIntegrations() {
+    return (
+      <>
+        <section style={styles.card}>
+          <h2 style={{ marginTop: 0 }}>Integrations / Export Center</h2>
+          <p style={{ marginTop: 0 }}>Copy or export Medicare Pro, Monday, and CSG fields from the current household.</p>
+        </section>
+        <IntegrationAutofillPanel household={household} />
+      </>
+    );
+  }
+
   return (
-    <main style={styles.page}>
-      <div style={styles.shell}>
+    <main style={styles.layout}>
+      <SidebarNav view={view} setView={setView} message={message} />
+      <section style={styles.mainPanel}>
         <header style={styles.header}>
           <h1 style={{ margin: 0 }}>SIPS Connect</h1>
-          <p style={{ marginBottom: 0 }}>Dashboard, Admin Intake, Agent, Appointments, Clients, Today, Household, Quick Rater, and Calculator in one clean file.</p>
+          <p style={{ marginBottom: 0 }}>Full sidebar command center: Admin automation, appointment search, clients, Today, Household, Agent, Quick Rater, Calculator, and Integrations.</p>
         </header>
-
-        <TopNav view={view} setView={setView} />
 
         {view === "dashboard" && renderDashboard()}
         {view === "admin" && renderAdmin()}
@@ -2451,7 +2466,8 @@ export default function SipsDashboardPage() {
         {view === "agent" && renderAgentPage()}
         {view === "quickRater" && renderQuickRater()}
         {view === "calculator" && renderCalculator()}
-      </div>
+        {view === "integrations" && renderIntegrations()}
+      </section>
     </main>
   );
 }
