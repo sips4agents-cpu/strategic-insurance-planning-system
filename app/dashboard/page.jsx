@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { supabase } from "../../lib/supabaseClient";
-
 // COMPLETE SIPS DASHBOARD BUILD
 // Paste this entire file into your Next.js app/page.jsx or app/page.js.
 // Do not import it as a module into another component unless you import the default export.
 // This file is already a Client Component and exports one default React page component.
+
+import { useMemo, useState } from "react";
 
 const AGENTS = [
   { name: "Admin", initials: "ADMIN", color: "Purple" },
