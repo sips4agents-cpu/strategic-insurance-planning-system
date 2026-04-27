@@ -8,8 +8,6 @@ import { supabase } from "../lib/supabaseClient";
 // Do not import it as a module into another component unless you import the default export.
 // This file is already a Client Component and exports one default React page component.
 
-import { useMemo, useState } from "react";
-
 const AGENTS = [
   { name: "Admin", initials: "ADMIN", color: "Purple" },
   { name: "Loyd Richardson", initials: "LR", color: "Green" },
