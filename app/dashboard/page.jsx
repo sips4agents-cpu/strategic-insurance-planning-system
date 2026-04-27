@@ -1,5 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { supabase } from "../lib/supabaseClient";
+
 // COMPLETE SIPS DASHBOARD BUILD
 // Paste this entire file into your Next.js app/page.jsx or app/page.js.
 // Do not import it as a module into another component unless you import the default export.
