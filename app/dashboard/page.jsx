@@ -3160,9 +3160,6 @@ function safeSetView(key) {
     </button>
   </section>
 )}
-     </>
-        );
-}
         <section style={styles.card}>
           <h2 style={{ marginTop: 0 }}>Agent Page</h2>
           <div style={styles.nav}>
