@@ -512,21 +512,19 @@ const ROLE_ACCESS = {
     "calculator",
   ]),
 
-  "Office Manager": new Set([
-    "dashboard",
-    "initialIntake",
-    "calendar",
-    "today",
-    "currentClients",
-    "status",
-    "agent",
-    "household",
-    "quickRater",
-    "calculator",
-    "integrations",
-    "clients",
-    "dailyTasks",
-  ]),
+ "Office Manager": new Set([
+  "dashboard",
+  "admin",
+  "initialIntake",
+  "leadCapture",
+  "calendar",
+  "clients",
+  "currentClients",
+  "status",
+  "today",
+  "household",
+  "integrations",
+]),
 
   "Senior Agent": new Set(NAV_ITEMS.map(([key]) => key)),
   Admin: new Set(NAV_ITEMS.map(([key]) => key)),
@@ -2002,10 +2000,11 @@ export default function Page() {
       description:
         `Client: ${clientName}\n` +
         `Phone: ${household.client.phone || "-"}\n` +
+        `Age: ${calculateAge(household.client.birthdate) || "-"}\n` +
         `Email: ${household.client.email || "-"}\n` +
         `Reason: ${household.reasonForCall}\n` +
         `Agent: ${household.assignedAgent}\n` +
-        `Current Coverage: ${household.currentCoverage || "-"}\n` +
+        `Current Premium: ${household.currentPremium || household.client.currentMedSuppPremium || household.client.currentTotalPremium || "-"}\n` +
         `Current Premium: ${household.currentPremium || "-"}\n` +
         `Group Size: ${household.groupSize || "-"}\n` +
         `Notes: ${household.notes || "-"}\n\n` +
