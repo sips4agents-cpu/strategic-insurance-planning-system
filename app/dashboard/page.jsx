@@ -1711,24 +1711,29 @@ function canSeeView(key) {
   return ROLE_ACCESS[activeUserRole]?.has(key);
 }
 
-  function getVisibleHouseholds() {
-    if (hasFullSystemAccess(activeUserRole)) return households;
-    return households.filter((item) => (item.assignedAgent || "Admin") === activeUserName);
+function hasManagerAccess() {
+  return ["Admin", "Senior Agent", "Office Manager"].includes(activeUserRole);
+}
+
+function getVisibleHouseholds() {
+  if (hasManagerAccess()) return households;
+  return households.filter((item) => (item.assignedAgent || "Admin") === activeUserName);
+}
+
+function getVisibleEvents() {
+  if (hasManagerAccess()) return events;
+  return events.filter((event) => event.agent === activeUserName);
+}
+
+function safeSetView(key) {
+  if (canSeeView(key)) {
+    setView(key);
+    return;
   }
 
-  function getVisibleEvents() {
-    if (hasFullSystemAccess(activeUserRole)) return events;
-    return events.filter((event) => event.agent === activeUserName);
-  }
-
-  function safeSetView(key) {
-    if (canSeeView(key)) {
-      setView(key);
-      return;
-    }
-    setMessage("Access restricted for this agent. Admin can change this under Agent Permissions.");
-    setView(hasFullSystemAccess(activeUserRole) ? "admin" : "agent");
-  }
+  setMessage("Access restricted for this role. Admin can change this under Agent Permissions.");
+  setView(hasManagerAccess() ? "admin" : "agent");
+}
 
   function updatePerson(type, field, value) {
     setHousehold((prev) => ({
