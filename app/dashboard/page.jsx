@@ -2200,7 +2200,10 @@ function canSeeView(key) {
   }
 
   function getAgentPerformanceRows() {
-    return (hasFullSystemAccess(activeUserRole) ? AGENTS : AGENTS.filter((agent) => agent.name === activeUserName)).map((agent) => {
+   return (["Admin", "Senior Agent", "Office Manager"].includes(activeUserRole)
+  ? AGENTS
+  : AGENTS.filter((agent) => agent.name === activeUserName)
+).map((agent) => {
       const assigned = getVisibleHouseholds().filter((item) => (item.assignedAgent || "Admin") === agent.name);
       const countBy = (status) => assigned.filter((item) => (item.businessStatus || item.status) === status).length;
       return { agent: agent.name, total: assigned.length, written: countBy("Written Business"), pending: countBy("Pending Business"), issued: countBy("Issued Business"), declined: countBy("Declined Business"), rateCalls: assigned.filter((item) => item.status === "Rate Increase Call" || item.businessStatus === "Rate Increase Call" || item.rateIncreaseDate).length, appointments: getVisibleEvents().filter((event) => event.agent === agent.name).length };
