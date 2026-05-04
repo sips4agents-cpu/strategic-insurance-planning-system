@@ -1668,6 +1668,8 @@ function SidebarNav({ view, setView, message, activeUserRole, activeUserName, se
 
 export default function Page() {
   const [view, setView] = useState("admin");
+  const [view, setView] = useState("dashboard");
+  const [agentTab, setAgentTab] = useState("Client");
   const [activeUserRole, setActiveUserRole] = useState("Admin");
   const [activeUserName, setActiveUserName] = useState("Loyd Richardson");
   const [households, setHouseholds] = useState([]);
