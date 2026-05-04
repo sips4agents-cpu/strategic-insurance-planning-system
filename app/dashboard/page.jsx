@@ -528,9 +528,7 @@ const ROLE_ACCESS = {
 };
 
 function visibleNavItemsForRole(activeUserRole) {
-  if (hasFullSystemAccess(activeUserRole)) return NAV_ITEMS;
-  const allowed = ROLE_ACCESS.Agent;
-  return NAV_ITEMS.filter(([key]) => allowed.has(key));
+  return NAV_ITEMS.filter(([key]) => ROLE_ACCESS[activeUserRole]?.has(key));
 }
 
 function formatPhone(value) {
@@ -1709,10 +1707,9 @@ export default function Page() {
     [households, selectedHouseholdId]
   );
 
-  function canSeeView(key) {
-    if (hasFullSystemAccess(activeUserRole)) return true;
-    return ROLE_ACCESS.Agent.has(key);
-  }
+function canSeeView(key) {
+  return ROLE_ACCESS[activeUserRole]?.has(key);
+}
 
   function getVisibleHouseholds() {
     if (hasFullSystemAccess(activeUserRole)) return households;
