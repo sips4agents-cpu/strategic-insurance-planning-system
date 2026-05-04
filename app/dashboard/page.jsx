@@ -3357,7 +3357,6 @@ function safeSetView(key) {
 </section>
 
 </div>
-</div>
 
 </>
 );
