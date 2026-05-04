@@ -503,20 +503,31 @@ const NAV_ITEMS = [
 const ADMIN_ONLY_VIEWS = new Set(["admin", "initialIntake", "leadCapture", "clients", "currentClients", "dailyTasks", "performance", "status", "integrations", "permissions"]);
 
 const ROLE_ACCESS = {
-  Agent: new Set(["calendar", "today", "household", "agent", "quickRater", "calculator"]),
-    "Office Manager": new Set([
-    "dashboard",
-    "admin",
-    "initialIntake",
-    "leadCapture",
+  Agent: new Set([
     "calendar",
-    "clients",
-    "currentClients",
-    "dailyTasks",
     "today",
     "household",
-    "integrations",
+    "agent",
+    "quickRater",
+    "calculator",
   ]),
+
+  "Office Manager": new Set([
+    "dashboard",
+    "initialIntake",
+    "calendar",
+    "today",
+    "currentClients",
+    "status",
+    "agent",
+    "household",
+    "quickRater",
+    "calculator",
+    "integrations",
+    "clients",
+    "dailyTasks",
+  ]),
+
   "Senior Agent": new Set(NAV_ITEMS.map(([key]) => key)),
   Admin: new Set(NAV_ITEMS.map(([key]) => key)),
 };
