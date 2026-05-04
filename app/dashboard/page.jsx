@@ -3117,37 +3117,53 @@ function safeSetView(key) {
       <>
 <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 14 }}>
   <section style={styles.card}>
-    <h3 style={{ marginTop: 0 }}>Agent Tools</h3>
+<section style={styles.card}>
+  <h3 style={{ marginTop: 0 }}>Agent Tools</h3>
 
-    {["Client", "CSG", "Company Login", "Client Summary", "Email Forms"].map((tab) => (
-      <button
-        key={tab}
-        type="button"
-        style={{
-          ...(agentTab === tab ? styles.primaryButton : styles.button),
-          width: "100%",
-          marginBottom: 8,
-          textAlign: "left",
-        }}
-        onClick={() => setAgentTab(tab)}
-      >
-        {tab}
-      </button>
-    ))}
+  <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8, textAlign: "left" }} onClick={() => setView("calendar")}>
+    Calendar / Availability
+  </button>
 
-    <hr />
+  <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8, textAlign: "left" }} onClick={() => setView("today")}>
+    Today
+  </button>
 
-    <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => openAppointmentsForType(household.reasonForCall)}>Open Appointments</button>
-    <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={openSipsGoogleCalendar}>Open Google Appointments</button>
-    <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => navigator.clipboard?.writeText(JSON.stringify(buildIntegrationAutofillData(household).medicarePro, null, 2))}>Copy Medicare Pro Fields</button>
-    <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => navigator.clipboard?.writeText(JSON.stringify(buildIntegrationAutofillData(household).monday, null, 2))}>Copy Monday Fields</button>
-    <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => navigator.clipboard?.writeText(JSON.stringify(buildIntegrationAutofillData(household).csgActuarial, null, 2))}>Copy CSG Actuarial Fields</button>
-    <button type="button" style={{ ...styles.primaryButton, width: "100%", marginBottom: 8 }} onClick={() => navigator.clipboard?.writeText(JSON.stringify(buildIntegrationAutofillData(household), null, 2))}>Copy All Autofill Data</button>
-    <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => downloadIntegrationCsv(household)}>Export Medicare Pro CSV</button>
-    <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => window.open("https://www.monday.com/", "_blank")}>Open Monday</button>
-    <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => openCsgRaterForPerson(household.client, "Client")}>Open CSG - Client</button>
-    <button type="button" style={{ ...styles.button, width: "100%" }} onClick={() => openCsgRaterForPerson(household.spouse, "Spouse")}>Open CSG - Spouse</button>
-  </section>
+  <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8, textAlign: "left" }} onClick={() => setView("household")}>
+    Household
+  </button>
+
+  <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8, textAlign: "left" }} onClick={() => setView("quickRater")}>
+    Quick Rater
+  </button>
+
+  <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8, textAlign: "left" }} onClick={() => setView("calculator")}>
+    Calculator
+  </button>
+
+  <hr />
+
+  {["Client", "CSG", "Company Login", "Email Forms", "Agent Fact Finder / Quoter"].map((tab) => (
+    <button
+      key={tab}
+      type="button"
+      style={{
+        ...(agentTab === tab ? styles.primaryButton : styles.button),
+        width: "100%",
+        marginBottom: 8,
+        textAlign: "left",
+      }}
+      onClick={() => setAgentTab(tab)}
+    >
+      {tab}
+    </button>
+  ))}
+
+  <hr />
+
+  <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8, textAlign: "left" }} onClick={openSipsGoogleCalendar}>
+    Open Google Appointments
+  </button>
+</section>/section>
 
   <div>
         {agentTab === "Client" && (
@@ -3319,15 +3335,17 @@ function safeSetView(key) {
 
         <IntegrationAutofillPanel household={household} />
 
-        <FactFinderQuoter
-          household={household}
-          updatePerson={updatePerson}
-          updateHousehold={updateHousehold}
-          updateAncillary={updateAncillary}
-          saveIntake={saveIntake}
-          createCalendarEvent={createCalendarEvent}
-          setView={setView}
-        />
+       {agentTab === "Agent Fact Finder / Quoter" && (
+  <FactFinderQuoter
+    household={household}
+    updatePerson={updatePerson}
+    updateHousehold={updateHousehold}
+    updateAncillary={updateAncillary}
+    saveIntake={saveIntake}
+    createCalendarEvent={createCalendarEvent}
+    setView={setView}
+  />
+)}
 
         <section style={styles.card}>
           <h3 style={{ marginTop: 0 }}>{selectedAgent} Appointments</h3>
