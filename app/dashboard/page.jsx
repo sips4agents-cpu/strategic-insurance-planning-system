@@ -3353,13 +3353,14 @@ function safeSetView(key) {
               <p>{item.client.phone || "No phone"} · {item.status || "No status"}</p>
               <button type="button" style={styles.button} onClick={() => { loadHousehold(item); setView("household"); }}>Open Household</button>
             </div>
-          ))}
-</section>
+                  ))}
+        </section>
 
-</div>
+      </div>
+    </div>
 
-</>
-);
+    </>
+  );
 }
   function renderIntegrations() {
     return (
