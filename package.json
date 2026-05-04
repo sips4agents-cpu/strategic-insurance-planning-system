@@ -9,6 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
+      "typescript": "^5.0.0",
+  "@types/react": "^18.0.0"
+}
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.49.8",
     "googleapis": "^144.0.0",
