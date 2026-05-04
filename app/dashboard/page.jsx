@@ -3192,29 +3192,25 @@ function safeSetView(key) {
         type="button"
         style={styles.primaryButton}
         disabled={!selectedCompanyLogin}
-        onClick={() => window.open(selectedCompanyLogin, "_blank", "noopener,noreferrer")}
+        onClick={() => {
+          if (!selectedCompanyLogin) {
+            setMessage("Select a company first.");
+            return;
+          }
+
+          if (selectedCompanyLogin === "NO_LINK") {
+            setMessage("No login link is on file for this company yet.");
+            return;
+          }
+
+          window.open(selectedCompanyLogin, "_blank", "noopener,noreferrer");
+        }}
       >
         Open Company Login
-  <button
-  type="button"
-  style={styles.primaryButton}
-  disabled={!selectedCompanyLogin}
-  onClick={() => {
-    if (!selectedCompanyLogin) {
-      setMessage("Select a company first.");
-      return;
-    }
-
-    if (selectedCompanyLogin === "NO_LINK") {
-      setMessage("No login link is on file for this company yet.");
-      return;
-    }
-
-    window.open(selectedCompanyLogin, "_blank", "noopener,noreferrer");
-  }}
->
-  Open Company Login
-</button>
+      </button>
+    </div>
+  </section>
+)}
 {agentTab === "Client Summary" && (
   <section style={styles.card}>
     <h3>Client Summary / Closing Tool</h3>
