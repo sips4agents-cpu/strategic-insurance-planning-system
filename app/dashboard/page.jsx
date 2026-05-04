@@ -80,7 +80,6 @@ const CALENDAR_VIEW_OPTIONS = [
   "Open Slots View",
   "Appointment Type View",
 ];
-
 const APPOINTMENT_TIME_SLOTS = [
   "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
   "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
