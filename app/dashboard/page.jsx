@@ -254,7 +254,7 @@ const COMPANY_LOGIN_LINKS = [
   { name: "AARP / UHC", url: "https://www.uhcjarvis.com/content/jarvis/en/sign_in.html#/sign_in" },
   { name: "Bankers Fidelity", url: "https://agent.bflic.com/Login/Login?ReturnUrl=%2fMasterMenu%2fLogout&logout=logout" },
   { name: "Cigna", url: "https://university.healthspringforbrokers.com/Portal/Login" },
-  { name: "United American", url: "" },
+  { name: "United American", url: "NO_LINK" },
   { name: "Humana", url: "https://account.humana.com/" },
   { name: "Mutual of Omaha", url: "https://accounts.mutualofomaha.com/" },
   { name: "Med Mutual", url: "https://service.iasadmin.com/agentportal?cc=c220" },
@@ -3195,24 +3195,107 @@ function safeSetView(key) {
         onClick={() => window.open(selectedCompanyLogin, "_blank", "noopener,noreferrer")}
       >
         Open Company Login
-      </button>
-    </div>
-  </section>
-)}
+  <button
+  type="button"
+  style={styles.primaryButton}
+  disabled={!selectedCompanyLogin}
+  onClick={() => {
+    if (!selectedCompanyLogin) {
+      setMessage("Select a company first.");
+      return;
+    }
 
+    if (selectedCompanyLogin === "NO_LINK") {
+      setMessage("No login link is on file for this company yet.");
+      return;
+    }
+
+    window.open(selectedCompanyLogin, "_blank", "noopener,noreferrer");
+  }}
+>
+  Open Company Login
+</button>
 {agentTab === "Client Summary" && (
   <section style={styles.card}>
-    <h3>Client Summary</h3>
-    <p>{fullName(household.client)}</p>
+    <h3>Client Summary / Closing Tool</h3>
+
+    <div style={styles.grid2}>
+      <div>
+        <h4>Client</h4>
+        <p><strong>Name:</strong> {fullName(household.client)}</p>
+        <p><strong>DOB:</strong> {household.client.birthdate || "-"}</p>
+        <p><strong>Age:</strong> {calculateAge(household.client.birthdate) || "-"}</p>
+        <p><strong>Phone:</strong> {household.client.phone || "-"}</p>
+        <p><strong>Email:</strong> {household.client.email || "-"}</p>
+        <p><strong>Current Carrier:</strong> {household.client.currentCarrier || "-"}</p>
+        <p><strong>Current Premium:</strong> {household.currentPremium || household.client.currentMedSuppPremium || "-"}</p>
+        <p><strong>Proposed Carrier:</strong> {household.client.proposedCarrier || "-"}</p>
+        <p><strong>Proposed Premium:</strong> {household.client.proposedMedSuppPremium || household.client.csgProposedPremium || "-"}</p>
+      </div>
+
+      <div>
+        <h4>Spouse</h4>
+        <p><strong>Name:</strong> {personHasData(household.spouse) ? fullName(household.spouse) : "-"}</p>
+        <p><strong>DOB:</strong> {household.spouse.birthdate || "-"}</p>
+        <p><strong>Age:</strong> {calculateAge(household.spouse.birthdate) || "-"}</p>
+        <p><strong>Current Carrier:</strong> {household.spouse.currentCarrier || "-"}</p>
+        <p><strong>Current Premium:</strong> {household.spouse.currentMedSuppPremium || "-"}</p>
+        <p><strong>Proposed Carrier:</strong> {household.spouse.proposedCarrier || "-"}</p>
+        <p><strong>Proposed Premium:</strong> {household.spouse.proposedMedSuppPremium || household.spouse.csgProposedPremium || "-"}</p>
+      </div>
+    </div>
+
+    <hr />
+
+    <p><strong>Current Coverage:</strong> {household.currentCoverage || "-"}</p>
+    <p><strong>Reason for Call:</strong> {household.reasonForCall || "-"}</p>
+    <p><strong>Assigned Agent:</strong> {household.assignedAgent || "-"}</p>
+    <p><strong>Notes:</strong> {household.notes || "-"}</p>
+
+    <div style={styles.nav}>
+      <button type="button" style={styles.primaryButton} onClick={() => window.print()}>
+        Print / Save PDF
+      </button>
+      <button type="button" style={styles.button} onClick={() => setView("calculator")}>
+        Open Calculator
+      </button>
+      <button type="button" style={styles.button} onClick={() => setView("quickRater")}>
+        Open Quick Rater
+      </button>
+    </div>
   </section>
 )}
 
 {agentTab === "Email Forms" && (
   <section style={styles.card}>
     <h3>Email Forms</h3>
-    <button style={styles.primaryButton} onClick={copyEmailPackage}>
-      Copy Email
-    </button>
+
+    <div style={styles.nav}>
+      <button type="button" style={styles.button} onClick={() => setSelectedEmailTemplate("Appointment Reminder")}>
+        Appointment Reminder
+      </button>
+      <button type="button" style={styles.button} onClick={() => setSelectedEmailTemplate("Plan Review")}>
+        Plan Review
+      </button>
+      <button type="button" style={styles.button} onClick={() => setSelectedEmailTemplate("L564 Employer Form")}>
+        L564 Employer Form
+      </button>
+      <button type="button" style={styles.button} onClick={() => setSelectedEmailTemplate("Policy Review Documents")}>
+        Policy Review Documents
+      </button>
+    </div>
+
+    <div style={styles.nav}>
+      <button type="button" style={styles.button} onClick={refreshEmailTemplateWithLatestData}>
+        Refresh Email Template
+      </button>
+      <button type="button" style={styles.primaryButton} onClick={copyEmailPackage}>
+        Copy Email Package
+      </button>
+      <button type="button" style={styles.button} onClick={openEmailDraft}>
+        Open Email Draft
+      </button>
+    </div>
   </section>
 )}
         <section style={styles.card}>
