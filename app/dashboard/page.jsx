@@ -1649,6 +1649,7 @@ function SidebarNav({ view, setView, message, activeUserRole, activeUserName, se
       <div style={styles.sidebarSub}>Simple roles: Agent sees only his work tools/data. Senior Agent and Admin have full access.</div>
       <select style={{ ...styles.input, padding: "7px 8px", fontSize: 12 }} value={activeUserRole} onChange={(e) => { setActiveUserRole(e.target.value); setView(e.target.value === "Agent" ? "agent" : "admin"); }}>
         <option value="Agent">Agent</option>
+        <option value="Office Manager">Office Manager</option>
         <option value="Senior Agent">Senior Agent</option>
         <option value="Admin">Admin</option>
       </select>
