@@ -246,7 +246,20 @@ const GROUP_SIZE_OPTIONS = ["20 or more employees", "Less than 20 employees"];
 const PROPOSED_PREMIUM_SOURCES = ["Manual input", "Get premium from CSG rater"];
 const SIPS_GOOGLE_CALENDAR_URL = "https://calendar.google.com/calendar/u/0/r/day";
 const CSG_AGENCY_URL = "https://www.freemedicarereport.com/comparison_form/ainsurancepro.com";
-
+const COMPANY_LOGIN_LINKS = [
+  { name: "Aflac", url: "http://www.sellaflacseniorplans.com/" },
+  { name: "Aetna", url: "https://www.aetnaseniorproducts.com/ssibrokerwebsecure/broker/login.fcc?TYPE=33554433&REALMOID=06-7d4c82fa-fe06-4e4e-8597-d8f8b68da960&GUID=&SMAUTHREASON=0&METHOD=GET&SMAGENTNAME=-SM-s7pFJAUCnH5Qp3pzu1lx8MibbZnWT%2b01G%2f6iCkHVxMsS0hd%2fsbmjhWe16MOGqvFRrS17O3IrRUBJqyBYHEvE5IyHDS9KZnck&TARGET=-SM-HTTPS%3a%2f%2fwww%2eaetnaseniorproducts%2ecom%2fssibrokerwebsecure%2fbroker%2fhome%2ehtml" },
+  { name: "INA / ACE", url: "https://www.chubb.com/microsites/ina-medicare-supplement.html" },
+  { name: "Allstate", url: "https://login.ngahagents.ngic.com/Account/Login" },
+  { name: "AARP / UHC", url: "https://www.uhcjarvis.com/content/jarvis/en/sign_in.html#/sign_in" },
+  { name: "Bankers Fidelity", url: "https://agent.bflic.com/Login/Login?ReturnUrl=%2fMasterMenu%2fLogout&logout=logout" },
+  { name: "Cigna", url: "https://university.healthspringforbrokers.com/Portal/Login" },
+  { name: "United American", url: "" },
+  { name: "Humana", url: "https://account.humana.com/" },
+  { name: "Mutual of Omaha", url: "https://accounts.mutualofomaha.com/" },
+  { name: "Med Mutual", url: "https://service.iasadmin.com/agentportal?cc=c220" },
+  { name: "WoodmenLife", url: "https://accounts.mutualofomaha.com/" },
+];
 const CSG_COMPANY_OPTIONS = [
   "AARP / UnitedHealthcare",
   "Aetna",
@@ -1668,6 +1681,7 @@ function SidebarNav({ view, setView, message, activeUserRole, activeUserName, se
 export default function Page() {
   const [view, setView] = useState("dashboard");
   const [agentTab, setAgentTab] = useState("Client");
+  const [selectedCompanyLogin, setSelectedCompanyLogin] = useState("");
   const [activeUserRole, setActiveUserRole] = useState("Admin");
   const [activeUserName, setActiveUserName] = useState("Loyd Richardson");
   const [households, setHouseholds] = useState([]);
@@ -3101,18 +3115,41 @@ function safeSetView(key) {
 
     return (
       <>
-  <div style={styles.nav}>
+<div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 14 }}>
+  <section style={styles.card}>
+    <h3 style={{ marginTop: 0 }}>Agent Tools</h3>
+
     {["Client", "CSG", "Company Login", "Client Summary", "Email Forms"].map((tab) => (
       <button
         key={tab}
         type="button"
-        style={agentTab === tab ? styles.primaryButton : styles.button}
+        style={{
+          ...(agentTab === tab ? styles.primaryButton : styles.button),
+          width: "100%",
+          marginBottom: 8,
+          textAlign: "left",
+        }}
         onClick={() => setAgentTab(tab)}
       >
         {tab}
       </button>
     ))}
-  </div>
+
+    <hr />
+
+    <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => openAppointmentsForType(household.reasonForCall)}>Open Appointments</button>
+    <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={openSipsGoogleCalendar}>Open Google Appointments</button>
+    <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => navigator.clipboard?.writeText(JSON.stringify(buildIntegrationAutofillData(household).medicarePro, null, 2))}>Copy Medicare Pro Fields</button>
+    <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => navigator.clipboard?.writeText(JSON.stringify(buildIntegrationAutofillData(household).monday, null, 2))}>Copy Monday Fields</button>
+    <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => navigator.clipboard?.writeText(JSON.stringify(buildIntegrationAutofillData(household).csgActuarial, null, 2))}>Copy CSG Actuarial Fields</button>
+    <button type="button" style={{ ...styles.primaryButton, width: "100%", marginBottom: 8 }} onClick={() => navigator.clipboard?.writeText(JSON.stringify(buildIntegrationAutofillData(household), null, 2))}>Copy All Autofill Data</button>
+    <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => downloadIntegrationCsv(household)}>Export Medicare Pro CSV</button>
+    <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => window.open("https://www.monday.com/", "_blank")}>Open Monday</button>
+    <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => openCsgRaterForPerson(household.client, "Client")}>Open CSG - Client</button>
+    <button type="button" style={{ ...styles.button, width: "100%" }} onClick={() => openCsgRaterForPerson(household.spouse, "Spouse")}>Open CSG - Spouse</button>
+  </section>
+
+  <div>
         {agentTab === "Client" && (
   <section style={styles.card}>
     <h3>Client</h3>
@@ -3136,12 +3173,30 @@ function safeSetView(key) {
 {agentTab === "Company Login" && (
   <section style={styles.card}>
     <h3>Company Login</h3>
-    <select style={styles.input}>
-      <option>Aetna</option>
-      <option>Cigna</option>
-      <option>Mutual of Omaha</option>
-      <option>UHC / AARP</option>
+
+    <select
+      style={styles.input}
+      value={selectedCompanyLogin}
+      onChange={(e) => setSelectedCompanyLogin(e.target.value)}
+    >
+      <option value="">Select company login</option>
+      {COMPANY_LOGIN_LINKS.map((company) => (
+        <option key={company.name} value={company.url}>
+          {company.name}
+        </option>
+      ))}
     </select>
+
+    <div style={{ marginTop: 12 }}>
+      <button
+        type="button"
+        style={styles.primaryButton}
+        disabled={!selectedCompanyLogin}
+        onClick={() => window.open(selectedCompanyLogin, "_blank", "noopener,noreferrer")}
+      >
+        Open Company Login
+      </button>
+    </div>
   </section>
 )}
 
@@ -3216,11 +3271,14 @@ function safeSetView(key) {
               <button type="button" style={styles.button} onClick={() => { loadHousehold(item); setView("household"); }}>Open Household</button>
             </div>
           ))}
-        </section>
-      </>
-    );
-  }
+</section>
 
+</div>
+</div>
+
+</>
+);
+}
   function renderIntegrations() {
     return (
       <>
