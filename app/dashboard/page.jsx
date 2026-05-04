@@ -512,7 +512,7 @@ const ROLE_ACCESS = {
     "calculator",
   ]),
 
- "Office Manager": new Set([
+"Office Manager": new Set([
   "dashboard",
   "admin",
   "initialIntake",
@@ -524,7 +524,8 @@ const ROLE_ACCESS = {
   "today",
   "household",
   "integrations",
-]),
+  "medPro",        // ✅ add this
+  "agent", 
 
   "Senior Agent": new Set(NAV_ITEMS.map(([key]) => key)),
   Admin: new Set(NAV_ITEMS.map(([key]) => key)),
