@@ -503,37 +503,29 @@ const NAV_ITEMS = [
 const ADMIN_ONLY_VIEWS = new Set(["admin", "initialIntake", "leadCapture", "clients", "currentClients", "dailyTasks", "performance", "status", "integrations", "permissions"]);
 
 const ROLE_ACCESS = {
-  Agent: new Set([
+  Agent: new Set(["calendar", "today", "household", "agent", "quickRater", "calculator"]),
+
+  "Office Manager": new Set([
+    "dashboard",
+    "admin",
+    "initialIntake",
+    "leadCapture",
     "calendar",
+    "clients",
+    "currentClients",
+    "dailyTasks",
+    "status",
     "today",
     "household",
+    "integrations",
     "agent",
     "quickRater",
     "calculator",
   ]),
 
-"Office Manager": new Set([
-  "dashboard",
-  "admin",
-  "initialIntake",
-  "leadCapture",
-  "calendar",
-  "clients",
-  "currentClients",
-  "status",
-  "today",
-  "household",
-  "integrations",
-  "medPro",        // ✅ add this
-  "agent", 
-
   "Senior Agent": new Set(NAV_ITEMS.map(([key]) => key)),
   Admin: new Set(NAV_ITEMS.map(([key]) => key)),
 };
-
-function hasFullSystemAccess(activeUserRole) {
-  return activeUserRole === "Admin" || activeUserRole === "Senior Agent";
-}
 
 function visibleNavItemsForRole(activeUserRole) {
   if (hasFullSystemAccess(activeUserRole)) return NAV_ITEMS;
