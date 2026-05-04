@@ -3101,6 +3101,66 @@ function safeSetView(key) {
 
     return (
       <>
+  <div style={styles.nav}>
+    {["Client", "CSG", "Company Login", "Client Summary", "Email Forms"].map((tab) => (
+      <button
+        key={tab}
+        type="button"
+        style={agentTab === tab ? styles.primaryButton : styles.button}
+        onClick={() => setAgentTab(tab)}
+      >
+        {tab}
+      </button>
+    ))}
+  </div>
+        {agentTab === "Client" && (
+  <section style={styles.card}>
+    <h3>Client</h3>
+    <p><strong>Name:</strong> {fullName(household.client)}</p>
+    <p><strong>Phone:</strong> {household.client.phone || "-"}</p>
+    <p><strong>Email:</strong> {household.client.email || "-"}</p>
+    <p><strong>Age:</strong> {calculateAge(household.client.birthdate) || "-"}</p>
+    <p><strong>Current Premium:</strong> {household.currentPremium || household.client.currentMedSuppPremium || "-"}</p>
+  </section>
+)}
+
+{agentTab === "CSG" && (
+  <section style={styles.card}>
+    <h3>CSG</h3>
+    <button style={styles.primaryButton} onClick={() => openCsgRaterForPerson(household.client, "Client")}>
+      Open CSG - Client
+    </button>
+  </section>
+)}
+
+{agentTab === "Company Login" && (
+  <section style={styles.card}>
+    <h3>Company Login</h3>
+    <select style={styles.input}>
+      <option>Aetna</option>
+      <option>Cigna</option>
+      <option>Mutual of Omaha</option>
+      <option>UHC / AARP</option>
+    </select>
+  </section>
+)}
+
+{agentTab === "Client Summary" && (
+  <section style={styles.card}>
+    <h3>Client Summary</h3>
+    <p>{fullName(household.client)}</p>
+  </section>
+)}
+
+{agentTab === "Email Forms" && (
+  <section style={styles.card}>
+    <h3>Email Forms</h3>
+    <button style={styles.primaryButton} onClick={copyEmailPackage}>
+      Copy Email
+    </button>
+  </section>
+)}
+     </>
         <section style={styles.card}>
           <h2 style={{ marginTop: 0 }}>Agent Page</h2>
           <div style={styles.nav}>
