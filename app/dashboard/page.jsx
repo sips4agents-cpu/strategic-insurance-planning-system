@@ -3166,18 +3166,7 @@ function safeSetView(key) {
 </section>
 
   <div>
-    {agentTab === "Agent Fact Finder / Quoter" && (
-  <FactFinderQuoter
-    household={household}
-    updatePerson={updatePerson}
-    updateHousehold={updateHousehold}
-    updateAncillary={updateAncillary}
-    saveIntake={saveIntake}
-    createCalendarEvent={createCalendarEvent}
-    setView={setView}
-  />
-)}
-        {agentTab === "Client" && (
+   {agentTab === "Client" && (
   <section style={styles.card}>
     <h3>Client</h3>
     <p><strong>Name:</strong> {fullName(household.client)}</p>
@@ -3191,7 +3180,11 @@ function safeSetView(key) {
 {agentTab === "CSG" && (
   <section style={styles.card}>
     <h3>CSG</h3>
-    <button style={styles.primaryButton} onClick={() => openCsgRaterForPerson(household.client, "Client")}>
+    <button
+      type="button"
+      style={styles.primaryButton}
+      onClick={() => openCsgRaterForPerson(household.client, "Client")}
+    >
       Open CSG - Client
     </button>
   </section>
@@ -3224,12 +3217,10 @@ function safeSetView(key) {
             setMessage("Select a company first.");
             return;
           }
-
           if (selectedCompanyLogin === "NO_LINK") {
             setMessage("No login link is on file for this company yet.");
             return;
           }
-
           window.open(selectedCompanyLogin, "_blank", "noopener,noreferrer");
         }}
       >
@@ -3237,6 +3228,51 @@ function safeSetView(key) {
       </button>
     </div>
   </section>
+)}
+
+{agentTab === "Email Forms" && (
+  <section style={styles.card}>
+    <h3>Email Forms</h3>
+
+    <div style={styles.nav}>
+      <button type="button" style={styles.button} onClick={() => setSelectedEmailTemplate("Appointment Reminder")}>
+        Appointment Reminder
+      </button>
+      <button type="button" style={styles.button} onClick={() => setSelectedEmailTemplate("Plan Review")}>
+        Plan Review
+      </button>
+      <button type="button" style={styles.button} onClick={() => setSelectedEmailTemplate("L564 Employer Form")}>
+        L564 Employer Form
+      </button>
+      <button type="button" style={styles.button} onClick={() => setSelectedEmailTemplate("Policy Review Documents")}>
+        Policy Review Documents
+      </button>
+    </div>
+
+    <div style={styles.nav}>
+      <button type="button" style={styles.button} onClick={refreshEmailTemplateWithLatestData}>
+        Refresh Email Template
+      </button>
+      <button type="button" style={styles.primaryButton} onClick={copyEmailPackage}>
+        Copy Email Package
+      </button>
+      <button type="button" style={styles.button} onClick={openEmailDraft}>
+        Open Email Draft
+      </button>
+    </div>
+  </section>
+)}
+
+{agentTab === "Agent Fact Finder / Quoter" && (
+  <FactFinderQuoter
+    household={household}
+    updatePerson={updatePerson}
+    updateHousehold={updateHousehold}
+    updateAncillary={updateAncillary}
+    saveIntake={saveIntake}
+    createCalendarEvent={createCalendarEvent}
+    setView={setView}
+  />
 )}
 {agentTab === "Client Summary" && (
   <section style={styles.card}>
