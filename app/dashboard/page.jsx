@@ -3238,3 +3238,69 @@ function renderAgentPage() {
     </>
   );
 }
+  function renderIntegrations() {
+  return (
+    <>
+      <section style={styles.card}>
+        <h2 style={{ marginTop: 0 }}>Integrations / Export Center</h2>
+        <p style={{ marginTop: 0 }}>Copy or export Medicare Pro, Monday, and CSG fields from the current household.</p>
+      </section>
+      <IntegrationAutofillPanel household={household} />
+    </>
+  );
+}
+
+function renderAccessRestricted() {
+  return (
+    <section style={styles.card}>
+      <h2 style={{ marginTop: 0 }}>Access Restricted</h2>
+      <p>This page is not visible in the selected agent view. Switch to Senior Agent/Admin view to see this area.</p>
+      <button type="button" style={styles.primaryButton} onClick={() => { setActiveUserRole("Admin"); setView("permissions"); }}>
+        Open Role Access
+      </button>
+    </section>
+  );
+}
+
+return (
+  <main style={styles.layout}>
+    <SidebarNav
+      view={view}
+      setView={safeSetView}
+      message={message}
+      activeUserRole={activeUserRole}
+      activeUserName={activeUserName}
+      setActiveUserRole={setActiveUserRole}
+      setActiveUserName={setActiveUserName}
+    />
+
+    <section style={styles.mainPanel}>
+      <header style={styles.header}>
+        <h1 style={{ margin: 0 }}>SIPS Connect</h1>
+        <p style={{ marginBottom: 0 }}>
+          Compact command center with Admin/Agent visibility controls. Current role: {activeUserRole}.
+        </p>
+      </header>
+
+      {!canSeeView(view) ? renderAccessRestricted() : null}
+      {canSeeView(view) && view === "dashboard" && renderDashboard()}
+      {canSeeView(view) && view === "admin" && renderAdmin()}
+      {canSeeView(view) && view === "initialIntake" && renderInitialIntake()}
+      {canSeeView(view) && view === "leadCapture" && renderLeadCapture()}
+      {canSeeView(view) && view === "calendar" && renderCalendar()}
+      {canSeeView(view) && view === "clients" && renderClients()}
+      {canSeeView(view) && view === "currentClients" && renderCurrentClients()}
+      {canSeeView(view) && view === "dailyTasks" && renderDailyTasks()}
+      {canSeeView(view) && view === "performance" && renderPerformance()}
+      {canSeeView(view) && view === "status" && renderStatusPipeline()}
+      {canSeeView(view) && view === "today" && renderToday()}
+      {canSeeView(view) && view === "household" && renderHousehold()}
+      {canSeeView(view) && view === "agent" && renderAgentPage()}
+      {canSeeView(view) && view === "quickRater" && renderQuickRater()}
+      {canSeeView(view) && view === "calculator" && renderCalculator()}
+      {canSeeView(view) && view === "integrations" && renderIntegrations()}
+      {canSeeView(view) && view === "permissions" && renderPermissions()}
+    </section>
+  </main>
+);
+}
