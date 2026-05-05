@@ -3115,112 +3115,126 @@ function renderAgentPage() {
 
   return (
     <>
-      <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 14 }}>
-        <section style={styles.card}>
-          <h3 style={{ marginTop: 0 }}>Agent Tools</h3>
+      <div style={{ display: "flex", minHeight: "100vh" }}>
 
-          <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => setView("calendar")}>
-            Calendar / Availability
+        {/* LEFT SIDEBAR */}
+        <div
+          style={{
+            width: 280,
+            background: "#07111f",
+            color: "white",
+            padding: 22,
+            borderRadius: 16,
+          }}
+        >
+          <div style={{ fontSize: 36, fontWeight: 900, color: "#22c55e" }}>AIP</div>
+          <div style={{ color: "#cbd5e1", marginBottom: 25 }}>Agent Dashboard</div>
+
+          <button style={styles.button} onClick={() => setView("agent")}>Agent Home</button>
+          <button style={styles.button} onClick={() => setView("initialIntake")}>Client Intake</button>
+          <button style={styles.button} onClick={() => setView("quickRater")}>Quick Rater</button>
+          <button style={styles.button} onClick={() => setAgentTab("Client Summary")}>Client Summary</button>
+          <button style={styles.button} onClick={() => setView("clients")}>Saved Clients</button>
+          <button style={styles.button} onClick={() => setView("calendar")}>SIPS Calendar</button>
+
+          <button style={styles.primaryButton} onClick={() => setAgentTab("Company Login")}>
+            Company Login
           </button>
 
-          <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => setView("today")}>
-            Today
+          <button style={styles.button} onClick={() => setAgentTab("Email Forms")}>Email Forms</button>
+          <button style={styles.button} onClick={() => setAgentTab("Agent Fact Finder / Quoter")}>
+            Fact Finder / Quoter
           </button>
 
-          <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => setView("household")}>
-            Household
-          </button>
-
-          <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => setView("quickRater")}>
-            Quick Rater
-          </button>
-
-          <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => setView("calculator")}>
-            Calculator
-          </button>
-
-          <hr />
-
-          {["Client", "CSG", "Company Login", "Email Forms", "Agent Fact Finder / Quoter"].map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              style={{
-                ...(agentTab === tab ? styles.primaryButton : styles.button),
-                width: "100%",
-                marginBottom: 8,
-              }}
-              onClick={() => setAgentTab(tab)}
-            >
-              {tab}
+          <div style={{ marginTop: 20, background: "#6d28d9", padding: 14, borderRadius: 14 }}>
+            <strong>Check Client Status</strong>
+            <input style={{ ...styles.input, marginTop: 8 }} placeholder="Search client name, phone, or email" />
+            <button style={styles.primaryButton} onClick={() => setView("clients")}>
+              View Saved Clients
             </button>
-          ))}
+          </div>
+        </div>
 
-          <hr />
+        {/* RIGHT SIDE */}
+        <div style={{ flex: 1, paddingLeft: 20 }}>
 
-          <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={openSipsGoogleCalendar}>
-            Open Google Appointments
-          </button>
-        </section>
+          {agentTab === "Client" && (
+            <section style={styles.card}>
+              <h3>Client</h3>
+              <p><strong>Name:</strong> {fullName(household.client)}</p>
+              <p><strong>Phone:</strong> {household.client.phone || "-"}</p>
+              <p><strong>Email:</strong> {household.client.email || "-"}</p>
+            </section>
+          )}
 
-        <div>
-          {/* RIGHT SIDE CONTENT REMAINS SAME */}
+          {agentTab === "CSG" && (
+            <section style={styles.card}>
+              <h3>CSG</h3>
+              <button style={styles.primaryButton} onClick={() => openCsgRaterForPerson(household.client, "Client")}>
+                Open CSG - Client
+              </button>
+            </section>
+          )}
+
+          {agentTab === "Company Login" && (
+            <section style={styles.card}>
+              <h3>Company Login</h3>
+              <select style={styles.input} value={selectedCompanyLogin} onChange={(e) => setSelectedCompanyLogin(e.target.value)}>
+                <option value="">Select company login</option>
+                {COMPANY_LOGIN_LINKS.map((company) => (
+                  <option key={company.name} value={company.url}>{company.name}</option>
+                ))}
+              </select>
+
+              <button
+                style={styles.primaryButton}
+                disabled={!selectedCompanyLogin}
+                onClick={() => window.open(selectedCompanyLogin, "_blank")}
+              >
+                Open Company Login
+              </button>
+            </section>
+          )}
+
+          {agentTab === "Email Forms" && (
+            <section style={styles.card}>
+              <h3>Email Forms</h3>
+              <button style={styles.primaryButton} onClick={copyEmailPackage}>Copy Email</button>
+            </section>
+          )}
+
+          {agentTab === "Agent Fact Finder / Quoter" && (
+            <FactFinderQuoter
+              household={household}
+              updatePerson={updatePerson}
+              updateHousehold={updateHousehold}
+              updateAncillary={updateAncillary}
+              saveIntake={saveIntake}
+              createCalendarEvent={createCalendarEvent}
+              setView={setView}
+            />
+          )}
+
+          <section style={styles.card}>
+            <h3>{selectedAgent} Appointments</h3>
+            {agentEvents.map((event) => (
+              <div key={event.id}>
+                {event.title} - {event.date}
+              </div>
+            ))}
+          </section>
+
+          <section style={styles.card}>
+            <h3>{selectedAgent} Households</h3>
+            {agentHouseholds.map((item) => (
+              <div key={item.id}>
+                {fullName(item.client)}
+              </div>
+            ))}
+          </section>
+
         </div>
       </div>
     </>
-  );
-}
-
-function renderIntegrations() {
-  return (
-    <>
-      <section style={styles.card}>
-        <h2 style={{ marginTop: 0 }}>Integrations / Export Center</h2>
-        <p style={{ marginTop: 0 }}>Copy or export Medicare Pro, Monday, and CSG fields from the current household.</p>
-      </section>
-      <IntegrationAutofillPanel household={household} />
-    </>
-  );
-}
-
-  function renderAccessRestricted() {
-    return (
-      <section style={styles.card}>
-        <h2 style={{ marginTop: 0 }}>Access Restricted</h2>
-        <p>This page is not visible in the selected agent view. Switch to Senior Agent/Admin view to see this area.</p>
-        <button type="button" style={styles.primaryButton} onClick={() => { setActiveUserRole("Admin"); setView("permissions"); }}>Open Role Access</button>
-      </section>
-    );
-  }
-
-  return (
-    <main style={styles.layout}>
-      <SidebarNav view={view} setView={safeSetView} message={message} activeUserRole={activeUserRole} activeUserName={activeUserName} setActiveUserRole={setActiveUserRole} setActiveUserName={setActiveUserName} />
-      <section style={styles.mainPanel}>
-        <header style={styles.header}>
-          <h1 style={{ margin: 0 }}>SIPS Connect</h1>
-          <p style={{ marginBottom: 0 }}>Compact command center with Admin/Agent visibility controls. Current role: {activeUserRole}. {activeUserRole === "Agent" ? "Showing only " + activeUserName + " records." : "Full agency access."}</p>
-        </header>
-
-        {!canSeeView(view) ? renderAccessRestricted() : null}
-        {canSeeView(view) && view === "dashboard" && renderDashboard()}
-        {canSeeView(view) && view === "admin" && renderAdmin()}
-        {canSeeView(view) && view === "initialIntake" && renderInitialIntake()}
-        {canSeeView(view) && view === "leadCapture" && renderLeadCapture()}
-        {canSeeView(view) && view === "calendar" && renderCalendar()}
-        {canSeeView(view) && view === "clients" && renderClients()}
-        {canSeeView(view) && view === "currentClients" && renderCurrentClients()}
-        {canSeeView(view) && view === "dailyTasks" && renderDailyTasks()}
-        {canSeeView(view) && view === "performance" && renderPerformance()}
-        {canSeeView(view) && view === "status" && renderStatusPipeline()}
-        {canSeeView(view) && view === "today" && renderToday()}
-        {canSeeView(view) && view === "household" && renderHousehold()}
-        {canSeeView(view) && view === "agent" && renderAgentPage()}
-        {canSeeView(view) && view === "quickRater" && renderQuickRater()}
-        {canSeeView(view) && view === "calculator" && renderCalculator()}
-        {canSeeView(view) && view === "integrations" && renderIntegrations()}
-        {canSeeView(view) && view === "permissions" && renderPermissions()}
-      </section>
-    </main>
   );
 }
