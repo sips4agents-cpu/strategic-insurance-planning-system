@@ -3186,13 +3186,25 @@ function renderAgentPage() {
                 ))}
               </select>
 
-              <button
-                style={styles.primaryButton}
-                disabled={!selectedCompanyLogin}
-                onClick={() => window.open(selectedCompanyLogin, "_blank")}
-              >
-                Open Company Login
-              </button>
+            <button
+  style={styles.primaryButton}
+  disabled={!selectedCompanyLogin}
+  onClick={() => {
+    if (!selectedCompanyLogin) {
+      setMessage("Select a company first.");
+      return;
+    }
+
+    if (selectedCompanyLogin === "NO_LINK") {
+      setMessage("No login link is on file for this company.");
+      return;
+    }
+
+    window.open(selectedCompanyLogin, "_blank", "noopener,noreferrer");
+  }}
+>
+  Open Company Login
+</button>
             </section>
           )}
 
@@ -3264,23 +3276,15 @@ function renderAccessRestricted() {
 
 return (
   <main style={styles.layout}>
-    <SidebarNav
-      view={view}
-      setView={safeSetView}
-      message={message}
-      activeUserRole={activeUserRole}
-      activeUserName={activeUserName}
-      setActiveUserRole={setActiveUserRole}
-      setActiveUserName={setActiveUserName}
-    />
-
     <section style={styles.mainPanel}>
-      <header style={styles.header}>
-        <h1 style={{ margin: 0 }}>SIPS Connect</h1>
-        <p style={{ marginBottom: 0 }}>
-          Compact command center with Admin/Agent visibility controls. Current role: {activeUserRole}.
-        </p>
-      </header>
+      {activeUserRole !== "Agent" && (
+  <header style={styles.header}>
+    <h1 style={{ margin: 0 }}>SIPS Connect</h1>
+    <p style={{ marginBottom: 0 }}>
+      Compact command center with Admin/Agent visibility controls. Current role: {activeUserRole}.
+    </p>
+  </header>
+)}
 
       {!canSeeView(view) ? renderAccessRestricted() : null}
       {canSeeView(view) && view === "dashboard" && renderDashboard()}
