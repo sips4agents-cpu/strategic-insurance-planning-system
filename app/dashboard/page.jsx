@@ -3171,16 +3171,17 @@ function renderAgentPage() {
   );
 }
 
-    return (
-      <>
-        <section style={styles.card}>
-          <h2 style={{ marginTop: 0 }}>Integrations / Export Center</h2>
-          <p style={{ marginTop: 0 }}>Copy or export Medicare Pro, Monday, and CSG fields from the current household.</p>
-        </section>
-        <IntegrationAutofillPanel household={household} />
-      </>
-    );
-  }
+function renderIntegrations() {
+  return (
+    <>
+      <section style={styles.card}>
+        <h2 style={{ marginTop: 0 }}>Integrations / Export Center</h2>
+        <p style={{ marginTop: 0 }}>Copy or export Medicare Pro, Monday, and CSG fields from the current household.</p>
+      </section>
+      <IntegrationAutofillPanel household={household} />
+    </>
+  );
+}
 
   function renderAccessRestricted() {
     return (
