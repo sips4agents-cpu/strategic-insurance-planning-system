@@ -3163,9 +3163,20 @@ function safeSetView(key) {
   <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8, textAlign: "left" }} onClick={openSipsGoogleCalendar}>
     Open Google Appointments
   </button>
-</section>/section>
+</section>
 
   <div>
+    {agentTab === "Agent Fact Finder / Quoter" && (
+  <FactFinderQuoter
+    household={household}
+    updatePerson={updatePerson}
+    updateHousehold={updateHousehold}
+    updateAncillary={updateAncillary}
+    saveIntake={saveIntake}
+    createCalendarEvent={createCalendarEvent}
+    setView={setView}
+  />
+)}
         {agentTab === "Client" && (
   <section style={styles.card}>
     <h3>Client</h3>
