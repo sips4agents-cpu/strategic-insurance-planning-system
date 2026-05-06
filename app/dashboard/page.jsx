@@ -2039,31 +2039,34 @@ function safeSetView(key) {
       returnLinks: getReturnLinks(),
     };
 
-    setEvents((prev) => [event, ...prev]);
-    setMessage("Appointment created locally. If your Google Calendar API route is connected, this can also be sent there.");
+ setEvents((prev) => [event, ...prev]);
+setMessage("Appointment created in SIPS. Sending to Google Calendar...");
 
-    try {
-      const response = await fetch("/api/calendar/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          agents: [household.assignedAgent],
-          title: event.title,
-          description: event.description,
-          location: event.location,
-          start: event.start,
-          end: event.end,
-        }),
-      });
+try {
+  const response = await fetch("/api/calendar/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      agents: [household.assignedAgent],
+      title: event.title,
+      description: event.description,
+      location: event.location,
+      start: event.start,
+      end: event.end,
+    }),
+  });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) setMessage("Appointment created and sent to Google Calendar.");
-      }
-    } catch (error) {
-      // Local save remains active when API is not connected.
-    }
+  const data = await response.json();
+
+  if (!response.ok || !data.success) {
+    setMessage(`Saved in SIPS, but Google Calendar failed: ${data.error || "Unknown API error"}`);
+    return;
   }
+
+  setMessage("Appointment created in SIPS and sent to Google Calendar.");
+} catch (error) {
+  setMessage(`Saved in SIPS, but Google Calendar failed: ${error.message || "Network/API route error"}`);
+}
 
   function checkAgentStatus(agentName) {
     setSelectedAgent(agentName);
