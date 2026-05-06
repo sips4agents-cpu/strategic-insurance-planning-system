@@ -971,7 +971,17 @@ function FactFinderQuoter({ household, updatePerson, updateHousehold, updateAnci
           <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Fact Finder Updates</button>
           <button type="button" style={styles.button} onClick={() => openCsgRaterForPerson(household.client, "Client")}>Open CSG - Client</button>
           <button type="button" style={styles.button} onClick={() => openCsgRaterForPerson(household.spouse, "Spouse")}>Open CSG - Spouse</button>
-          <button type="button" style={styles.button} onClick={createCalendarEvent}>Create Appointment</button>
+          <button
+  type="button"
+  style={styles.primaryButton}
+  onClick={() => {
+    saveIntake();
+    createCalendarEvent();
+    setMessage("Appointment saved to calendar.");
+  }}
+>
+  Schedule Appointment
+</button>
         </div>
       </section>
     </>
@@ -2500,23 +2510,33 @@ function safeSetView(key) {
               <option value="90">1.5 hours</option>
             </select>
           </div>
-          <div style={{ ...styles.grid3, marginTop: 12 }}>
-            <select style={styles.input} value={appointmentLocation} onChange={(e) => setAppointmentLocation(e.target.value)}>
-              <option value="Phone Call">Phone Call</option>
-              <option value="Office">Office</option>
-              <option value="Client Home">Client Home</option>
-              <option value="Zoom / Virtual">Zoom / Virtual</option>
-              <option value="Other">Other</option>
-            </select>
-            <input style={styles.input} value={household.referredBy} onChange={(e) => updateHousehold("referredBy", e.target.value)} placeholder="Referral source / Referred by" />
-            <button type="button" style={styles.primaryButton} onClick={createCalendarEvent}>Create Appointment</button>
-          </div>
-        </section>
+        <div style={{ ...styles.grid3, marginTop: 12 }}>
+  <select style={styles.input} value={appointmentLocation} onChange={(e) => setAppointmentLocation(e.target.value)}>
+    <option value="Phone Call">Phone Call</option>
+    <option value="Office">Office</option>
+    <option value="Client Home">Client Home</option>
+    <option value="Zoom / Virtual">Zoom / Virtual</option>
+    <option value="Other">Other</option>
+  </select>
 
-        <div style={styles.grid2}>
-          <PersonForm title="Client" type="client" person={household.client} updatePerson={updatePerson} />
-          <PersonForm title="Spouse" type="spouse" person={household.spouse} updatePerson={updatePerson} />
-        </div>
+  <input
+    style={styles.input}
+    value={household.referredBy}
+    onChange={(e) => updateHousehold("referredBy", e.target.value)}
+    placeholder="Referral source / Referred by"
+  />
+
+  <button
+    type="button"
+    style={styles.primaryButton}
+    onClick={() => {
+      saveIntake();
+      createCalendarEvent();
+    }}
+  >
+    Schedule Appointment
+  </button>
+</div>
 
         <section style={styles.card}>
           <h2 style={{ marginTop: 0 }}>Coverage, Premium, Health, and Notes</h2>
