@@ -2370,96 +2370,216 @@ function safeSetView(key) {
   }
 
 
-  function renderAdmin() {
-    const todaysAppointments = getVisibleEvents().filter((event) => event.date === new Date().toISOString().slice(0, 10));
-    const activeClient = fullName(household.client);
+ function renderAdmin() {
+  return (
+    <>
+      <div style={{ display: "flex", gap: 20 }}>
 
-    return (
-      <>
-        <section style={{ ...styles.card, border: "2px solid #0f2a44" }}>
-          <h2 style={{ marginTop: 0 }}>Admin Hub — Clean Command Center</h2>
-          <p style={{ marginTop: 0 }}>
-            Admin stays simple: start intake, search appointments, open clients, prepare emails, or export Medicare Pro/Monday fields.
-            Scheduling details now live in the separate Initial Intake form.
-          </p>
-          <div style={styles.nav}>
-            <button type="button" style={styles.primaryButton} onClick={() => setView("initialIntake")}>Initial Intake Form</button>
-            <button type="button" style={styles.button} onClick={() => setView("calendar")}>Search Calendar</button>
-            <button type="button" style={styles.button} onClick={() => { const today = new Date().toISOString().slice(0, 10); setAppointmentSearchFrom(today); setAppointmentSearchTo(today); setView("calendar"); }}>Today</button>
-            <button type="button" style={styles.button} onClick={() => setView("clients")}>Clients</button>
-            <button type="button" style={styles.button} onClick={() => setView("currentClients")}>Current Clients / Rate Calls</button>
-            <button type="button" style={styles.button} onClick={() => setView("dailyTasks")}>Daily Admin Tasks</button>
-            <button type="button" style={styles.button} onClick={() => setView("performance")}>Agent Performance</button>
-            <button type="button" style={styles.button} onClick={() => setView("status")}>Status Pipeline</button>
-            <button type="button" style={styles.button} onClick={() => setView("permissions")}>Agent Permissions</button>
-            <button type="button" style={styles.button} onClick={() => setView("agent")}>Agent Page</button>
-            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Google Calendar</button>
+        {/* LEFT COMMAND COLUMN */}
+        <aside
+          style={{
+            width: 300,
+            background: "#07111f",
+            color: "white",
+            padding: 24,
+            borderRadius: 18,
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ fontSize: 38, fontWeight: 900, color: "#22c55e" }}>
+            AIP
           </div>
-          {message ? <p><strong>{message}</strong></p> : null}
-        </section>
 
-        <section style={styles.card}>
-          <h2 style={{ marginTop: 0 }}>Admin Alerts / Today</h2>
-          <div style={styles.grid3}>
-            <div><strong>Tasks Today:</strong> {getDailyTasks().length}</div>
-            <div><strong>Pending Alerts:</strong> {getVisibleHouseholds().filter((item) => getRecordAlerts(item).length).length}</div>
-            <div><strong>Appointments:</strong> {todaysAppointments.length}</div>
+          <div style={{ color: "#cbd5e1", marginBottom: 24 }}>
+            Office Manager Dashboard
           </div>
-          <div style={{ ...styles.nav, marginTop: 12 }}>
-            <button type="button" style={styles.primaryButton} onClick={() => setView("dailyTasks")}>Open Daily Task List</button>
-            <button type="button" style={styles.button} onClick={() => setView("performance")}>Open Performance View</button>
-          </div>
-        </section>
 
-        <section style={styles.card}>
-          <h2 style={{ marginTop: 0 }}>Current Working File</h2>
-          <div style={styles.grid3}>
-            <div><strong>Client:</strong> {activeClient}</div>
-            <div><strong>Phone:</strong> {household.client.phone || "-"}</div>
-            <div><strong>Agent:</strong> {household.assignedAgent || "Admin"}</div>
-            <div><strong>Status:</strong> {household.businessStatus || household.status || "New"}</div>
-            <div><strong>Reason:</strong> {household.reasonForCall || "-"}</div>
-            <div><strong>Premium:</strong> {household.currentPremium || household.client.currentMedSuppPremium || "-"}</div>
-          </div>
-          <div style={{ ...styles.grid3, marginTop: 12 }}>
-            <select style={styles.input} value={household.businessStatus || household.status || "New"} onChange={(e) => updateHousehold("businessStatus", e.target.value)}>
-              {BUSINESS_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
-            </select>
-            <input style={styles.input} value={household.carrier || ""} onChange={(e) => updateHousehold("carrier", e.target.value)} placeholder="Carrier / Company" />
-            <input style={styles.input} value={household.policyNumber || ""} onChange={(e) => updateHousehold("policyNumber", e.target.value)} placeholder="Policy Number" />
-          </div>
-          <div style={{ ...styles.nav, marginTop: 12 }}>
-            <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Current Record</button>
-            <button type="button" style={styles.button} onClick={() => setView("initialIntake")}>Continue Intake / Schedule</button>
-            <button type="button" style={styles.button} onClick={resetIntake}>Clear Intake</button>
-          </div>
-        </section>
+          <button style={{ ...styles.primaryButton, width: "100%", marginBottom: 8 }} onClick={() => setView("initialIntake")}>
+            New Call Intake
+          </button>
 
-        <section style={styles.card}>
-          <h2 style={{ marginTop: 0 }}>Admin Quick Actions</h2>
-          <div style={styles.nav}>
-            <button type="button" style={styles.button} onClick={refreshEmailTemplateWithLatestData}>Refresh Email Template</button>
-            <button type="button" style={styles.button} onClick={copyEmailPackage}>Copy Email Package</button>
-            <button type="button" style={styles.button} onClick={openEmailDraft}>Open Email Draft</button>
-            <button type="button" style={styles.button} onClick={() => navigator.clipboard?.writeText(JSON.stringify(buildIntegrationAutofillData(household).medicarePro, null, 2))}>Copy Medicare Pro Fields</button>
-            <button type="button" style={styles.button} onClick={() => navigator.clipboard?.writeText(JSON.stringify(buildIntegrationAutofillData(household).monday, null, 2))}>Copy Monday Fields</button>
-            <button type="button" style={styles.button} onClick={() => downloadIntegrationCsv(household)}>Export CSV</button>
-          </div>
-        </section>
+          <button style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => setView("calendar")}>
+            Appointment Manager
+          </button>
 
-        <section style={styles.card}>
-          <h2 style={{ marginTop: 0 }}>Today Snapshot</h2>
-          {todaysAppointments.length === 0 ? <p>No saved appointments for today yet.</p> : null}
-          {todaysAppointments.slice(0, 6).map((event) => (
-            <div key={event.id} style={{ border: "1px solid #d6dde8", borderRadius: 10, padding: 10, marginTop: 8 }}>
-              <strong>{event.time || "No time"} — {event.title}</strong>
-              <div>{event.agent || "Unassigned"} · {event.location || "Phone Call"}</div>
+          <button style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => setView("status")}>
+            Policy Tracker
+          </button>
+
+          <button style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => setView("clients")}>
+            Calling List
+          </button>
+
+          <button style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => setView("today")}>
+            Today Command Center
+          </button>
+
+          <hr />
+
+          <button
+            style={{ ...styles.button, width: "100%", marginBottom: 8 }}
+            onClick={() => window.open("https://www.medicarepro.com", "_blank")}
+          >
+            Open Medicare Pro
+          </button>
+
+          <button
+            style={{ ...styles.button, width: "100%", marginBottom: 8 }}
+            onClick={openSipsGoogleCalendar}
+          >
+            Open Google Calendar
+          </button>
+
+          <button
+            style={{ ...styles.button, width: "100%", marginBottom: 8 }}
+            onClick={() => window.open("https://www.monday.com", "_blank")}
+          >
+            Open Monday
+          </button>
+
+          <button
+            style={{ ...styles.primaryButton, width: "100%" }}
+            onClick={() => setView("integrations")}
+          >
+            Integrations Center
+          </button>
+        </aside>
+
+        {/* RIGHT CONTENT */}
+        <div style={{ flex: 1 }}>
+
+          {/* TOP METRICS */}
+          <div style={styles.grid4}>
+            <section style={styles.card}>
+              <h3>New Intakes</h3>
+              <h1>{households.length}</h1>
+            </section>
+
+            <section style={styles.card}>
+              <h3>Appointments Set</h3>
+              <h1>{events.length}</h1>
+            </section>
+
+            <section style={styles.card}>
+              <h3>Pending Policies</h3>
+              <h1>
+                {households.filter((h) => h.businessStatus === "Pending Business").length}
+              </h1>
+            </section>
+
+            <section style={styles.card}>
+              <h3>Written Business</h3>
+              <h1>
+                {households.filter((h) => h.businessStatus === "Written Business").length}
+              </h1>
+            </section>
+          </div>
+
+          {/* TODAY COMMAND CENTER */}
+          <section style={styles.card}>
+            <h2 style={{ marginTop: 0 }}>Today’s Command Center</h2>
+
+            <div style={styles.nav}>
+              <button style={styles.primaryButton} onClick={() => setView("initialIntake")}>
+                Start New Intake
+              </button>
+
+              <button style={styles.button} onClick={() => setView("calendar")}>
+                Set Appointment
+              </button>
+
+              <button style={styles.button} onClick={() => setView("status")}>
+                Update Policy
+              </button>
+
+              <button style={styles.button} onClick={() => setView("clients")}>
+                Work Calling List
+              </button>
+
+              <button style={styles.button} onClick={() => setView("today")}>
+                Service Requests
+              </button>
             </div>
-          ))}
-        </section>
-      </>
-    );
-  }
+          </section>
+
+          {/* APPOINTMENTS */}
+          <section style={styles.card}>
+            <h2 style={{ marginTop: 0 }}>Today Appointments</h2>
+
+            {events.length === 0 ? (
+              <p>No appointments scheduled.</p>
+            ) : (
+              events.map((event) => (
+                <div
+                  key={event.id}
+                  style={{
+                    border: "1px solid #d6dde8",
+                    borderRadius: 12,
+                    padding: 14,
+                    marginBottom: 10,
+                  }}
+                >
+                  <strong>{event.title}</strong>
+
+                  <p>
+                    {event.date} at {event.time}
+                  </p>
+
+                  <p>
+                    Agent: {event.agent || "Unassigned"}
+                  </p>
+
+                  <p>
+                    {event.location || "Phone Appointment"}
+                  </p>
+                </div>
+              ))
+            )}
+          </section>
+
+          {/* PENDING BUSINESS */}
+          <section style={styles.card}>
+            <h2 style={{ marginTop: 0 }}>Pending Business</h2>
+
+            {households
+              .filter((h) => h.businessStatus === "Pending Business")
+              .map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    border: "1px solid #d6dde8",
+                    borderRadius: 12,
+                    padding: 14,
+                    marginBottom: 10,
+                  }}
+                >
+                  <strong>{fullName(item.client)}</strong>
+
+                  <p>
+                    {item.client.phone || "No phone"}
+                  </p>
+
+                  <p>
+                    Agent: {item.assignedAgent || "Unassigned"}
+                  </p>
+
+                  <button
+                    style={styles.button}
+                    onClick={() => {
+                      loadHousehold(item);
+                      setView("household");
+                    }}
+                  >
+                    Open Household
+                  </button>
+                </div>
+              ))}
+          </section>
+        </div>
+      </div>
+    </>
+  );
+}
 
   function renderInitialIntake() {
     const clientSnapshot = calculatePremiumSnapshot(household.client, "client", household.ancillary || blankAncillary);
