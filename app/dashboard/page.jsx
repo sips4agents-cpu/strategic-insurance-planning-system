@@ -2527,16 +2527,18 @@ function safeSetView(key) {
   />
 
   <button
-    type="button"
-    style={styles.primaryButton}
-    onClick={() => {
-      saveIntake();
-      createCalendarEvent();
-    }}
-  >
-    Schedule Appointment
-  </button>
+  type="button"
+  style={styles.primaryButton}
+  onClick={() => {
+    saveIntake();
+    createCalendarEvent();
+  }}
+>
+  Schedule Appointment
+</button>
 </div>
+
+</section>
 
         <section style={styles.card}>
           <h2 style={{ marginTop: 0 }}>Coverage, Premium, Health, and Notes</h2>
