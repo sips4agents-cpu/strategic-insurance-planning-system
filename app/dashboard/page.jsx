@@ -2663,10 +2663,6 @@ function safeSetView(key) {
     </>
   );
 }
->
-  Schedule Appointment
-</button>
-</div>
 
 </section>
 
