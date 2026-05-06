@@ -2664,45 +2664,7 @@ function safeSetView(key) {
   );
 }
 
-</section>
-
-        <section style={styles.card}>
-          <h2 style={{ marginTop: 0 }}>Coverage, Premium, Health, and Notes</h2>
-          <div style={styles.grid3}>
-            <select style={styles.input} value={household.currentCoverage} onChange={(e) => updateHousehold("currentCoverage", e.target.value)}>
-              <option value="">Current Coverage</option>
-              {COVERAGE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-            {household.currentCoverage === "Group" ? (
-              <select style={styles.input} value={household.groupSize} onChange={(e) => updateHousehold("groupSize", e.target.value)}>
-                <option value="">Group Size</option>
-                {GROUP_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
-              </select>
-            ) : <input style={styles.input} value={household.groupSize} onChange={(e) => updateHousehold("groupSize", e.target.value)} placeholder="Group Size / Coverage Detail" />}
-            <input style={styles.input} value={household.currentPremium} onChange={(e) => updateHousehold("currentPremium", e.target.value)} placeholder="Household Current Premium" />
-          </div>
-          <div style={{ ...styles.grid3, marginTop: 12 }}>
-            <input style={styles.input} value={household.client.currentMedSuppPremium} onChange={(e) => updatePerson("client", "currentMedSuppPremium", e.target.value)} placeholder="Client Current Premium" />
-            <input style={styles.input} value={household.spouse.currentMedSuppPremium} onChange={(e) => updatePerson("spouse", "currentMedSuppPremium", e.target.value)} placeholder="Spouse Current Premium" />
-            <input style={styles.input} readOnly value={moneyDisplay(clientSnapshot.currentMonthly + spouseSnapshot.currentMonthly)} placeholder="Current Household Total" />
-          </div>
-          <div style={{ ...styles.grid2, marginTop: 12 }}>
-            <textarea style={styles.textarea} value={household.client.health} onChange={(e) => updatePerson("client", "health", e.target.value)} placeholder="Client health, medications, underwriting notes" />
-            <textarea style={styles.textarea} value={household.spouse.health} onChange={(e) => updatePerson("spouse", "health", e.target.value)} placeholder="Spouse health, medications, underwriting notes" />
-          </div>
-          <textarea style={{ ...styles.textarea, marginTop: 12 }} value={household.notes} onChange={(e) => updateHousehold("notes", e.target.value)} placeholder="Call notes / appointment notes / what agent needs to know" />
-          <div style={{ ...styles.nav, marginTop: 12 }}>
-            <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Intake</button>
-            <button type="button" style={styles.button} onClick={() => setView("agent")}>Send to Agent Page</button>
-            <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Go to Quick Rater</button>
-          </div>
-        </section>
-      </>
-    );
-  }
-
-
-  function renderCalendar() {
+   function renderCalendar() {
     const today = new Date().toISOString().slice(0, 10);
     const activeDate = appointmentSearchFrom || appointmentDate || today;
 
