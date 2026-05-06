@@ -515,9 +515,17 @@ const NAV_ITEMS = [
 const ADMIN_ONLY_VIEWS = new Set(["admin", "initialIntake", "leadCapture", "clients", "currentClients", "dailyTasks", "performance", "status", "integrations", "permissions"]);
 
 const ROLE_ACCESS = {
-  Agent: new Set(["calendar", "today", "household", "agent", "quickRater", "calculator"]),
+  Agent: new Set([
+  "calendar",
+  "today",
+  "household",
+  "agent",
+  "initialIntake",
+  "quickRater",
+  "calculator",
+]),
 
- "Office Manager": new Set([
+"Office Manager": new Set([
   "dashboard",
   "admin",
   "initialIntake",
@@ -2594,74 +2602,67 @@ function safeSetView(key) {
     const clientSnapshot = calculatePremiumSnapshot(household.client, "client", household.ancillary || blankAncillary);
     const spouseSnapshot = calculatePremiumSnapshot(household.spouse, "spouse", household.ancillary || blankAncillary);
 
-    return (
-      <>
-        <section style={{ ...styles.card, border: "2px solid #0f2a44" }}>
-          <h2 style={{ marginTop: 0 }}>Initial Intake Form — Call-In Appointment</h2>
-          <p style={{ marginTop: 0 }}>
-            Use this screen when a client calls in. Enter client/spouse information, assign the agent, schedule the appointment, then save.
-          </p>
-          <div style={styles.nav}>
-            <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Intake</button>
-            <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Intake</button>
-            <button type="button" style={styles.button} onClick={() => { setCalendarViewMode("Open Slots View"); setAppointmentSearchFrom(appointmentDate || new Date().toISOString().slice(0, 10)); setAppointmentSearchTo(appointmentDate || new Date().toISOString().slice(0, 10)); setView("calendar"); }}>Check Availability / Open Slots</button>
-            <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Calendar</button>
-            <button type="button" style={styles.button} onClick={() => setView("admin")}>Return to Admin</button>
-          </div>
-          {message ? <p><strong>{message}</strong></p> : null}
-        </section>
+  function renderInitialIntake() {
+  return (
+    <>
+      <section style={{ ...styles.card, border: "2px solid #0f2a44" }}>
+        <h2 style={{ marginTop: 0 }}>Initial Intake / Fact Finder</h2>
+        <p style={{ marginTop: 0 }}>
+          Use this same intake form for Office Manager, Agent, Senior Agent, and Admin. This is the same live client file used by the Agent Fact Finder / Quoter, so information moves across the system.
+        </p>
 
-        <section style={styles.card}>
-          <h2 style={{ marginTop: 0 }}>Appointment Scheduler</h2>
-          <div style={styles.grid3}>
-            <select style={styles.input} value={household.reasonForCall} onChange={(e) => updateHousehold("reasonForCall", e.target.value)}>
-              {APPOINTMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
-            </select>
-            <select style={styles.input} value={household.assignedAgent} onChange={(e) => updateHousehold("assignedAgent", e.target.value)}>
-              {AGENTS.map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
-            </select>
-            <select style={styles.input} value={household.status} onChange={(e) => updateHousehold("status", e.target.value)}>
-              <option value="New">New</option>
-              <option value="Working">Working</option>
-              <option value="Scheduled">Scheduled</option>
-              <option value="Pending">Pending</option>
-              <option value="Completed">Completed</option>
-            </select>
-          </div>
-          <div style={{ ...styles.grid3, marginTop: 12 }}>
-            <input style={styles.input} type="date" value={appointmentDate} onChange={(e) => setAppointmentDate(e.target.value)} />
-            <input style={styles.input} type="time" value={appointmentTime} onChange={(e) => setAppointmentTime(e.target.value)} />
-            <select style={styles.input} value={appointmentDuration} onChange={(e) => setAppointmentDuration(e.target.value)}>
-              <option value="15">15 minutes</option>
-              <option value="30">30 minutes</option>
-              <option value="45">45 minutes</option>
-              <option value="60">1 hour</option>
-              <option value="90">1.5 hours</option>
-            </select>
-          </div>
-        <div style={{ ...styles.grid3, marginTop: 12 }}>
-  <select style={styles.input} value={appointmentLocation} onChange={(e) => setAppointmentLocation(e.target.value)}>
-    <option value="Phone Call">Phone Call</option>
-    <option value="Office">Office</option>
-    <option value="Client Home">Client Home</option>
-    <option value="Zoom / Virtual">Zoom / Virtual</option>
-    <option value="Other">Other</option>
-  </select>
+        <div style={styles.nav}>
+          <button type="button" style={styles.primaryButton} onClick={saveIntake}>
+            Save Intake
+          </button>
 
-  <input
-    style={styles.input}
-    value={household.referredBy}
-    onChange={(e) => updateHousehold("referredBy", e.target.value)}
-    placeholder="Referral source / Referred by"
-  />
+          <button
+            type="button"
+            style={styles.primaryButton}
+            onClick={async () => {
+              saveIntake();
+              await createCalendarEvent();
+            }}
+          >
+            Schedule Appointment
+          </button>
 
-  <button
-  type="button"
-  style={styles.primaryButton}
-  onClick={() => {
-    saveIntake();
-    createCalendarEvent();
-  }}
+          <button type="button" style={styles.button} onClick={() => setView("agent")}>
+            Send to Agent Page
+          </button>
+
+          <button type="button" style={styles.button} onClick={() => setView("quickRater")}>
+            Go to Quick Rater
+          </button>
+
+          <button type="button" style={styles.button} onClick={() => setView("calendar")}>
+            Check Calendar
+          </button>
+
+          <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>
+            Open Google Calendar
+          </button>
+
+          <button type="button" style={styles.button} onClick={() => setView("admin")}>
+            Return to Office Manager
+          </button>
+        </div>
+
+        {message ? <p><strong>{message}</strong></p> : null}
+      </section>
+
+      <FactFinderQuoter
+        household={household}
+        updatePerson={updatePerson}
+        updateHousehold={updateHousehold}
+        updateAncillary={updateAncillary}
+        saveIntake={saveIntake}
+        createCalendarEvent={createCalendarEvent}
+        setView={setView}
+      />
+    </>
+  );
+}
 >
   Schedule Appointment
 </button>
