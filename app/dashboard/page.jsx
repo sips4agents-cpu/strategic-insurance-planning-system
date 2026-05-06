@@ -3276,15 +3276,29 @@ function renderAccessRestricted() {
 
 return (
   <main style={styles.layout}>
+
+    {activeUserRole !== "Agent" && (
+      <SidebarNav
+        view={view}
+        setView={safeSetView}
+        message={message}
+        activeUserRole={activeUserRole}
+        activeUserName={activeUserName}
+        setActiveUserRole={setActiveUserRole}
+        setActiveUserName={setActiveUserName}
+      />
+    )}
+
     <section style={styles.mainPanel}>
+
       {activeUserRole !== "Agent" && (
-  <header style={styles.header}>
-    <h1 style={{ margin: 0 }}>SIPS Connect</h1>
-    <p style={{ marginBottom: 0 }}>
-      Compact command center with Admin/Agent visibility controls. Current role: {activeUserRole}.
-    </p>
-  </header>
-)}
+        <header style={styles.header}>
+          <h1 style={{ margin: 0 }}>SIPS Connect</h1>
+          <p style={{ marginBottom: 0 }}>
+            Compact command center with Admin/Agent visibility controls. Current role: {activeUserRole}.
+          </p>
+        </header>
+      )}
 
       {!canSeeView(view) ? renderAccessRestricted() : null}
       {canSeeView(view) && view === "dashboard" && renderDashboard()}
