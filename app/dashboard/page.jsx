@@ -2474,7 +2474,7 @@ function safeSetView(key) {
           </p>
           <div style={styles.nav}>
             <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Intake</button>
-            <button type="button" style={styles.primaryButton} onClick={createCalendarEvent}>Schedule Appointment</button>
+            <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Intake</button>
             <button type="button" style={styles.button} onClick={() => { setCalendarViewMode("Open Slots View"); setAppointmentSearchFrom(appointmentDate || new Date().toISOString().slice(0, 10)); setAppointmentSearchTo(appointmentDate || new Date().toISOString().slice(0, 10)); setView("calendar"); }}>Check Availability / Open Slots</button>
             <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Calendar</button>
             <button type="button" style={styles.button} onClick={() => setView("admin")}>Return to Admin</button>
