@@ -3666,7 +3666,6 @@ return (
       {canSeeView(view) && view === "dashboard" && renderDashboard()}
       {canSeeView(view) && view === "admin" && renderAdmin()}
       {canSeeView(view) && view === "initialIntake" && renderInitialIntake()}
-      {canSeeView(view) && view === "leadCapture" && renderLeadCapture()}
       {canSeeView(view) && view === "calendar" && renderCalendar()}
       {canSeeView(view) && view === "clients" && renderClients()}
       {canSeeView(view) && view === "currentClients" && renderCurrentClients()}
@@ -3683,5 +3682,4 @@ return (
     </section>
   </main>
 );
-}
 }
