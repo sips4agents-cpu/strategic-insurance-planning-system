@@ -2599,10 +2599,6 @@ function safeSetView(key) {
 }
 
   function renderInitialIntake() {
-    const clientSnapshot = calculatePremiumSnapshot(household.client, "client", household.ancillary || blankAncillary);
-    const spouseSnapshot = calculatePremiumSnapshot(household.spouse, "spouse", household.ancillary || blankAncillary);
-
-  function renderInitialIntake() {
   return (
     <>
       <section style={{ ...styles.card, border: "2px solid #0f2a44" }}>
