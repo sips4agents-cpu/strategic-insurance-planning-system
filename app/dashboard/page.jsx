@@ -517,23 +517,23 @@ const ADMIN_ONLY_VIEWS = new Set(["admin", "initialIntake", "leadCapture", "clie
 const ROLE_ACCESS = {
   Agent: new Set(["calendar", "today", "household", "agent", "quickRater", "calculator"]),
 
-  "Office Manager": new Set([
-    "dashboard",
-    "admin",
-    "initialIntake",
-    "leadCapture",
-    "calendar",
-    "clients",
-    "currentClients",
-    "dailyTasks",
-    "status",
-    "today",
-    "household",
-    "integrations",
-    "agent",
-    "quickRater",
-    "calculator",
-  ]),
+ "Office Manager": new Set([
+  "dashboard",
+  "admin",
+  "initialIntake",
+  "leadCapture",
+  "calendar",
+  "clients",
+  "currentClients",
+  "dailyTasks",
+  "status",
+  "today",
+  "household",
+  "integrations",
+  "agent",
+  "quickRater",
+  "calculator",
+]),
 
   "Senior Agent": new Set(NAV_ITEMS.map(([key]) => key)),
   Admin: new Set(NAV_ITEMS.map(([key]) => key)),
@@ -2374,7 +2374,12 @@ function safeSetView(key) {
   return (
     <>
       <div style={{ display: "flex", gap: 20 }}>
-
+<button
+  style={{ ...styles.primaryButton, width: "100%", marginBottom: 8 }}
+  onClick={() => setView("initialIntake")}
+>
+  Full Intake / Fact Finder
+</button>
         {/* LEFT COMMAND COLUMN */}
         <aside
           style={{
@@ -2483,6 +2488,10 @@ function safeSetView(key) {
               <button style={styles.primaryButton} onClick={() => setView("initialIntake")}>
                 Start New Intake
               </button>
+              
+              <button style={styles.primaryButton} onClick={() => setView("initialIntake")}>
+               Open Full Intake / Fact Finder
+             </button>
 
               <button style={styles.button} onClick={() => setView("calendar")}>
                 Set Appointment
