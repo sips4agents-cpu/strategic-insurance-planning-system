@@ -2064,8 +2064,9 @@ try {
   }
 
   setMessage("Appointment created in SIPS and sent to Google Calendar.");
-} catch (error) {
-  setMessage(`Saved in SIPS, but Google Calendar failed: ${error.message || "Network/API route error"}`);
+ } catch (error) {
+    setMessage(`Saved in SIPS, but Google Calendar failed: ${error.message || "Network/API route error"}`);
+  }
 }
 
   function checkAgentStatus(agentName) {
