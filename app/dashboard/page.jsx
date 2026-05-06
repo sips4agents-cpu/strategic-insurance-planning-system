@@ -3137,103 +3137,168 @@ function renderAgentPage() {
 
   return (
     <>
-      <div style={{ display: "flex", minHeight: "100vh" }}>
-
-        {/* LEFT SIDEBAR */}
-        <div
+      <div style={{ display: "flex", minHeight: "100vh", gap: 20 }}>
+        <aside
           style={{
-            width: 280,
+            width: 285,
             background: "#07111f",
             color: "white",
-            padding: 22,
-            borderRadius: 16,
+            padding: 24,
+            borderRadius: 18,
+            flexShrink: 0,
           }}
         >
-          <div style={{ fontSize: 36, fontWeight: 900, color: "#22c55e" }}>AIP</div>
-          <div style={{ color: "#cbd5e1", marginBottom: 25 }}>Agent Dashboard</div>
+          <div style={{ fontSize: 42, fontWeight: 900, color: "#22c55e", lineHeight: 1 }}>AIP</div>
+          <div style={{ color: "#cbd5e1", margin: "6px 0 28px" }}>Agent Dashboard</div>
 
-          <button style={styles.button} onClick={() => setView("agent")}>Agent Home</button>
-          <button style={styles.button} onClick={() => setView("initialIntake")}>Client Intake</button>
-          <button style={styles.button} onClick={() => setView("quickRater")}>Quick Rater</button>
-          <button style={styles.button} onClick={() => setAgentTab("Client Summary")}>Client Summary</button>
-          <button style={styles.button} onClick={() => setView("clients")}>Saved Clients</button>
-          <button style={styles.button} onClick={() => setView("calendar")}>SIPS Calendar</button>
+          <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => setView("agent")}>
+            Agent Home
+          </button>
 
-          <button style={styles.primaryButton} onClick={() => setAgentTab("Company Login")}>
+          <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => setView("initialIntake")}>
+            Client Intake
+          </button>
+
+          <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => setView("quickRater")}>
+            Quick Rater
+          </button>
+
+          <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => setAgentTab("Client Summary")}>
+            Client Summary
+          </button>
+
+          <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => setView("clients")}>
+            Saved Clients
+          </button>
+
+          <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => setView("calendar")}>
+            SIPS Calendar
+          </button>
+
+          <button type="button" style={{ ...styles.primaryButton, width: "100%", marginBottom: 8 }} onClick={() => setAgentTab("Company Login")}>
             Company Login
           </button>
 
-          <button style={styles.button} onClick={() => setAgentTab("Email Forms")}>Email Forms</button>
-          <button style={styles.button} onClick={() => setAgentTab("Agent Fact Finder / Quoter")}>
+          <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => setAgentTab("Email Forms")}>
+            Email Forms
+          </button>
+
+          <button type="button" style={{ ...styles.button, width: "100%", marginBottom: 8 }} onClick={() => setAgentTab("Agent Fact Finder / Quoter")}>
             Fact Finder / Quoter
           </button>
 
           <div style={{ marginTop: 20, background: "#6d28d9", padding: 14, borderRadius: 14 }}>
             <strong>Check Client Status</strong>
             <input style={{ ...styles.input, marginTop: 8 }} placeholder="Search client name, phone, or email" />
-            <button style={styles.primaryButton} onClick={() => setView("clients")}>
+            <button type="button" style={{ ...styles.primaryButton, width: "100%" }} onClick={() => setView("clients")}>
               View Saved Clients
             </button>
           </div>
-        </div>
+        </aside>
 
-        {/* RIGHT SIDE */}
-        <div style={{ flex: 1, paddingLeft: 20 }}>
-
+        <div style={{ flex: 1, minWidth: 0 }}>
           {agentTab === "Client" && (
             <section style={styles.card}>
-              <h3>Client</h3>
-              <p><strong>Name:</strong> {fullName(household.client)}</p>
-              <p><strong>Phone:</strong> {household.client.phone || "-"}</p>
-              <p><strong>Email:</strong> {household.client.email || "-"}</p>
-            </section>
-          )}
-
-          {agentTab === "CSG" && (
-            <section style={styles.card}>
-              <h3>CSG</h3>
-              <button style={styles.primaryButton} onClick={() => openCsgRaterForPerson(household.client, "Client")}>
-                Open CSG - Client
-              </button>
+              <h2 style={{ marginTop: 0 }}>Client</h2>
+              <div style={styles.grid3}>
+                <div><strong>Name:</strong> {fullName(household.client)}</div>
+                <div><strong>Phone:</strong> {household.client.phone || "-"}</div>
+                <div><strong>Email:</strong> {household.client.email || "-"}</div>
+                <div><strong>DOB:</strong> {household.client.birthdate || "-"}</div>
+                <div><strong>Age:</strong> {calculateAge(household.client.birthdate) || "-"}</div>
+                <div><strong>Premium:</strong> {household.currentPremium || household.client.currentMedSuppPremium || "-"}</div>
+              </div>
             </section>
           )}
 
           {agentTab === "Company Login" && (
             <section style={styles.card}>
-              <h3>Company Login</h3>
-              <select style={styles.input} value={selectedCompanyLogin} onChange={(e) => setSelectedCompanyLogin(e.target.value)}>
+              <h2 style={{ marginTop: 0 }}>Company Login</h2>
+
+              <select
+                style={styles.input}
+                value={selectedCompanyLogin}
+                onChange={(e) => setSelectedCompanyLogin(e.target.value)}
+              >
                 <option value="">Select company login</option>
                 {COMPANY_LOGIN_LINKS.map((company) => (
-                  <option key={company.name} value={company.url}>{company.name}</option>
+                  <option key={company.name} value={company.url}>
+                    {company.name}
+                  </option>
                 ))}
               </select>
 
-            <button
-  style={styles.primaryButton}
-  disabled={!selectedCompanyLogin}
-  onClick={() => {
-    if (!selectedCompanyLogin) {
-      setMessage("Select a company first.");
-      return;
-    }
+              <button
+                type="button"
+                style={styles.primaryButton}
+                disabled={!selectedCompanyLogin}
+                onClick={() => {
+                  if (!selectedCompanyLogin) {
+                    setMessage("Select a company first.");
+                    return;
+                  }
 
-    if (selectedCompanyLogin === "NO_LINK") {
-      setMessage("No login link is on file for this company.");
-      return;
-    }
+                  if (selectedCompanyLogin === "NO_LINK") {
+                    setMessage("No login link is on file for this company.");
+                    return;
+                  }
 
-    window.open(selectedCompanyLogin, "_blank", "noopener,noreferrer");
-  }}
->
-  Open Company Login
-</button>
+                  window.open(selectedCompanyLogin, "_blank", "noopener,noreferrer");
+                }}
+              >
+                Open Company Login
+              </button>
             </section>
           )}
 
           {agentTab === "Email Forms" && (
             <section style={styles.card}>
-              <h3>Email Forms</h3>
-              <button style={styles.primaryButton} onClick={copyEmailPackage}>Copy Email</button>
+              <h2 style={{ marginTop: 0 }}>Email Forms</h2>
+              <div style={styles.nav}>
+                <button type="button" style={styles.button} onClick={() => setSelectedEmailTemplate("Appointment Reminder")}>Appointment Reminder</button>
+                <button type="button" style={styles.button} onClick={() => setSelectedEmailTemplate("Plan Review")}>Plan Review</button>
+                <button type="button" style={styles.button} onClick={() => setSelectedEmailTemplate("L564 Employer Form")}>L564 Employer Form</button>
+                <button type="button" style={styles.button} onClick={() => setSelectedEmailTemplate("Policy Review Documents")}>Policy Review Documents</button>
+              </div>
+
+              <div style={styles.nav}>
+                <button type="button" style={styles.button} onClick={refreshEmailTemplateWithLatestData}>Refresh Email Template</button>
+                <button type="button" style={styles.primaryButton} onClick={copyEmailPackage}>Copy Email Package</button>
+                <button type="button" style={styles.button} onClick={openEmailDraft}>Open Email Draft</button>
+              </div>
+            </section>
+          )}
+
+          {agentTab === "Client Summary" && (
+            <section style={styles.card}>
+              <h2 style={{ marginTop: 0 }}>Client Summary</h2>
+              <div style={styles.grid2}>
+                <div>
+                  <h3>Client</h3>
+                  <p><strong>Name:</strong> {fullName(household.client)}</p>
+                  <p><strong>DOB:</strong> {household.client.birthdate || "-"}</p>
+                  <p><strong>Age:</strong> {calculateAge(household.client.birthdate) || "-"}</p>
+                  <p><strong>Current Premium:</strong> {household.currentPremium || household.client.currentMedSuppPremium || "-"}</p>
+                  <p><strong>Proposed Carrier:</strong> {household.client.proposedCarrier || "-"}</p>
+                  <p><strong>Proposed Premium:</strong> {household.client.proposedMedSuppPremium || household.client.csgProposedPremium || "-"}</p>
+                </div>
+
+                <div>
+                  <h3>Spouse</h3>
+                  <p><strong>Name:</strong> {personHasData(household.spouse) ? fullName(household.spouse) : "-"}</p>
+                  <p><strong>DOB:</strong> {household.spouse.birthdate || "-"}</p>
+                  <p><strong>Age:</strong> {calculateAge(household.spouse.birthdate) || "-"}</p>
+                  <p><strong>Current Premium:</strong> {household.spouse.currentMedSuppPremium || "-"}</p>
+                  <p><strong>Proposed Carrier:</strong> {household.spouse.proposedCarrier || "-"}</p>
+                  <p><strong>Proposed Premium:</strong> {household.spouse.proposedMedSuppPremium || household.spouse.csgProposedPremium || "-"}</p>
+                </div>
+              </div>
+
+              <div style={styles.nav}>
+                <button type="button" style={styles.primaryButton} onClick={() => window.print()}>Print / Save PDF</button>
+                <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Open Quick Rater</button>
+                <button type="button" style={styles.button} onClick={() => setView("calculator")}>Open Calculator</button>
+              </div>
             </section>
           )}
 
@@ -3250,23 +3315,85 @@ function renderAgentPage() {
           )}
 
           <section style={styles.card}>
-            <h3>{selectedAgent} Appointments</h3>
+            <h2 style={{ marginTop: 0 }}>Agent Home</h2>
+            <div style={styles.nav}>
+              <select
+                style={styles.input}
+                value={household.reasonForCall}
+                onChange={(e) => updateHousehold("reasonForCall", e.target.value)}
+              >
+                {APPOINTMENT_TYPES.map((type) => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+
+              <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>
+                Open Google Appointments
+              </button>
+
+              <button
+                type="button"
+                style={styles.primaryButton}
+                onClick={async () => {
+                  saveIntake();
+                  await createCalendarEvent();
+                }}
+              >
+                Schedule Appointment
+              </button>
+            </div>
+
+            <div style={styles.grid2}>
+              <select
+                style={styles.input}
+                value={selectedAgent}
+                onChange={(e) => {
+                  setSelectedAgent(e.target.value);
+                  updateHousehold("assignedAgent", e.target.value);
+                }}
+              >
+                {AGENTS.map((agent) => (
+                  <option key={agent.name} value={agent.name}>{agent.name}</option>
+                ))}
+              </select>
+
+              <button type="button" style={styles.button} onClick={() => checkAgentStatus(selectedAgent)}>
+                Check This Agent Status
+              </button>
+            </div>
+          </section>
+
+          <section style={styles.card}>
+            <h3 style={{ marginTop: 0 }}>{selectedAgent} Appointments</h3>
+            {agentEvents.length === 0 ? <p>No saved events for this agent yet.</p> : null}
             {agentEvents.map((event) => (
-              <div key={event.id}>
-                {event.title} - {event.date}
+              <div key={event.id} style={{ border: "1px solid #d6dde8", borderRadius: 12, padding: 14, marginTop: 10 }}>
+                <strong>{event.title}</strong>
+                <p>{event.date} at {event.time} · {event.location}</p>
               </div>
             ))}
           </section>
 
           <section style={styles.card}>
-            <h3>{selectedAgent} Households</h3>
+            <h3 style={{ marginTop: 0 }}>{selectedAgent} Households</h3>
+            {agentHouseholds.length === 0 ? <p>No households assigned to this agent yet.</p> : null}
             {agentHouseholds.map((item) => (
-              <div key={item.id}>
-                {fullName(item.client)}
+              <div key={item.id} style={{ border: "1px solid #d6dde8", borderRadius: 12, padding: 14, marginTop: 10 }}>
+                <strong>{fullName(item.client)}</strong>
+                <p>{item.client.phone || "No phone"} · {item.status || "No status"}</p>
+                <button
+                  type="button"
+                  style={styles.button}
+                  onClick={() => {
+                    loadHousehold(item);
+                    setView("household");
+                  }}
+                >
+                  Open Household
+                </button>
               </div>
             ))}
           </section>
-
         </div>
       </div>
     </>
