@@ -3398,38 +3398,167 @@ function renderAgentPage() {
             </section>
           )}
 
-          {agentTab === "Client Summary" && (
-            <section style={styles.card}>
-              <h2 style={{ marginTop: 0 }}>Client Summary</h2>
-              <div style={styles.grid2}>
-                <div>
-                  <h3>Client</h3>
-                  <p><strong>Name:</strong> {fullName(household.client)}</p>
-                  <p><strong>DOB:</strong> {household.client.birthdate || "-"}</p>
-                  <p><strong>Age:</strong> {calculateAge(household.client.birthdate) || "-"}</p>
-                  <p><strong>Current Premium:</strong> {household.currentPremium || household.client.currentMedSuppPremium || "-"}</p>
-                  <p><strong>Proposed Carrier:</strong> {household.client.proposedCarrier || "-"}</p>
-                  <p><strong>Proposed Premium:</strong> {household.client.proposedMedSuppPremium || household.client.csgProposedPremium || "-"}</p>
-                </div>
+        {agentTab === "Client Summary" && (() => {
+  const n = (v) => Number(String(v || "0").replace(/[^0-9.-]/g, "")) || 0;
+  const money = (v) => "$" + Math.round(n(v)).toLocaleString();
 
-                <div>
-                  <h3>Spouse</h3>
-                  <p><strong>Name:</strong> {personHasData(household.spouse) ? fullName(household.spouse) : "-"}</p>
-                  <p><strong>DOB:</strong> {household.spouse.birthdate || "-"}</p>
-                  <p><strong>Age:</strong> {calculateAge(household.spouse.birthdate) || "-"}</p>
-                  <p><strong>Current Premium:</strong> {household.spouse.currentMedSuppPremium || "-"}</p>
-                  <p><strong>Proposed Carrier:</strong> {household.spouse.proposedCarrier || "-"}</p>
-                  <p><strong>Proposed Premium:</strong> {household.spouse.proposedMedSuppPremium || household.spouse.csgProposedPremium || "-"}</p>
-                </div>
-              </div>
+  const clientCurrent = n(household.client.currentMedSuppPremium || household.currentPremium);
+  const clientProposed = n(household.client.proposedMedSuppPremium || household.client.csgProposedPremium);
+  const spouseCurrent = n(household.spouse.currentMedSuppPremium);
+  const spouseProposed = n(household.spouse.proposedMedSuppPremium || household.spouse.csgProposedPremium);
 
-              <div style={styles.nav}>
-                <button type="button" style={styles.primaryButton} onClick={() => window.print()}>Print / Save PDF</button>
-                <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Open Quick Rater</button>
-                <button type="button" style={styles.button} onClick={() => setView("calculator")}>Open Calculator</button>
-              </div>
-            </section>
-          )}
+  const currentMonthly = clientCurrent + spouseCurrent;
+  const proposedMonthly = clientProposed + spouseProposed;
+  const monthlySavings = currentMonthly - proposedMonthly;
+  const annualSavings = monthlySavings * 12;
+
+  return (
+    <section style={{ ...styles.card, background: "#ffffff" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 20, borderBottom: "1px solid #dbe3ef", paddingBottom: 18 }}>
+        <div>
+          <h1 style={{ margin: 0, color: "#08246b" }}>CLIENT SUMMARY</h1>
+          <h2 style={{ marginTop: 4, color: "#174ea6" }}>Medicare Supplement Plan G</h2>
+          <p>This summary is based on the Client Intake, Quick Rater, and Fact Finder information.</p>
+        </div>
+
+        <div style={{ textAlign: "right" }}>
+          <button type="button" style={styles.button} onClick={() => window.print()}>Print</button>
+          <button type="button" style={styles.primaryButton} onClick={openEmailDraft}>Email</button>
+          <p><strong>Date Prepared:</strong><br />{new Date().toLocaleDateString()}</p>
+          <p><strong>Prepared By:</strong><br />Loyd Richardson</p>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 18, padding: 18, border: "1px solid #f5a400", borderRadius: 14, background: "#fff7e6", textAlign: "center" }}>
+        <h2 style={{ margin: 0, color: "#08246b" }}>
+          All Medicare Supplement Plan G policies provide the EXACT same coverage.
+        </h2>
+        <h3 style={{ marginBottom: 0 }}>
+          The ONLY difference is the monthly premium and company value.
+        </h3>
+      </div>
+
+      <div style={{ ...styles.grid3, marginTop: 18 }}>
+        <section style={styles.card}>
+          <h3 style={{ marginTop: 0, color: "#08246b" }}>Client Information</h3>
+          <p><strong>{fullName(household.client) || "Client Name"}</strong></p>
+          <p>Age: {calculateAge(household.client.birthdate) || "-"}</p>
+          <p>Phone: {household.client.phone || "-"}</p>
+          <p>Email: {household.client.email || "-"}</p>
+          <p>Plan Type: Medicare Supplement Plan G</p>
+          <p>Effective Date: {household.client.effectiveDate || "-"}</p>
+        </section>
+
+        <section style={styles.card}>
+          <h3 style={{ marginTop: 0, color: "#08246b" }}>Spouse Information</h3>
+          <p><strong>{personHasData(household.spouse) ? fullName(household.spouse) : "No spouse listed"}</strong></p>
+          <p>Age: {calculateAge(household.spouse.birthdate) || "-"}</p>
+          <p>Phone: {household.spouse.phone || household.client.phone || "-"}</p>
+          <p>Email: {household.spouse.email || "-"}</p>
+          <p>Plan Type: Medicare Supplement Plan G</p>
+          <p>Effective Date: {household.spouse.effectiveDate || "-"}</p>
+        </section>
+
+        <section style={{ ...styles.card, border: "2px solid #047857" }}>
+          <h3 style={{ marginTop: 0, color: "#047857" }}>Household Summary</h3>
+          <p><strong>Household Size:</strong> {personHasData(household.spouse) ? "2" : "1"}</p>
+          <p><strong>Current Annual Premium:</strong> {money(currentMonthly * 12)}</p>
+          <p><strong>Proposed Annual Premium:</strong> {money(proposedMonthly * 12)}</p>
+          <p><strong>Annual Savings:</strong> {money(annualSavings)}</p>
+          <p><strong>Monthly Savings:</strong> {money(monthlySavings)}</p>
+        </section>
+      </div>
+
+      <section style={{ ...styles.card, marginTop: 18 }}>
+        <h3 style={{ marginTop: 0, background: "#08246b", color: "white", padding: 12, borderRadius: 10 }}>
+          Plan G Comparison — Same Coverage
+        </h3>
+
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: "left", padding: 10 }}>Item</th>
+              <th style={{ textAlign: "center", padding: 10 }}>Current Plan G</th>
+              <th style={{ textAlign: "center", padding: 10 }}>Proposed Plan G</th>
+              <th style={{ textAlign: "center", padding: 10 }}>Savings</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style={{ padding: 10 }}>Insurance Company</td>
+              <td style={{ textAlign: "center" }}>{household.client.currentCarrier || household.currentCoverage || "-"}</td>
+              <td style={{ textAlign: "center" }}>{household.client.proposedCarrier || "-"}</td>
+              <td style={{ textAlign: "center" }}>—</td>
+            </tr>
+            <tr>
+              <td style={{ padding: 10 }}>Monthly Premium</td>
+              <td style={{ textAlign: "center", color: "#c93535", fontWeight: 900 }}>{money(clientCurrent)}</td>
+              <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>{money(clientProposed)}</td>
+              <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>{money(clientCurrent - clientProposed)}</td>
+            </tr>
+            <tr>
+              <td style={{ padding: 10 }}>Annual Premium</td>
+              <td style={{ textAlign: "center", color: "#c93535", fontWeight: 900 }}>{money(clientCurrent * 12)}</td>
+              <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>{money(clientProposed * 12)}</td>
+              <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>{money((clientCurrent - clientProposed) * 12)}</td>
+            </tr>
+            <tr>
+              <td style={{ padding: 10 }}>Coverage</td>
+              <td style={{ textAlign: "center", fontWeight: 900 }}>SAME COVERAGE</td>
+              <td style={{ textAlign: "center", fontWeight: 900 }}>SAME COVERAGE</td>
+              <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>✓</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <div style={{ marginTop: 18, padding: 20, border: "2px solid #047857", borderRadius: 16, background: "#ecfdf5", display: "flex", justifyContent: "space-around", alignItems: "center" }}>
+        <h2 style={{ color: "#047857", margin: 0 }}>YOU ARE PAYING MORE FOR THE SAME COVERAGE</h2>
+        <div><strong>Monthly Savings</strong><h1>{money(monthlySavings)}</h1></div>
+        <div><strong>Annual Savings</strong><h1>{money(annualSavings)}</h1></div>
+      </div>
+
+      <div style={{ ...styles.grid3, marginTop: 18 }}>
+        <section style={styles.card}>
+          <h3 style={{ marginTop: 0 }}>What Plan G Covers</h3>
+          <p>✓ Hospitalization Part A</p>
+          <p>✓ Skilled Nursing Facility Care</p>
+          <p>✓ Part B Coinsurance</p>
+          <p>✓ Blood First 3 Pints</p>
+          <p>✓ Hospice Care</p>
+          <p>✓ Excess Charges</p>
+          <p><strong>Your only out-of-pocket cost is the Part B deductible.</strong></p>
+        </section>
+
+        <section style={styles.card}>
+          <h3 style={{ marginTop: 0 }}>Why Consider Switching?</h3>
+          <h4 style={{ color: "#c93535" }}>Your Current Plan</h4>
+          <p>✓ Same Coverage</p>
+          <p>✕ Higher Premium</p>
+
+          <h4 style={{ color: "#047857" }}>Our Proposed Plan</h4>
+          <p>✓ Same Coverage</p>
+          <p>✓ Lower Premium</p>
+          <p>✓ Better Value</p>
+        </section>
+
+        <section style={styles.card}>
+          <h3 style={{ marginTop: 0 }}>Additional Value</h3>
+          <p><strong>Lower Monthly Cost</strong><br />Save {money(monthlySavings)} every month</p>
+          <p><strong>Same Great Coverage</strong><br />Plan G coverage does not change</p>
+          <p><strong>Rate Stability</strong><br />Strong history of competitive rates</p>
+          <p><strong>Local Service</strong><br />AIP support when you need it</p>
+        </section>
+      </div>
+
+      <div style={styles.nav}>
+        <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Return to Quick Rater</button>
+        <button type="button" style={styles.button} onClick={() => setAgentTab("Agent Fact Finder / Quoter")}>Return to Fact Finder</button>
+        <button type="button" style={styles.primaryButton} onClick={() => window.print()}>Print / Save PDF</button>
+      </div>
+    </section>
+  );
+})()}
 
           {agentTab === "Agent Fact Finder / Quoter" && (
             <FactFinderQuoter
