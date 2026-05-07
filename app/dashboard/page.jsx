@@ -242,8 +242,7 @@ const EMAIL_TEMPLATE_DEFAULT_FORMS = {
 };
 
 const COVERAGE_OPTIONS = ["Medicare", "Group", "Individual Health", "Cobra"];
-const GROUP_SIZE_OPTIONS = ["Less than 20 employees", "More than 20 employees"];
-const GROUP_FUNDING_OPTIONS = ["Fully Insured", "Self Insured"];
+const GROUP_SIZE_OPTIONS = ["20 or more employees", "Less than 20 employees"];
 const PROPOSED_PREMIUM_SOURCES = ["Manual input", "Get premium from CSG rater"];
 const SIPS_GOOGLE_CALENDAR_URL = "https://calendar.google.com/calendar/u/0/r/day";
 const CSG_AGENCY_URL = "https://www.freemedicarereport.com/comparison_form/ainsurancepro.com";
@@ -373,7 +372,6 @@ const blankHousehold = {
   referredBy: "",
   currentCoverage: "",
   groupSize: "",
-  groupFunding: "",
   currentPremium: "",
   medicareProStatus: "Not started",
   medicareProClientId: "",
@@ -591,15 +589,6 @@ function calculateAge(dateValue) {
 }
 
 
-
-function formatHeight(value) {
-  const digits = String(value || "").replace(/\D/g, "").slice(0, 3);
-  if (!digits) return "";
-  if (digits.length === 1) return `${digits}'`;
-  if (digits.length === 2) return `${digits[0]}'${digits[1]}"`;
-  return `${digits[0]}'${digits.slice(1)}"`;
-}
-
 function csgGenderFromSex(sex) {
   const value = String(sex || "").toLowerCase();
   if (value.startsWith("m")) return "Male";
@@ -666,6 +655,25 @@ function openCsgRaterForPerson(person, label) {
 
 function fullName(person) {
   return `${person.firstName || ""} ${person.lastName || ""}`.trim() || "Client";
+}
+
+function openHouseholdQuickRater(item, loadHousehold, setView) {
+  loadHousehold(item);
+  setView("quickRater");
+}
+
+function openHouseholdSummary(item, loadHousehold, setAgentTab, setView) {
+  loadHousehold(item);
+  setAgentTab("Client Summary");
+  setView("agent");
+}
+
+function printClientSummaryOnly() {
+  if (typeof document !== "undefined") {
+    document.body.classList.add("print-client-summary-only");
+    window.print();
+    setTimeout(() => document.body.classList.remove("print-client-summary-only"), 500);
+  }
 }
 
 function buildAgentSignature(agentName) {
@@ -785,13 +793,13 @@ function PersonForm({ title, type, person, updatePerson }) {
       <div style={styles.grid2}>
         <input
           style={styles.input}
-          value={person.firstName || ""}
+          value={person.firstName}
           onChange={(e) => updatePerson(type, "firstName", e.target.value)}
           placeholder={`${title} First Name`}
         />
         <input
           style={styles.input}
-          value={person.lastName || ""}
+          value={person.lastName}
           onChange={(e) => updatePerson(type, "lastName", e.target.value)}
           placeholder={`${title} Last Name`}
         />
@@ -800,13 +808,13 @@ function PersonForm({ title, type, person, updatePerson }) {
       <div style={{ ...styles.grid2, marginTop: 12 }}>
         <input
           style={styles.input}
-          value={person.phone || ""}
+          value={person.phone}
           onChange={(e) => updatePerson(type, "phone", formatPhone(e.target.value))}
           placeholder={`${title} Phone`}
         />
         <input
           style={styles.input}
-          value={person.email || ""}
+          value={person.email}
           onChange={(e) => updatePerson(type, "email", e.target.value)}
           placeholder={`${title} Email`}
         />
@@ -815,9 +823,9 @@ function PersonForm({ title, type, person, updatePerson }) {
       <div style={{ ...styles.grid2, marginTop: 12 }}>
         <input
           style={styles.input}
-          value={person.birthdate || ""}
+          value={person.birthdate}
           onChange={(e) => updatePerson(type, "birthdate", formatDate(e.target.value))}
-          placeholder="Birthdate MM/DD/YYYY"
+          placeholder="MM/DD/YYYY"
         />
         <input
           style={styles.input}
@@ -830,7 +838,7 @@ function PersonForm({ title, type, person, updatePerson }) {
       <div style={{ marginTop: 12 }}>
         <input
           style={styles.input}
-          value={person.address || ""}
+          value={person.address}
           onChange={(e) => updatePerson(type, "address", e.target.value)}
           placeholder="Address"
         />
@@ -839,19 +847,19 @@ function PersonForm({ title, type, person, updatePerson }) {
       <div style={{ ...styles.grid3, marginTop: 12 }}>
         <input
           style={styles.input}
-          value={person.city || ""}
+          value={person.city}
           onChange={(e) => updatePerson(type, "city", e.target.value)}
           placeholder="City"
         />
         <input
           style={styles.input}
-          value={person.state || ""}
+          value={person.state}
           onChange={(e) => updatePerson(type, "state", e.target.value)}
           placeholder="State"
         />
         <input
           style={styles.input}
-          value={person.zip || ""}
+          value={person.zip}
           onChange={(e) => updatePerson(type, "zip", e.target.value)}
           placeholder="ZIP"
         />
@@ -860,27 +868,25 @@ function PersonForm({ title, type, person, updatePerson }) {
       <div style={{ ...styles.grid3, marginTop: 12 }}>
         <select
           style={styles.input}
-          value={person.sex || ""}
+          value={person.sex}
           onChange={(e) => updatePerson(type, "sex", e.target.value)}
         >
           <option value="">Sex</option>
           <option value="Male">Male</option>
           <option value="Female">Female</option>
         </select>
-
         <select
           style={styles.input}
-          value={person.tobacco || ""}
+          value={person.tobacco}
           onChange={(e) => updatePerson(type, "tobacco", e.target.value)}
         >
           <option value="">Tobacco</option>
           <option value="No">No</option>
           <option value="Yes">Yes</option>
         </select>
-
         <select
           style={styles.input}
-          value={person.coverageType || ""}
+          value={person.coverageType}
           onChange={(e) => updatePerson(type, "coverageType", e.target.value)}
         >
           <option value="">Coverage Type</option>
@@ -889,36 +895,6 @@ function PersonForm({ title, type, person, updatePerson }) {
           <option value="Individual coverage">Individual coverage</option>
           <option value="Other">Other</option>
         </select>
-      </div>
-
-      <div style={{ ...styles.grid2, marginTop: 12 }}>
-        <input
-          style={styles.input}
-          value={person.weight || ""}
-          onChange={(e) => updatePerson(type, "weight", e.target.value)}
-          placeholder="Weight"
-        />
-        <input
-          style={styles.input}
-          value={person.height || ""}
-          onChange={(e) => updatePerson(type, "height", formatHeight(e.target.value))}
-          placeholder={`Height example: 56 = 5'6\"`}
-        />
-      </div>
-
-      <div style={{ ...styles.grid2, marginTop: 12 }}>
-        <input
-          style={styles.input}
-          value={person.currentCarrier || ""}
-          onChange={(e) => updatePerson(type, "currentCarrier", e.target.value)}
-          placeholder="Current Carrier"
-        />
-        <input
-          style={styles.input}
-          value={person.currentMedSuppPremium || ""}
-          onChange={(e) => updatePerson(type, "currentMedSuppPremium", e.target.value)}
-          placeholder="Current Med Supp Premium"
-        />
       </div>
     </section>
   );
@@ -933,81 +909,73 @@ function FactFinderQuoter({ household, updatePerson, updateHousehold, updateAnci
   const totalMonthlySavings = totalCurrent - totalProposed;
   const totalAnnualSavings = totalMonthlySavings * 12;
 
+  const renderPersonFactFinder = (label, type, person) => (
+    <section style={styles.card}>
+      <h3 style={{ marginTop: 0 }}>{label} Fact Finder</h3>
+      <div style={styles.grid2}>
+        <input style={styles.input} value={person.firstName} onChange={(e) => updatePerson(type, "firstName", e.target.value)} placeholder="First Name" />
+        <input style={styles.input} value={person.lastName} onChange={(e) => updatePerson(type, "lastName", e.target.value)} placeholder="Last Name" />
+      </div>
+      <div style={{ ...styles.grid2, marginTop: 12 }}>
+        <input style={styles.input} value={person.phone} onChange={(e) => updatePerson(type, "phone", formatPhone(e.target.value))} placeholder="Phone" />
+        <input style={styles.input} value={person.email} onChange={(e) => updatePerson(type, "email", e.target.value)} placeholder="Email" />
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <input style={styles.input} value={person.forms} onChange={(e) => updatePerson(type, "forms", e.target.value)} placeholder="Forms" />
+      </div>
+      <div style={{ ...styles.grid3, marginTop: 12 }}>
+        <input style={styles.input} value={person.birthdate} onChange={(e) => updatePerson(type, "birthdate", formatDate(e.target.value))} placeholder="Birthdate MM/DD/YYYY" />
+        <input style={styles.input} value={calculateAge(person.birthdate)} readOnly placeholder="Age" />
+        <input style={styles.input} value={household.referredBy} onChange={(e) => updateHousehold("referredBy", e.target.value)} placeholder="Referred By" />
+      </div>
+      <div style={{ ...styles.grid3, marginTop: 12 }}>
+        <input style={styles.input} value={person.health} onChange={(e) => updatePerson(type, "health", e.target.value)} placeholder="Health" />
+        <select style={styles.input} value={person.status} onChange={(e) => updatePerson(type, "status", e.target.value)}>
+          <option value="">Status</option>
+          <option value="Good Health">Good Health</option>
+          <option value="Needs Review">Needs Review</option>
+          <option value="Underwriting Concern">Underwriting Concern</option>
+          <option value="Decline Risk">Decline Risk</option>
+        </select>
+        <select style={styles.input} value={person.tobacco} onChange={(e) => updatePerson(type, "tobacco", e.target.value)}>
+          <option value="">Tobacco</option>
+          <option value="No">No</option>
+          <option value="Yes">Yes</option>
+        </select>
+      </div>
+      <div style={{ ...styles.grid2, marginTop: 12 }}>
+        <input style={styles.input} value={person.weight} onChange={(e) => updatePerson(type, "weight", e.target.value)} placeholder="Weight" />
+        <input style={styles.input} value={person.height} onChange={(e) => updatePerson(type, "height", e.target.value)} placeholder="Height" />
+      </div>
+      <div style={{ ...styles.grid2, marginTop: 12 }}>
+        <input style={styles.input} value={person.currentCarrier} onChange={(e) => updatePerson(type, "currentCarrier", e.target.value)} placeholder="Current Carrier" />
+        <input style={styles.input} value={person.currentMedSuppPremium} onChange={(e) => updatePerson(type, "currentMedSuppPremium", e.target.value)} placeholder="Current Med Supp Premium" />
+      </div>
+      <div style={{ ...styles.grid2, marginTop: 12 }}>
+        <input style={styles.input} value={person.proposedCarrier} onChange={(e) => updatePerson(type, "proposedCarrier", e.target.value)} placeholder="Proposed Carrier" />
+        <input style={styles.input} value={person.proposedPlan} onChange={(e) => updatePerson(type, "proposedPlan", e.target.value)} placeholder="Proposed Plan" />
+      </div>
+      <div style={{ ...styles.grid2, marginTop: 12 }}>
+        <select style={styles.input} value={person.proposedPremiumSource || "Manual input"} onChange={(e) => updatePerson(type, "proposedPremiumSource", e.target.value)}>
+          {PROPOSED_PREMIUM_SOURCES.map((option) => <option key={option} value={option}>{option}</option>)}
+        </select>
+        <input style={styles.input} value={person.proposedPremiumSource === "Get premium from CSG rater" ? person.csgProposedPremium : person.proposedMedSuppPremium} onChange={(e) => updatePerson(type, person.proposedPremiumSource === "Get premium from CSG rater" ? "csgProposedPremium" : "proposedMedSuppPremium", e.target.value)} placeholder={person.proposedPremiumSource === "Get premium from CSG rater" ? "CSG Rater Premium" : "Manual Proposed Premium"} />
+        <input style={styles.input} value={person.manualOverrideProposedRate} onChange={(e) => updatePerson(type, "manualOverrideProposedRate", e.target.value)} placeholder="Manual Override Proposed Rate" />
+      </div>
+    </section>
+  );
+
   return (
     <>
       <section style={styles.card}>
         <h2 style={{ marginTop: 0 }}>Agent Fact Finder / Quoter</h2>
-        <h3 style={{ marginTop: 0 }}>Live Phone Call Update Fields</h3>
-        <p style={{ marginTop: 0 }}>
-          Use this section while the client is on the phone. Changes stay live and can be saved back to the household list.
-        </p>
+        <p style={{ marginTop: 0 }}>Built from your uploaded Quick FactFinder Quoter layout. Use this while the client is on the phone.</p>
       </section>
 
       <div style={styles.grid2}>
-        <PersonForm title="Client Update" type="client" person={household.client} updatePerson={updatePerson} />
-        <PersonForm title="Spouse Update" type="spouse" person={household.spouse} updatePerson={updatePerson} />
+        {renderPersonFactFinder("Client", "client", household.client)}
+        {renderPersonFactFinder("Spouse", "spouse", household.spouse)}
       </div>
-
-      <section style={styles.card}>
-        <h3 style={{ marginTop: 0 }}>Household Snapshot Fields</h3>
-
-        <div style={styles.grid2}>
-          <select style={styles.input} value={household.status || "New"} onChange={(e) => updateHousehold("status", e.target.value)}>
-            <option value="New">New</option>
-            <option value="Needs Review">Needs Review</option>
-            <option value="Scheduled">Scheduled</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Complete">Complete</option>
-          </select>
-
-          <select style={styles.input} value={household.assignedAgent || "Admin"} onChange={(e) => updateHousehold("assignedAgent", e.target.value)}>
-            {AGENTS.map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
-          </select>
-        </div>
-
-        <div style={{ ...styles.grid3, marginTop: 12 }}>
-          <select style={styles.input} value={household.currentCoverage || ""} onChange={(e) => updateHousehold("currentCoverage", e.target.value)}>
-            <option value="">Current Coverage</option>
-            {COVERAGE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
-          </select>
-
-          {household.currentCoverage === "Group" ? (
-            <select style={styles.input} value={household.groupSize || ""} onChange={(e) => updateHousehold("groupSize", e.target.value)}>
-              <option value="">Group Size</option>
-              {GROUP_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          ) : (
-            <input style={styles.input} value={household.groupSize || ""} onChange={(e) => updateHousehold("groupSize", e.target.value)} placeholder="Group Size / Coverage Detail" />
-          )}
-
-          {household.currentCoverage === "Group" && household.groupSize === "More than 20 employees" ? (
-            <select style={styles.input} value={household.groupFunding || ""} onChange={(e) => updateHousehold("groupFunding", e.target.value)}>
-              <option value="">Funding Type</option>
-              {GROUP_FUNDING_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          ) : (
-            <input style={styles.input} value={household.currentPremium || ""} onChange={(e) => updateHousehold("currentPremium", e.target.value)} placeholder="Current Premium" />
-          )}
-        </div>
-
-        {household.currentCoverage === "Group" && household.groupSize === "More than 20 employees" ? (
-          <div style={{ ...styles.grid2, marginTop: 12 }}>
-            <input style={styles.input} value={household.currentPremium || ""} onChange={(e) => updateHousehold("currentPremium", e.target.value)} placeholder="Current Premium" />
-            <input style={styles.input} value={household.referredBy || ""} onChange={(e) => updateHousehold("referredBy", e.target.value)} placeholder="Referred By" />
-          </div>
-        ) : (
-          <div style={{ marginTop: 12 }}>
-            <input style={styles.input} value={household.referredBy || ""} onChange={(e) => updateHousehold("referredBy", e.target.value)} placeholder="Referred By" />
-          </div>
-        )}
-
-        <textarea
-          style={{ ...styles.textarea, marginTop: 12 }}
-          value={household.notes || ""}
-          onChange={(e) => updateHousehold("notes", e.target.value)}
-          placeholder="Phone call notes / additional information"
-        />
-      </section>
 
       <section style={styles.card}>
         <h3 style={{ marginTop: 0 }}>Premium Snapshot</h3>
@@ -1026,26 +994,27 @@ function FactFinderQuoter({ household, updatePerson, updateHousehold, updateAnci
             </tbody>
           </table>
         </div>
-
         <div style={{ ...styles.nav, marginTop: 14 }}>
-          <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Household Updates</button>
+          <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Fact Finder Updates</button>
           <button type="button" style={styles.button} onClick={() => openCsgRaterForPerson(household.client, "Client")}>Open CSG - Client</button>
           <button type="button" style={styles.button} onClick={() => openCsgRaterForPerson(household.spouse, "Spouse")}>Open CSG - Spouse</button>
           <button
-            type="button"
-            style={styles.primaryButton}
-            onClick={() => {
-              saveIntake();
-              createCalendarEvent();
-            }}
-          >
-            Schedule Appointment
-          </button>
+  type="button"
+  style={styles.primaryButton}
+  onClick={() => {
+    saveIntake();
+    createCalendarEvent();
+    setMessage("Appointment saved to calendar.");
+  }}
+>
+  Schedule Appointment
+</button>
         </div>
       </section>
     </>
   );
 }
+
 
 function QuickRaterPage({ household, updatePerson, updateAncillary, setView, saveIntake, setAgentTab }) {
   const ancillary = household.ancillary || blankAncillary;
@@ -1307,18 +1276,6 @@ function QuickRaterPage({ household, updatePerson, updateAncillary, setView, sav
 
           <button
             type="button"
-            style={styles.primaryButton}
-            onClick={() => {
-              saveIntake();
-              setAgentTab("Client Summary");
-              setView("agent");
-            }}
-          >
-            Send to Client Summary
-          </button>
-
-          <button
-            type="button"
             style={styles.button}
             onClick={() => {
               saveIntake();
@@ -1337,6 +1294,18 @@ function QuickRaterPage({ household, updatePerson, updateAncillary, setView, sav
             }}
           >
             Back to Agent
+          </button>
+
+          <button
+            type="button"
+            style={styles.primaryButton}
+            onClick={() => {
+              saveIntake();
+              setAgentTab("Client Summary");
+              setView("agent");
+            }}
+          >
+            Client Summary
           </button>
         </div>
       </section>
@@ -1485,7 +1454,6 @@ function buildIntegrationAutofillData(household) {
       full_address: baseAddress,
       current_coverage: household.currentCoverage || "",
       group_size: household.groupSize || "",
-      group_funding: household.groupFunding || "",
       current_premium: household.currentPremium || client.currentMedSuppPremium || "",
       assigned_agent: household.assignedAgent || "",
       notes: household.notes || "",
@@ -1504,7 +1472,6 @@ function buildIntegrationAutofillData(household) {
       appointment_type: household.reasonForCall || "",
       current_coverage: household.currentCoverage || "",
       group_size: household.groupSize || "",
-      group_funding: household.groupFunding || "",
       current_premium: household.currentPremium || client.currentMedSuppPremium || "",
     },
     csgActuarial: {
@@ -1871,11 +1838,6 @@ function safeSetView(key) {
 
       if (field === "currentCoverage" && value !== "Group") {
         next.groupSize = "";
-        next.groupFunding = "";
-      }
-
-      if (field === "groupSize" && value !== "More than 20 employees") {
-        next.groupFunding = "";
       }
 
       if (field === "currentPremium") {
@@ -3195,6 +3157,8 @@ try {
             </select>
             <button type="button" style={styles.button} onClick={() => openAppointmentsForType(household.reasonForCall)}>Open Appointments</button>
             <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Appointments</button>
+            <button type="button" style={styles.primaryButton} onClick={() => setView("quickRater")}>Quick Rater</button>
+            <button type="button" style={styles.button} onClick={() => { setAgentTab("Client Summary"); setView("agent"); }}>Client Summary</button>
         </div>
 
         <div style={styles.grid2}>
@@ -3242,24 +3206,18 @@ try {
               {AGENTS.map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
             </select>
           </div>
-          <div style={{ ...styles.grid3, marginTop: 12 }}>
-            <select style={styles.input} value={household.currentCoverage || ""} onChange={(e) => updateHousehold("currentCoverage", e.target.value)}>
+          <div style={{ ...styles.grid2, marginTop: 12 }}>
+            <select style={styles.input} value={household.currentCoverage} onChange={(e) => updateHousehold("currentCoverage", e.target.value)}>
               <option value="">Current Coverage</option>
               {COVERAGE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
             {household.currentCoverage === "Group" ? (
-              <select style={styles.input} value={household.groupSize || ""} onChange={(e) => updateHousehold("groupSize", e.target.value)}>
+              <select style={styles.input} value={household.groupSize} onChange={(e) => updateHousehold("groupSize", e.target.value)}>
                 <option value="">Group Size</option>
                 {GROUP_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
               </select>
             ) : null}
-            {household.currentCoverage === "Group" && household.groupSize === "More than 20 employees" ? (
-              <select style={styles.input} value={household.groupFunding || ""} onChange={(e) => updateHousehold("groupFunding", e.target.value)}>
-                <option value="">Funding Type</option>
-                {GROUP_FUNDING_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
-              </select>
-            ) : null}
-            <input style={styles.input} value={household.currentPremium || ""} onChange={(e) => updateHousehold("currentPremium", e.target.value)} placeholder="Current Premium" />
+            <input style={styles.input} value={household.currentPremium} onChange={(e) => updateHousehold("currentPremium", e.target.value)} placeholder="Current Premium" />
           </div>
           <textarea style={{ ...styles.textarea, marginTop: 12 }} value={household.notes} onChange={(e) => updateHousehold("notes", e.target.value)} placeholder="Phone call notes / additional information" />
           <div style={{ ...styles.nav, marginTop: 12 }}>
@@ -3460,30 +3418,14 @@ function renderAgentPage() {
         {agentTab === "Client Summary" && (() => {
   const n = (v) => Number(String(v || "0").replace(/[^0-9.-]/g, "")) || 0;
   const money = (v) => "$" + Math.round(n(v)).toLocaleString();
-  const ancillary = household.ancillary || blankAncillary;
-
-  const printClientSummaryOnly = () => {
-    document.body.classList.add("print-client-summary-only");
-    window.print();
-    setTimeout(() => document.body.classList.remove("print-client-summary-only"), 500);
-  };
 
   const clientCurrent = n(household.client.currentMedSuppPremium || household.currentPremium);
+  const clientProposed = n(household.client.proposedMedSuppPremium || household.client.csgProposedPremium);
   const spouseCurrent = n(household.spouse.currentMedSuppPremium);
-
-  const clientPlanG = n(household.client.proposedMedSuppPremium || household.client.csgProposedPremium);
-  const spousePlanG = n(household.spouse.proposedMedSuppPremium || household.spouse.csgProposedPremium);
-
-  const clientAdditional = Object.values(ancillary).reduce((sum, row) => sum + n(row.clientProposed), 0);
-  const spouseAdditional = Object.values(ancillary).reduce((sum, row) => sum + n(row.spouseProposed), 0);
-
-  const clientTotalProposed = clientPlanG + clientAdditional;
-  const spouseTotalProposed = spousePlanG + spouseAdditional;
+  const spouseProposed = n(household.spouse.proposedMedSuppPremium || household.spouse.csgProposedPremium);
 
   const currentMonthly = clientCurrent + spouseCurrent;
-  const proposedPlanGMonthly = clientPlanG + spousePlanG;
-  const proposedAdditionalMonthly = clientAdditional + spouseAdditional;
-  const proposedMonthly = clientTotalProposed + spouseTotalProposed;
+  const proposedMonthly = clientProposed + spouseProposed;
   const monthlySavings = currentMonthly - proposedMonthly;
   const annualSavings = monthlySavings * 12;
 
@@ -3507,235 +3449,154 @@ function renderAgentPage() {
             width: 100% !important;
             box-shadow: none !important;
             border: none !important;
-          }
-
-          body.print-client-summary-only .no-print {
-            display: none !important;
+            margin: 0 !important;
           }
         }
       `}</style>
-
       <section id="client-summary-print-area" style={{ ...styles.card, background: "#ffffff" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 20, borderBottom: "1px solid #dbe3ef", paddingBottom: 18 }}>
-          <div>
-            <h1 style={{ margin: 0, color: "#08246b" }}>CLIENT SUMMARY</h1>
-            <h2 style={{ marginTop: 4, color: "#174ea6" }}>Medicare Supplement Plan G + Additional Benefits</h2>
-            <p>This summary is based on the Client Intake, Quick Rater, and Fact Finder information.</p>
-          </div>
-
-          <div style={{ textAlign: "right" }} className="no-print">
-            <button type="button" style={styles.button} onClick={printClientSummaryOnly}>Print</button>
-            <button type="button" style={styles.primaryButton} onClick={openEmailDraft}>Email</button>
-            <p><strong>Date Prepared:</strong><br />{new Date().toLocaleDateString()}</p>
-            <p><strong>Prepared By:</strong><br />Loyd Richardson</p>
-          </div>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 20, borderBottom: "1px solid #dbe3ef", paddingBottom: 18 }}>
+        <div>
+          <h1 style={{ margin: 0, color: "#08246b" }}>CLIENT SUMMARY</h1>
+          <h2 style={{ marginTop: 4, color: "#174ea6" }}>Medicare Supplement Plan G</h2>
+          <p>This summary is based on the Client Intake, Quick Rater, and Fact Finder information.</p>
         </div>
 
-        <div style={{ marginTop: 18, padding: 18, border: "1px solid #f5a400", borderRadius: 14, background: "#fff7e6", textAlign: "center" }}>
-          <h2 style={{ margin: 0, color: "#08246b" }}>
-            All Medicare Supplement Plan G policies provide the EXACT same coverage.
-          </h2>
-          <h3 style={{ marginBottom: 0 }}>
-            The difference is premium, company value, and optional additional benefits.
-          </h3>
+        <div style={{ textAlign: "right" }}>
+          <button type="button" style={styles.button} onClick={printClientSummaryOnly}>Print</button>
+          <button type="button" style={styles.primaryButton} onClick={openEmailDraft}>Email</button>
+          <p><strong>Date Prepared:</strong><br />{new Date().toLocaleDateString()}</p>
+          <p><strong>Prepared By:</strong><br />Loyd Richardson</p>
         </div>
+      </div>
 
-        <div style={{ ...styles.grid3, marginTop: 18 }}>
-          <section style={styles.card}>
-            <h3 style={{ marginTop: 0, color: "#08246b" }}>Client Information</h3>
-            <p><strong>{fullName(household.client) || "Client Name"}</strong></p>
-            <p>Age: {calculateAge(household.client.birthdate) || "-"}</p>
-            <p>Phone: {household.client.phone || "-"}</p>
-            <p>Email: {household.client.email || "-"}</p>
-            <p>Plan Type: Medicare Supplement Plan G</p>
-            <p>Effective Date: {household.client.effectiveDate || "-"}</p>
-          </section>
+      <div style={{ marginTop: 18, padding: 18, border: "1px solid #f5a400", borderRadius: 14, background: "#fff7e6", textAlign: "center" }}>
+        <h2 style={{ margin: 0, color: "#08246b" }}>
+          All Medicare Supplement Plan G policies provide the EXACT same coverage.
+        </h2>
+        <h3 style={{ marginBottom: 0 }}>
+          The ONLY difference is the monthly premium and company value.
+        </h3>
+      </div>
 
-          <section style={styles.card}>
-            <h3 style={{ marginTop: 0, color: "#08246b" }}>Spouse Information</h3>
-            <p><strong>{personHasData(household.spouse) ? fullName(household.spouse) : "No spouse listed"}</strong></p>
-            <p>Age: {calculateAge(household.spouse.birthdate) || "-"}</p>
-            <p>Phone: {household.spouse.phone || household.client.phone || "-"}</p>
-            <p>Email: {household.spouse.email || "-"}</p>
-            <p>Plan Type: Medicare Supplement Plan G</p>
-            <p>Effective Date: {household.spouse.effectiveDate || "-"}</p>
-          </section>
-
-          <section style={{ ...styles.card, border: "2px solid #047857" }}>
-            <h3 style={{ marginTop: 0, color: "#047857" }}>Household Summary</h3>
-            <p><strong>Household Size:</strong> {personHasData(household.spouse) ? "2" : "1"}</p>
-            <p><strong>Current Annual Premium:</strong> {money(currentMonthly * 12)}</p>
-            <p><strong>Proposed Annual Premium:</strong> {money(proposedMonthly * 12)}</p>
-            <p><strong>Annual Savings:</strong> {money(annualSavings)}</p>
-            <p><strong>Monthly Savings:</strong> {money(monthlySavings)}</p>
-          </section>
-        </div>
-
-        <section style={{ ...styles.card, marginTop: 18 }}>
-          <h3 style={{ marginTop: 0, background: "#08246b", color: "white", padding: 12, borderRadius: 10 }}>
-            Plan G Comparison — Same Coverage
-          </h3>
-
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: "left", padding: 10 }}>Item</th>
-                <th style={{ textAlign: "center", padding: 10 }}>Current Plan G</th>
-                <th style={{ textAlign: "center", padding: 10 }}>Proposed Plan G</th>
-                <th style={{ textAlign: "center", padding: 10 }}>Savings</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style={{ padding: 10 }}>Insurance Company</td>
-                <td style={{ textAlign: "center" }}>{household.client.currentCarrier || household.currentCoverage || "-"}</td>
-                <td style={{ textAlign: "center" }}>{household.client.proposedCarrier || household.client.csgSelectedCompany || "-"}</td>
-                <td style={{ textAlign: "center" }}>—</td>
-              </tr>
-              <tr>
-                <td style={{ padding: 10 }}>Client Monthly Plan G Premium</td>
-                <td style={{ textAlign: "center", color: "#c93535", fontWeight: 900 }}>{money(clientCurrent)}</td>
-                <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>{money(clientPlanG)}</td>
-                <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>{money(clientCurrent - clientPlanG)}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: 10 }}>Spouse Monthly Plan G Premium</td>
-                <td style={{ textAlign: "center", color: "#c93535", fontWeight: 900 }}>{money(spouseCurrent)}</td>
-                <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>{money(spousePlanG)}</td>
-                <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>{money(spouseCurrent - spousePlanG)}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: 10 }}>Household Plan G Monthly Total</td>
-                <td style={{ textAlign: "center", color: "#c93535", fontWeight: 900 }}>{money(currentMonthly)}</td>
-                <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>{money(proposedPlanGMonthly)}</td>
-                <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>{money(currentMonthly - proposedPlanGMonthly)}</td>
-              </tr>
-              <tr>
-                <td style={{ padding: 10 }}>Coverage</td>
-                <td style={{ textAlign: "center", fontWeight: 900 }}>SAME COVERAGE</td>
-                <td style={{ textAlign: "center", fontWeight: 900 }}>SAME COVERAGE</td>
-                <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>✓</td>
-              </tr>
-            </tbody>
-          </table>
+      <div style={{ ...styles.grid3, marginTop: 18 }}>
+        <section style={styles.card}>
+          <h3 style={{ marginTop: 0, color: "#08246b" }}>Client Information</h3>
+          <p><strong>{fullName(household.client) || "Client Name"}</strong></p>
+          <p>Age: {calculateAge(household.client.birthdate) || "-"}</p>
+          <p>Phone: {household.client.phone || "-"}</p>
+          <p>Email: {household.client.email || "-"}</p>
+          <p>Plan Type: Medicare Supplement Plan G</p>
+          <p>Effective Date: {household.client.effectiveDate || "-"}</p>
         </section>
 
-        <section style={{ ...styles.card, marginTop: 18 }}>
-          <h3 style={{ marginTop: 0, background: "#047857", color: "white", padding: 12, borderRadius: 10 }}>
-            Proposed Plan G + Additional Benefits from Quick Rater
-          </h3>
-
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: "left", padding: 10 }}>Person</th>
-                <th style={{ textAlign: "center", padding: 10 }}>Proposed Medicare Supplement Plan G</th>
-                <th style={{ textAlign: "center", padding: 10 }}>Additional Benefits</th>
-                <th style={{ textAlign: "center", padding: 10 }}>Total Proposed Premium</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style={{ padding: 10, fontWeight: 900 }}>Client</td>
-                <td style={{ textAlign: "center" }}>{money(clientPlanG)}</td>
-                <td style={{ textAlign: "center" }}>{money(clientAdditional)}</td>
-                <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>{money(clientTotalProposed)}</td>
-              </tr>
-
-              <tr>
-                <td style={{ padding: 10, fontWeight: 900 }}>Spouse</td>
-                <td style={{ textAlign: "center" }}>{money(spousePlanG)}</td>
-                <td style={{ textAlign: "center" }}>{money(spouseAdditional)}</td>
-                <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>{money(spouseTotalProposed)}</td>
-              </tr>
-
-              <tr>
-                <td style={{ padding: 10, fontWeight: 900 }}>Household Total</td>
-                <td style={{ textAlign: "center" }}>{money(proposedPlanGMonthly)}</td>
-                <td style={{ textAlign: "center" }}>{money(proposedAdditionalMonthly)}</td>
-                <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>{money(proposedMonthly)}</td>
-              </tr>
-            </tbody>
-          </table>
+        <section style={styles.card}>
+          <h3 style={{ marginTop: 0, color: "#08246b" }}>Spouse Information</h3>
+          <p><strong>{personHasData(household.spouse) ? fullName(household.spouse) : "No spouse listed"}</strong></p>
+          <p>Age: {calculateAge(household.spouse.birthdate) || "-"}</p>
+          <p>Phone: {household.spouse.phone || household.client.phone || "-"}</p>
+          <p>Email: {household.spouse.email || "-"}</p>
+          <p>Plan Type: Medicare Supplement Plan G</p>
+          <p>Effective Date: {household.spouse.effectiveDate || "-"}</p>
         </section>
 
-        <section style={{ ...styles.card, marginTop: 18 }}>
-          <h3 style={{ marginTop: 0 }}>Additional Benefits Detail</h3>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: "left", padding: 10 }}>Benefit</th>
-                <th style={{ textAlign: "center", padding: 10 }}>Client Proposed</th>
-                <th style={{ textAlign: "center", padding: 10 }}>Spouse Proposed</th>
-                <th style={{ textAlign: "center", padding: 10 }}>Household Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(ancillary).map(([benefit, row]) => (
-                <tr key={benefit}>
-                  <td style={{ padding: 10, fontWeight: 700 }}>{benefit}</td>
-                  <td style={{ textAlign: "center" }}>{money(row.clientProposed)}</td>
-                  <td style={{ textAlign: "center" }}>{money(row.spouseProposed)}</td>
-                  <td style={{ textAlign: "center" }}>{money(n(row.clientProposed) + n(row.spouseProposed))}</td>
-                </tr>
-              ))}
-              <tr>
-                <td style={{ padding: 10, fontWeight: 900 }}>Additional Benefits Total</td>
-                <td style={{ textAlign: "center", fontWeight: 900 }}>{money(clientAdditional)}</td>
-                <td style={{ textAlign: "center", fontWeight: 900 }}>{money(spouseAdditional)}</td>
-                <td style={{ textAlign: "center", fontWeight: 900 }}>{money(proposedAdditionalMonthly)}</td>
-              </tr>
-            </tbody>
-          </table>
+        <section style={{ ...styles.card, border: "2px solid #047857" }}>
+          <h3 style={{ marginTop: 0, color: "#047857" }}>Household Summary</h3>
+          <p><strong>Household Size:</strong> {personHasData(household.spouse) ? "2" : "1"}</p>
+          <p><strong>Current Annual Premium:</strong> {money(currentMonthly * 12)}</p>
+          <p><strong>Proposed Annual Premium:</strong> {money(proposedMonthly * 12)}</p>
+          <p><strong>Annual Savings:</strong> {money(annualSavings)}</p>
+          <p><strong>Monthly Savings:</strong> {money(monthlySavings)}</p>
         </section>
+      </div>
 
-        <div style={{ marginTop: 18, padding: 20, border: "2px solid #047857", borderRadius: 16, background: "#ecfdf5", display: "flex", justifyContent: "space-around", alignItems: "center" }}>
-          <h2 style={{ color: "#047857", margin: 0 }}>TOTAL PROPOSED PREMIUM INCLUDES PLAN G + ADDITIONAL BENEFITS</h2>
-          <div><strong>Current Monthly</strong><h1>{money(currentMonthly)}</h1></div>
-          <div><strong>Total Proposed Monthly</strong><h1>{money(proposedMonthly)}</h1></div>
-          <div><strong>Monthly Savings</strong><h1>{money(monthlySavings)}</h1></div>
-          <div><strong>Annual Savings</strong><h1>{money(annualSavings)}</h1></div>
-        </div>
+      <section style={{ ...styles.card, marginTop: 18 }}>
+        <h3 style={{ marginTop: 0, background: "#08246b", color: "white", padding: 12, borderRadius: 10 }}>
+          Plan G Comparison — Same Coverage
+        </h3>
 
-        <div style={{ ...styles.grid3, marginTop: 18 }}>
-          <section style={styles.card}>
-            <h3 style={{ marginTop: 0 }}>What Plan G Covers</h3>
-            <p>✓ Hospitalization Part A</p>
-            <p>✓ Skilled Nursing Facility Care</p>
-            <p>✓ Part B Coinsurance</p>
-            <p>✓ Blood First 3 Pints</p>
-            <p>✓ Hospice Care</p>
-            <p>✓ Excess Charges</p>
-            <p><strong>Your only out-of-pocket cost is the Part B deductible.</strong></p>
-          </section>
-
-          <section style={styles.card}>
-            <h3 style={{ marginTop: 0 }}>Why Consider Switching?</h3>
-            <h4 style={{ color: "#c93535" }}>Your Current Plan</h4>
-            <p>✓ Same Coverage</p>
-            <p>✕ Higher Premium</p>
-
-            <h4 style={{ color: "#047857" }}>Our Proposed Plan</h4>
-            <p>✓ Same Coverage</p>
-            <p>✓ Lower Premium</p>
-            <p>✓ Additional benefits shown separately</p>
-          </section>
-
-          <section style={styles.card}>
-            <h3 style={{ marginTop: 0 }}>Additional Value</h3>
-            <p><strong>Plan G Premium</strong><br />{money(proposedPlanGMonthly)} proposed Plan G total</p>
-            <p><strong>Additional Benefits</strong><br />{money(proposedAdditionalMonthly)} optional additional benefits</p>
-            <p><strong>Total Proposed</strong><br />{money(proposedMonthly)} total proposed monthly premium</p>
-            <p><strong>Local Service</strong><br />AIP support when you need it</p>
-          </section>
-        </div>
-
-        <div style={styles.nav} className="no-print">
-          <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Return to Quick Rater</button>
-          <button type="button" style={styles.button} onClick={() => setAgentTab("Agent Fact Finder / Quoter")}>Return to Fact Finder</button>
-          <button type="button" style={styles.primaryButton} onClick={printClientSummaryOnly}>Print / Save PDF</button>
-        </div>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: "left", padding: 10 }}>Item</th>
+              <th style={{ textAlign: "center", padding: 10 }}>Current Plan G</th>
+              <th style={{ textAlign: "center", padding: 10 }}>Proposed Plan G</th>
+              <th style={{ textAlign: "center", padding: 10 }}>Savings</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style={{ padding: 10 }}>Insurance Company</td>
+              <td style={{ textAlign: "center" }}>{household.client.currentCarrier || household.currentCoverage || "-"}</td>
+              <td style={{ textAlign: "center" }}>{household.client.proposedCarrier || "-"}</td>
+              <td style={{ textAlign: "center" }}>—</td>
+            </tr>
+            <tr>
+              <td style={{ padding: 10 }}>Monthly Premium</td>
+              <td style={{ textAlign: "center", color: "#c93535", fontWeight: 900 }}>{money(clientCurrent)}</td>
+              <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>{money(clientProposed)}</td>
+              <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>{money(clientCurrent - clientProposed)}</td>
+            </tr>
+            <tr>
+              <td style={{ padding: 10 }}>Annual Premium</td>
+              <td style={{ textAlign: "center", color: "#c93535", fontWeight: 900 }}>{money(clientCurrent * 12)}</td>
+              <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>{money(clientProposed * 12)}</td>
+              <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>{money((clientCurrent - clientProposed) * 12)}</td>
+            </tr>
+            <tr>
+              <td style={{ padding: 10 }}>Coverage</td>
+              <td style={{ textAlign: "center", fontWeight: 900 }}>SAME COVERAGE</td>
+              <td style={{ textAlign: "center", fontWeight: 900 }}>SAME COVERAGE</td>
+              <td style={{ textAlign: "center", color: "#047857", fontWeight: 900 }}>✓</td>
+            </tr>
+          </tbody>
+        </table>
       </section>
+
+      <div style={{ marginTop: 18, padding: 20, border: "2px solid #047857", borderRadius: 16, background: "#ecfdf5", display: "flex", justifyContent: "space-around", alignItems: "center" }}>
+        <h2 style={{ color: "#047857", margin: 0 }}>YOU ARE PAYING MORE FOR THE SAME COVERAGE</h2>
+        <div><strong>Monthly Savings</strong><h1>{money(monthlySavings)}</h1></div>
+        <div><strong>Annual Savings</strong><h1>{money(annualSavings)}</h1></div>
+      </div>
+
+      <div style={{ ...styles.grid3, marginTop: 18 }}>
+        <section style={styles.card}>
+          <h3 style={{ marginTop: 0 }}>What Plan G Covers</h3>
+          <p>✓ Hospitalization Part A</p>
+          <p>✓ Skilled Nursing Facility Care</p>
+          <p>✓ Part B Coinsurance</p>
+          <p>✓ Blood First 3 Pints</p>
+          <p>✓ Hospice Care</p>
+          <p>✓ Excess Charges</p>
+          <p><strong>Your only out-of-pocket cost is the Part B deductible.</strong></p>
+        </section>
+
+        <section style={styles.card}>
+          <h3 style={{ marginTop: 0 }}>Why Consider Switching?</h3>
+          <h4 style={{ color: "#c93535" }}>Your Current Plan</h4>
+          <p>✓ Same Coverage</p>
+          <p>✕ Higher Premium</p>
+
+          <h4 style={{ color: "#047857" }}>Our Proposed Plan</h4>
+          <p>✓ Same Coverage</p>
+          <p>✓ Lower Premium</p>
+          <p>✓ Better Value</p>
+        </section>
+
+        <section style={styles.card}>
+          <h3 style={{ marginTop: 0 }}>Additional Value</h3>
+          <p><strong>Lower Monthly Cost</strong><br />Save {money(monthlySavings)} every month</p>
+          <p><strong>Same Great Coverage</strong><br />Plan G coverage does not change</p>
+          <p><strong>Rate Stability</strong><br />Strong history of competitive rates</p>
+          <p><strong>Local Service</strong><br />AIP support when you need it</p>
+        </section>
+      </div>
+
+      <div style={styles.nav}>
+        <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Return to Quick Rater</button>
+        <button type="button" style={styles.button} onClick={() => setAgentTab("Agent Fact Finder / Quoter")}>Return to Fact Finder</button>
+        <button type="button" style={styles.primaryButton} onClick={printClientSummaryOnly}>Print / Save PDF</button>
+      </div>
+    </section>
     </>
   );
 })()}
@@ -3819,16 +3680,34 @@ function renderAgentPage() {
               <div key={item.id} style={{ border: "1px solid #d6dde8", borderRadius: 12, padding: 14, marginTop: 10 }}>
                 <strong>{fullName(item.client)}</strong>
                 <p>{item.client.phone || "No phone"} · {item.status || "No status"}</p>
-                <button
-                  type="button"
-                  style={styles.button}
-                  onClick={() => {
-                    loadHousehold(item);
-                    setView("household");
-                  }}
-                >
-                  Open Household
-                </button>
+                <div style={styles.nav}>
+                  <button
+                    type="button"
+                    style={styles.button}
+                    onClick={() => {
+                      loadHousehold(item);
+                      setView("household");
+                    }}
+                  >
+                    Open Household
+                  </button>
+
+                  <button
+                    type="button"
+                    style={styles.primaryButton}
+                    onClick={() => openHouseholdQuickRater(item, loadHousehold, setView)}
+                  >
+                    Quick Rater
+                  </button>
+
+                  <button
+                    type="button"
+                    style={styles.button}
+                    onClick={() => openHouseholdSummary(item, loadHousehold, setAgentTab, setView)}
+                  >
+                    Client Summary
+                  </button>
+                </div>
               </div>
             ))}
           </section>
