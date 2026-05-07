@@ -657,6 +657,25 @@ function fullName(person) {
   return `${person.firstName || ""} ${person.lastName || ""}`.trim() || "Client";
 }
 
+function openHouseholdQuickRater(item, loadHousehold, setView) {
+  loadHousehold(item);
+  setView("quickRater");
+}
+
+function openHouseholdSummary(item, loadHousehold, setAgentTab, setView) {
+  loadHousehold(item);
+  setAgentTab("Client Summary");
+  setView("agent");
+}
+
+function printClientSummaryOnly() {
+  if (typeof document !== "undefined") {
+    document.body.classList.add("print-client-summary-only");
+    window.print();
+    setTimeout(() => document.body.classList.remove("print-client-summary-only"), 500);
+  }
+}
+
 function buildAgentSignature(agentName) {
   const name = agentName && agentName !== "Admin" ? agentName : "Loyd Richardson";
   return `${name}
@@ -997,7 +1016,7 @@ function FactFinderQuoter({ household, updatePerson, updateHousehold, updateAnci
 }
 
 
-function QuickRaterPage({ household, updatePerson, updateAncillary, setView, saveIntake }) {
+function QuickRaterPage({ household, updatePerson, updateAncillary, setView, saveIntake, setAgentTab }) {
   const ancillary = household.ancillary || blankAncillary;
   const clientSnapshot = calculatePremiumSnapshot(household.client, "client", ancillary);
   const spouseSnapshot = calculatePremiumSnapshot(household.spouse, "spouse", ancillary);
@@ -1251,7 +1270,43 @@ function QuickRaterPage({ household, updatePerson, updateAncillary, setView, sav
           <div><strong>Annual Savings:</strong> {moneyDisplay(householdAnnualSavings)}</div>
         </div>
         <div style={{ ...styles.nav, marginTop: 14 }}>
-          <button type="button" style={styles.primaryButton} onClick={() => { saveIntake(); }}>Save / Enter Quick Rater Updates</button>
+          <button type="button" style={styles.primaryButton} onClick={() => { saveIntake(); }}>
+            Save / Enter Quick Rater Updates
+          </button>
+
+          <button
+            type="button"
+            style={styles.button}
+            onClick={() => {
+              saveIntake();
+              setView("household");
+            }}
+          >
+            Back to Household
+          </button>
+
+          <button
+            type="button"
+            style={styles.button}
+            onClick={() => {
+              saveIntake();
+              setView("agent");
+            }}
+          >
+            Back to Agent
+          </button>
+
+          <button
+            type="button"
+            style={styles.primaryButton}
+            onClick={() => {
+              saveIntake();
+              setAgentTab("Client Summary");
+              setView("agent");
+            }}
+          >
+            Client Summary
+          </button>
         </div>
       </section>
     </>
@@ -3102,6 +3157,8 @@ try {
             </select>
             <button type="button" style={styles.button} onClick={() => openAppointmentsForType(household.reasonForCall)}>Open Appointments</button>
             <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Appointments</button>
+            <button type="button" style={styles.primaryButton} onClick={() => setView("quickRater")}>Quick Rater</button>
+            <button type="button" style={styles.button} onClick={() => { setAgentTab("Client Summary"); setView("agent"); }}>Client Summary</button>
         </div>
 
         <div style={styles.grid2}>
@@ -3203,6 +3260,7 @@ try {
         updateAncillary={updateAncillary}
         setView={setView}
         saveIntake={saveIntake}
+        setAgentTab={setAgentTab}
       />
     );
   }
@@ -3372,7 +3430,30 @@ function renderAgentPage() {
   const annualSavings = monthlySavings * 12;
 
   return (
-    <section style={{ ...styles.card, background: "#ffffff" }}>
+    <>
+      <style>{`
+        @media print {
+          body.print-client-summary-only * {
+            visibility: hidden !important;
+          }
+
+          body.print-client-summary-only #client-summary-print-area,
+          body.print-client-summary-only #client-summary-print-area * {
+            visibility: visible !important;
+          }
+
+          body.print-client-summary-only #client-summary-print-area {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            box-shadow: none !important;
+            border: none !important;
+            margin: 0 !important;
+          }
+        }
+      `}</style>
+      <section id="client-summary-print-area" style={{ ...styles.card, background: "#ffffff" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 20, borderBottom: "1px solid #dbe3ef", paddingBottom: 18 }}>
         <div>
           <h1 style={{ margin: 0, color: "#08246b" }}>CLIENT SUMMARY</h1>
@@ -3381,7 +3462,7 @@ function renderAgentPage() {
         </div>
 
         <div style={{ textAlign: "right" }}>
-          <button type="button" style={styles.button} onClick={() => window.print()}>Print</button>
+          <button type="button" style={styles.button} onClick={printClientSummaryOnly}>Print</button>
           <button type="button" style={styles.primaryButton} onClick={openEmailDraft}>Email</button>
           <p><strong>Date Prepared:</strong><br />{new Date().toLocaleDateString()}</p>
           <p><strong>Prepared By:</strong><br />Loyd Richardson</p>
@@ -3513,9 +3594,10 @@ function renderAgentPage() {
       <div style={styles.nav}>
         <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Return to Quick Rater</button>
         <button type="button" style={styles.button} onClick={() => setAgentTab("Agent Fact Finder / Quoter")}>Return to Fact Finder</button>
-        <button type="button" style={styles.primaryButton} onClick={() => window.print()}>Print / Save PDF</button>
+        <button type="button" style={styles.primaryButton} onClick={printClientSummaryOnly}>Print / Save PDF</button>
       </div>
     </section>
+    </>
   );
 })()}
 
@@ -3598,16 +3680,34 @@ function renderAgentPage() {
               <div key={item.id} style={{ border: "1px solid #d6dde8", borderRadius: 12, padding: 14, marginTop: 10 }}>
                 <strong>{fullName(item.client)}</strong>
                 <p>{item.client.phone || "No phone"} · {item.status || "No status"}</p>
-                <button
-                  type="button"
-                  style={styles.button}
-                  onClick={() => {
-                    loadHousehold(item);
-                    setView("household");
-                  }}
-                >
-                  Open Household
-                </button>
+                <div style={styles.nav}>
+                  <button
+                    type="button"
+                    style={styles.button}
+                    onClick={() => {
+                      loadHousehold(item);
+                      setView("household");
+                    }}
+                  >
+                    Open Household
+                  </button>
+
+                  <button
+                    type="button"
+                    style={styles.primaryButton}
+                    onClick={() => openHouseholdQuickRater(item, loadHousehold, setView)}
+                  >
+                    Quick Rater
+                  </button>
+
+                  <button
+                    type="button"
+                    style={styles.button}
+                    onClick={() => openHouseholdSummary(item, loadHousehold, setAgentTab, setView)}
+                  >
+                    Client Summary
+                  </button>
+                </div>
               </div>
             ))}
           </section>
