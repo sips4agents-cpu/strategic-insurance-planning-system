@@ -525,6 +525,7 @@ const ROLE_ACCESS = {
   "initialIntake",
   "quickRater",
   "calculator",
+  "clients",
 ]),
 
 "Office Manager": new Set([
@@ -918,6 +919,28 @@ function PersonForm({ title, type, person, updatePerson }) {
           value={person.currentMedSuppPremium || ""}
           onChange={(e) => updatePerson(type, "currentMedSuppPremium", e.target.value)}
           placeholder="Current Med Supp Premium"
+        />
+      </div>
+
+      <div style={{ ...styles.grid2, marginTop: 12 }}>
+        <select
+          style={styles.input}
+          value={person.proposedCarrier || ""}
+          onChange={(e) => updatePerson(type, "proposedCarrier", e.target.value)}
+        >
+          <option value="">Proposed Company</option>
+          {COMPANY_LOGIN_LINKS.map((company) => (
+            <option key={company.name} value={company.name}>
+              {company.name}
+            </option>
+          ))}
+        </select>
+
+        <input
+          style={styles.input}
+          value={person.proposedPlan || ""}
+          onChange={(e) => updatePerson(type, "proposedPlan", e.target.value)}
+          placeholder="Proposed Plan"
         />
       </div>
     </section>
@@ -3548,6 +3571,7 @@ function renderAgentPage() {
             <p>Phone: {household.client.phone || "-"}</p>
             <p>Email: {household.client.email || "-"}</p>
             <p>Plan Type: Medicare Supplement Plan G</p>
+            <p>Proposed Company: {household.client.proposedCarrier || household.client.csgSelectedCompany || "-"}</p>
             <p>Effective Date: {household.client.effectiveDate || "-"}</p>
           </section>
 
@@ -3558,6 +3582,7 @@ function renderAgentPage() {
             <p>Phone: {household.spouse.phone || household.client.phone || "-"}</p>
             <p>Email: {household.spouse.email || "-"}</p>
             <p>Plan Type: Medicare Supplement Plan G</p>
+            <p>Proposed Company: {household.spouse.proposedCarrier || household.spouse.csgSelectedCompany || "-"}</p>
             <p>Effective Date: {household.spouse.effectiveDate || "-"}</p>
           </section>
 
