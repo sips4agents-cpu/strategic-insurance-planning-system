@@ -3664,7 +3664,7 @@ return (
             Compact command center with Admin/Agent visibility controls. Current role: {activeUserRole}.
           </p>
         </header>
-      )}
+      )} 
 
       {!canSeeView(view) ? renderAccessRestricted() : null}
       {canSeeView(view) && view === "dashboard" && renderDashboard()}
