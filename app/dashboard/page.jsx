@@ -242,7 +242,8 @@ const EMAIL_TEMPLATE_DEFAULT_FORMS = {
 };
 
 const COVERAGE_OPTIONS = ["Medicare", "Group", "Individual Health", "Cobra"];
-const GROUP_SIZE_OPTIONS = ["20 or more employees", "Less than 20 employees"];
+const GROUP_SIZE_OPTIONS = ["Less than 20 employees", "More than 20 employees"];
+const GROUP_FUNDING_OPTIONS = ["Fully Insured", "Self Insured"];
 const PROPOSED_PREMIUM_SOURCES = ["Manual input", "Get premium from CSG rater"];
 const SIPS_GOOGLE_CALENDAR_URL = "https://calendar.google.com/calendar/u/0/r/day";
 const CSG_AGENCY_URL = "https://www.freemedicarereport.com/comparison_form/ainsurancepro.com";
@@ -372,6 +373,7 @@ const blankHousehold = {
   referredBy: "",
   currentCoverage: "",
   groupSize: "",
+  groupFunding: "",
   currentPremium: "",
   medicareProStatus: "Not started",
   medicareProClientId: "",
@@ -589,6 +591,15 @@ function calculateAge(dateValue) {
 }
 
 
+
+function formatHeight(value) {
+  const digits = String(value || "").replace(/\D/g, "").slice(0, 3);
+  if (!digits) return "";
+  if (digits.length === 1) return `${digits}'`;
+  if (digits.length === 2) return `${digits[0]}'${digits[1]}"`;
+  return `${digits[0]}'${digits.slice(1)}"`;
+}
+
 function csgGenderFromSex(sex) {
   const value = String(sex || "").toLowerCase();
   if (value.startsWith("m")) return "Male";
@@ -655,25 +666,6 @@ function openCsgRaterForPerson(person, label) {
 
 function fullName(person) {
   return `${person.firstName || ""} ${person.lastName || ""}`.trim() || "Client";
-}
-
-function openHouseholdQuickRater(item, loadHousehold, setView) {
-  loadHousehold(item);
-  setView("quickRater");
-}
-
-function openHouseholdSummary(item, loadHousehold, setAgentTab, setView) {
-  loadHousehold(item);
-  setAgentTab("Client Summary");
-  setView("agent");
-}
-
-function printClientSummaryOnly() {
-  if (typeof document !== "undefined") {
-    document.body.classList.add("print-client-summary-only");
-    window.print();
-    setTimeout(() => document.body.classList.remove("print-client-summary-only"), 500);
-  }
 }
 
 function buildAgentSignature(agentName) {
@@ -793,13 +785,13 @@ function PersonForm({ title, type, person, updatePerson }) {
       <div style={styles.grid2}>
         <input
           style={styles.input}
-          value={person.firstName}
+          value={person.firstName || ""}
           onChange={(e) => updatePerson(type, "firstName", e.target.value)}
           placeholder={`${title} First Name`}
         />
         <input
           style={styles.input}
-          value={person.lastName}
+          value={person.lastName || ""}
           onChange={(e) => updatePerson(type, "lastName", e.target.value)}
           placeholder={`${title} Last Name`}
         />
@@ -808,13 +800,13 @@ function PersonForm({ title, type, person, updatePerson }) {
       <div style={{ ...styles.grid2, marginTop: 12 }}>
         <input
           style={styles.input}
-          value={person.phone}
+          value={person.phone || ""}
           onChange={(e) => updatePerson(type, "phone", formatPhone(e.target.value))}
           placeholder={`${title} Phone`}
         />
         <input
           style={styles.input}
-          value={person.email}
+          value={person.email || ""}
           onChange={(e) => updatePerson(type, "email", e.target.value)}
           placeholder={`${title} Email`}
         />
@@ -823,9 +815,9 @@ function PersonForm({ title, type, person, updatePerson }) {
       <div style={{ ...styles.grid2, marginTop: 12 }}>
         <input
           style={styles.input}
-          value={person.birthdate}
+          value={person.birthdate || ""}
           onChange={(e) => updatePerson(type, "birthdate", formatDate(e.target.value))}
-          placeholder="MM/DD/YYYY"
+          placeholder="Birthdate MM/DD/YYYY"
         />
         <input
           style={styles.input}
@@ -838,7 +830,7 @@ function PersonForm({ title, type, person, updatePerson }) {
       <div style={{ marginTop: 12 }}>
         <input
           style={styles.input}
-          value={person.address}
+          value={person.address || ""}
           onChange={(e) => updatePerson(type, "address", e.target.value)}
           placeholder="Address"
         />
@@ -847,19 +839,19 @@ function PersonForm({ title, type, person, updatePerson }) {
       <div style={{ ...styles.grid3, marginTop: 12 }}>
         <input
           style={styles.input}
-          value={person.city}
+          value={person.city || ""}
           onChange={(e) => updatePerson(type, "city", e.target.value)}
           placeholder="City"
         />
         <input
           style={styles.input}
-          value={person.state}
+          value={person.state || ""}
           onChange={(e) => updatePerson(type, "state", e.target.value)}
           placeholder="State"
         />
         <input
           style={styles.input}
-          value={person.zip}
+          value={person.zip || ""}
           onChange={(e) => updatePerson(type, "zip", e.target.value)}
           placeholder="ZIP"
         />
@@ -868,25 +860,27 @@ function PersonForm({ title, type, person, updatePerson }) {
       <div style={{ ...styles.grid3, marginTop: 12 }}>
         <select
           style={styles.input}
-          value={person.sex}
+          value={person.sex || ""}
           onChange={(e) => updatePerson(type, "sex", e.target.value)}
         >
           <option value="">Sex</option>
           <option value="Male">Male</option>
           <option value="Female">Female</option>
         </select>
+
         <select
           style={styles.input}
-          value={person.tobacco}
+          value={person.tobacco || ""}
           onChange={(e) => updatePerson(type, "tobacco", e.target.value)}
         >
           <option value="">Tobacco</option>
           <option value="No">No</option>
           <option value="Yes">Yes</option>
         </select>
+
         <select
           style={styles.input}
-          value={person.coverageType}
+          value={person.coverageType || ""}
           onChange={(e) => updatePerson(type, "coverageType", e.target.value)}
         >
           <option value="">Coverage Type</option>
@@ -895,6 +889,36 @@ function PersonForm({ title, type, person, updatePerson }) {
           <option value="Individual coverage">Individual coverage</option>
           <option value="Other">Other</option>
         </select>
+      </div>
+
+      <div style={{ ...styles.grid2, marginTop: 12 }}>
+        <input
+          style={styles.input}
+          value={person.weight || ""}
+          onChange={(e) => updatePerson(type, "weight", e.target.value)}
+          placeholder="Weight"
+        />
+        <input
+          style={styles.input}
+          value={person.height || ""}
+          onChange={(e) => updatePerson(type, "height", formatHeight(e.target.value))}
+          placeholder={`Height example: 56 = 5'6\"`}
+        />
+      </div>
+
+      <div style={{ ...styles.grid2, marginTop: 12 }}>
+        <input
+          style={styles.input}
+          value={person.currentCarrier || ""}
+          onChange={(e) => updatePerson(type, "currentCarrier", e.target.value)}
+          placeholder="Current Carrier"
+        />
+        <input
+          style={styles.input}
+          value={person.currentMedSuppPremium || ""}
+          onChange={(e) => updatePerson(type, "currentMedSuppPremium", e.target.value)}
+          placeholder="Current Med Supp Premium"
+        />
       </div>
     </section>
   );
@@ -909,73 +933,81 @@ function FactFinderQuoter({ household, updatePerson, updateHousehold, updateAnci
   const totalMonthlySavings = totalCurrent - totalProposed;
   const totalAnnualSavings = totalMonthlySavings * 12;
 
-  const renderPersonFactFinder = (label, type, person) => (
-    <section style={styles.card}>
-      <h3 style={{ marginTop: 0 }}>{label} Fact Finder</h3>
-      <div style={styles.grid2}>
-        <input style={styles.input} value={person.firstName} onChange={(e) => updatePerson(type, "firstName", e.target.value)} placeholder="First Name" />
-        <input style={styles.input} value={person.lastName} onChange={(e) => updatePerson(type, "lastName", e.target.value)} placeholder="Last Name" />
-      </div>
-      <div style={{ ...styles.grid2, marginTop: 12 }}>
-        <input style={styles.input} value={person.phone} onChange={(e) => updatePerson(type, "phone", formatPhone(e.target.value))} placeholder="Phone" />
-        <input style={styles.input} value={person.email} onChange={(e) => updatePerson(type, "email", e.target.value)} placeholder="Email" />
-      </div>
-      <div style={{ marginTop: 12 }}>
-        <input style={styles.input} value={person.forms} onChange={(e) => updatePerson(type, "forms", e.target.value)} placeholder="Forms" />
-      </div>
-      <div style={{ ...styles.grid3, marginTop: 12 }}>
-        <input style={styles.input} value={person.birthdate} onChange={(e) => updatePerson(type, "birthdate", formatDate(e.target.value))} placeholder="Birthdate MM/DD/YYYY" />
-        <input style={styles.input} value={calculateAge(person.birthdate)} readOnly placeholder="Age" />
-        <input style={styles.input} value={household.referredBy} onChange={(e) => updateHousehold("referredBy", e.target.value)} placeholder="Referred By" />
-      </div>
-      <div style={{ ...styles.grid3, marginTop: 12 }}>
-        <input style={styles.input} value={person.health} onChange={(e) => updatePerson(type, "health", e.target.value)} placeholder="Health" />
-        <select style={styles.input} value={person.status} onChange={(e) => updatePerson(type, "status", e.target.value)}>
-          <option value="">Status</option>
-          <option value="Good Health">Good Health</option>
-          <option value="Needs Review">Needs Review</option>
-          <option value="Underwriting Concern">Underwriting Concern</option>
-          <option value="Decline Risk">Decline Risk</option>
-        </select>
-        <select style={styles.input} value={person.tobacco} onChange={(e) => updatePerson(type, "tobacco", e.target.value)}>
-          <option value="">Tobacco</option>
-          <option value="No">No</option>
-          <option value="Yes">Yes</option>
-        </select>
-      </div>
-      <div style={{ ...styles.grid2, marginTop: 12 }}>
-        <input style={styles.input} value={person.weight} onChange={(e) => updatePerson(type, "weight", e.target.value)} placeholder="Weight" />
-        <input style={styles.input} value={person.height} onChange={(e) => updatePerson(type, "height", e.target.value)} placeholder="Height" />
-      </div>
-      <div style={{ ...styles.grid2, marginTop: 12 }}>
-        <input style={styles.input} value={person.currentCarrier} onChange={(e) => updatePerson(type, "currentCarrier", e.target.value)} placeholder="Current Carrier" />
-        <input style={styles.input} value={person.currentMedSuppPremium} onChange={(e) => updatePerson(type, "currentMedSuppPremium", e.target.value)} placeholder="Current Med Supp Premium" />
-      </div>
-      <div style={{ ...styles.grid2, marginTop: 12 }}>
-        <input style={styles.input} value={person.proposedCarrier} onChange={(e) => updatePerson(type, "proposedCarrier", e.target.value)} placeholder="Proposed Carrier" />
-        <input style={styles.input} value={person.proposedPlan} onChange={(e) => updatePerson(type, "proposedPlan", e.target.value)} placeholder="Proposed Plan" />
-      </div>
-      <div style={{ ...styles.grid2, marginTop: 12 }}>
-        <select style={styles.input} value={person.proposedPremiumSource || "Manual input"} onChange={(e) => updatePerson(type, "proposedPremiumSource", e.target.value)}>
-          {PROPOSED_PREMIUM_SOURCES.map((option) => <option key={option} value={option}>{option}</option>)}
-        </select>
-        <input style={styles.input} value={person.proposedPremiumSource === "Get premium from CSG rater" ? person.csgProposedPremium : person.proposedMedSuppPremium} onChange={(e) => updatePerson(type, person.proposedPremiumSource === "Get premium from CSG rater" ? "csgProposedPremium" : "proposedMedSuppPremium", e.target.value)} placeholder={person.proposedPremiumSource === "Get premium from CSG rater" ? "CSG Rater Premium" : "Manual Proposed Premium"} />
-        <input style={styles.input} value={person.manualOverrideProposedRate} onChange={(e) => updatePerson(type, "manualOverrideProposedRate", e.target.value)} placeholder="Manual Override Proposed Rate" />
-      </div>
-    </section>
-  );
-
   return (
     <>
       <section style={styles.card}>
         <h2 style={{ marginTop: 0 }}>Agent Fact Finder / Quoter</h2>
-        <p style={{ marginTop: 0 }}>Built from your uploaded Quick FactFinder Quoter layout. Use this while the client is on the phone.</p>
+        <h3 style={{ marginTop: 0 }}>Live Phone Call Update Fields</h3>
+        <p style={{ marginTop: 0 }}>
+          Use this section while the client is on the phone. Changes stay live and can be saved back to the household list.
+        </p>
       </section>
 
       <div style={styles.grid2}>
-        {renderPersonFactFinder("Client", "client", household.client)}
-        {renderPersonFactFinder("Spouse", "spouse", household.spouse)}
+        <PersonForm title="Client Update" type="client" person={household.client} updatePerson={updatePerson} />
+        <PersonForm title="Spouse Update" type="spouse" person={household.spouse} updatePerson={updatePerson} />
       </div>
+
+      <section style={styles.card}>
+        <h3 style={{ marginTop: 0 }}>Household Snapshot Fields</h3>
+
+        <div style={styles.grid2}>
+          <select style={styles.input} value={household.status || "New"} onChange={(e) => updateHousehold("status", e.target.value)}>
+            <option value="New">New</option>
+            <option value="Needs Review">Needs Review</option>
+            <option value="Scheduled">Scheduled</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Complete">Complete</option>
+          </select>
+
+          <select style={styles.input} value={household.assignedAgent || "Admin"} onChange={(e) => updateHousehold("assignedAgent", e.target.value)}>
+            {AGENTS.map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
+          </select>
+        </div>
+
+        <div style={{ ...styles.grid3, marginTop: 12 }}>
+          <select style={styles.input} value={household.currentCoverage || ""} onChange={(e) => updateHousehold("currentCoverage", e.target.value)}>
+            <option value="">Current Coverage</option>
+            {COVERAGE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+
+          {household.currentCoverage === "Group" ? (
+            <select style={styles.input} value={household.groupSize || ""} onChange={(e) => updateHousehold("groupSize", e.target.value)}>
+              <option value="">Group Size</option>
+              {GROUP_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          ) : (
+            <input style={styles.input} value={household.groupSize || ""} onChange={(e) => updateHousehold("groupSize", e.target.value)} placeholder="Group Size / Coverage Detail" />
+          )}
+
+          {household.currentCoverage === "Group" && household.groupSize === "More than 20 employees" ? (
+            <select style={styles.input} value={household.groupFunding || ""} onChange={(e) => updateHousehold("groupFunding", e.target.value)}>
+              <option value="">Funding Type</option>
+              {GROUP_FUNDING_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          ) : (
+            <input style={styles.input} value={household.currentPremium || ""} onChange={(e) => updateHousehold("currentPremium", e.target.value)} placeholder="Current Premium" />
+          )}
+        </div>
+
+        {household.currentCoverage === "Group" && household.groupSize === "More than 20 employees" ? (
+          <div style={{ ...styles.grid2, marginTop: 12 }}>
+            <input style={styles.input} value={household.currentPremium || ""} onChange={(e) => updateHousehold("currentPremium", e.target.value)} placeholder="Current Premium" />
+            <input style={styles.input} value={household.referredBy || ""} onChange={(e) => updateHousehold("referredBy", e.target.value)} placeholder="Referred By" />
+          </div>
+        ) : (
+          <div style={{ marginTop: 12 }}>
+            <input style={styles.input} value={household.referredBy || ""} onChange={(e) => updateHousehold("referredBy", e.target.value)} placeholder="Referred By" />
+          </div>
+        )}
+
+        <textarea
+          style={{ ...styles.textarea, marginTop: 12 }}
+          value={household.notes || ""}
+          onChange={(e) => updateHousehold("notes", e.target.value)}
+          placeholder="Phone call notes / additional information"
+        />
+      </section>
 
       <section style={styles.card}>
         <h3 style={{ marginTop: 0 }}>Premium Snapshot</h3>
@@ -994,29 +1026,28 @@ function FactFinderQuoter({ household, updatePerson, updateHousehold, updateAnci
             </tbody>
           </table>
         </div>
+
         <div style={{ ...styles.nav, marginTop: 14 }}>
-          <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Fact Finder Updates</button>
+          <button type="button" style={styles.primaryButton} onClick={saveIntake}>Save Household Updates</button>
           <button type="button" style={styles.button} onClick={() => openCsgRaterForPerson(household.client, "Client")}>Open CSG - Client</button>
           <button type="button" style={styles.button} onClick={() => openCsgRaterForPerson(household.spouse, "Spouse")}>Open CSG - Spouse</button>
           <button
-  type="button"
-  style={styles.primaryButton}
-  onClick={() => {
-    saveIntake();
-    createCalendarEvent();
-    setMessage("Appointment saved to calendar.");
-  }}
->
-  Schedule Appointment
-</button>
+            type="button"
+            style={styles.primaryButton}
+            onClick={() => {
+              saveIntake();
+              createCalendarEvent();
+            }}
+          >
+            Schedule Appointment
+          </button>
         </div>
       </section>
     </>
   );
 }
 
-
-function QuickRaterPage({ household, updatePerson, updateAncillary, setView, saveIntake, setAgentTab }) {
+function QuickRaterPage({ household, updatePerson, updateAncillary, setView, saveIntake }) {
   const ancillary = household.ancillary || blankAncillary;
   const clientSnapshot = calculatePremiumSnapshot(household.client, "client", ancillary);
   const spouseSnapshot = calculatePremiumSnapshot(household.spouse, "spouse", ancillary);
@@ -1270,43 +1301,7 @@ function QuickRaterPage({ household, updatePerson, updateAncillary, setView, sav
           <div><strong>Annual Savings:</strong> {moneyDisplay(householdAnnualSavings)}</div>
         </div>
         <div style={{ ...styles.nav, marginTop: 14 }}>
-          <button type="button" style={styles.primaryButton} onClick={() => { saveIntake(); }}>
-            Save / Enter Quick Rater Updates
-          </button>
-
-          <button
-            type="button"
-            style={styles.button}
-            onClick={() => {
-              saveIntake();
-              setView("household");
-            }}
-          >
-            Back to Household
-          </button>
-
-          <button
-            type="button"
-            style={styles.button}
-            onClick={() => {
-              saveIntake();
-              setView("agent");
-            }}
-          >
-            Back to Agent
-          </button>
-
-          <button
-            type="button"
-            style={styles.primaryButton}
-            onClick={() => {
-              saveIntake();
-              setAgentTab("Client Summary");
-              setView("agent");
-            }}
-          >
-            Client Summary
-          </button>
+          <button type="button" style={styles.primaryButton} onClick={() => { saveIntake(); }}>Save / Enter Quick Rater Updates</button>
         </div>
       </section>
     </>
@@ -1454,6 +1449,7 @@ function buildIntegrationAutofillData(household) {
       full_address: baseAddress,
       current_coverage: household.currentCoverage || "",
       group_size: household.groupSize || "",
+      group_funding: household.groupFunding || "",
       current_premium: household.currentPremium || client.currentMedSuppPremium || "",
       assigned_agent: household.assignedAgent || "",
       notes: household.notes || "",
@@ -1472,6 +1468,7 @@ function buildIntegrationAutofillData(household) {
       appointment_type: household.reasonForCall || "",
       current_coverage: household.currentCoverage || "",
       group_size: household.groupSize || "",
+      group_funding: household.groupFunding || "",
       current_premium: household.currentPremium || client.currentMedSuppPremium || "",
     },
     csgActuarial: {
@@ -1838,6 +1835,11 @@ function safeSetView(key) {
 
       if (field === "currentCoverage" && value !== "Group") {
         next.groupSize = "";
+        next.groupFunding = "";
+      }
+
+      if (field === "groupSize" && value !== "More than 20 employees") {
+        next.groupFunding = "";
       }
 
       if (field === "currentPremium") {
@@ -3157,8 +3159,6 @@ try {
             </select>
             <button type="button" style={styles.button} onClick={() => openAppointmentsForType(household.reasonForCall)}>Open Appointments</button>
             <button type="button" style={styles.button} onClick={openSipsGoogleCalendar}>Open Google Appointments</button>
-            <button type="button" style={styles.primaryButton} onClick={() => setView("quickRater")}>Quick Rater</button>
-            <button type="button" style={styles.button} onClick={() => { setAgentTab("Client Summary"); setView("agent"); }}>Client Summary</button>
         </div>
 
         <div style={styles.grid2}>
@@ -3206,18 +3206,24 @@ try {
               {AGENTS.map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
             </select>
           </div>
-          <div style={{ ...styles.grid2, marginTop: 12 }}>
-            <select style={styles.input} value={household.currentCoverage} onChange={(e) => updateHousehold("currentCoverage", e.target.value)}>
+          <div style={{ ...styles.grid3, marginTop: 12 }}>
+            <select style={styles.input} value={household.currentCoverage || ""} onChange={(e) => updateHousehold("currentCoverage", e.target.value)}>
               <option value="">Current Coverage</option>
               {COVERAGE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
             {household.currentCoverage === "Group" ? (
-              <select style={styles.input} value={household.groupSize} onChange={(e) => updateHousehold("groupSize", e.target.value)}>
+              <select style={styles.input} value={household.groupSize || ""} onChange={(e) => updateHousehold("groupSize", e.target.value)}>
                 <option value="">Group Size</option>
                 {GROUP_SIZE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
               </select>
             ) : null}
-            <input style={styles.input} value={household.currentPremium} onChange={(e) => updateHousehold("currentPremium", e.target.value)} placeholder="Current Premium" />
+            {household.currentCoverage === "Group" && household.groupSize === "More than 20 employees" ? (
+              <select style={styles.input} value={household.groupFunding || ""} onChange={(e) => updateHousehold("groupFunding", e.target.value)}>
+                <option value="">Funding Type</option>
+                {GROUP_FUNDING_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            ) : null}
+            <input style={styles.input} value={household.currentPremium || ""} onChange={(e) => updateHousehold("currentPremium", e.target.value)} placeholder="Current Premium" />
           </div>
           <textarea style={{ ...styles.textarea, marginTop: 12 }} value={household.notes} onChange={(e) => updateHousehold("notes", e.target.value)} placeholder="Phone call notes / additional information" />
           <div style={{ ...styles.nav, marginTop: 12 }}>
@@ -3260,7 +3266,6 @@ try {
         updateAncillary={updateAncillary}
         setView={setView}
         saveIntake={saveIntake}
-        setAgentTab={setAgentTab}
       />
     );
   }
@@ -3430,30 +3435,7 @@ function renderAgentPage() {
   const annualSavings = monthlySavings * 12;
 
   return (
-    <>
-      <style>{`
-        @media print {
-          body.print-client-summary-only * {
-            visibility: hidden !important;
-          }
-
-          body.print-client-summary-only #client-summary-print-area,
-          body.print-client-summary-only #client-summary-print-area * {
-            visibility: visible !important;
-          }
-
-          body.print-client-summary-only #client-summary-print-area {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            box-shadow: none !important;
-            border: none !important;
-            margin: 0 !important;
-          }
-        }
-      `}</style>
-      <section id="client-summary-print-area" style={{ ...styles.card, background: "#ffffff" }}>
+    <section style={{ ...styles.card, background: "#ffffff" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 20, borderBottom: "1px solid #dbe3ef", paddingBottom: 18 }}>
         <div>
           <h1 style={{ margin: 0, color: "#08246b" }}>CLIENT SUMMARY</h1>
@@ -3462,7 +3444,7 @@ function renderAgentPage() {
         </div>
 
         <div style={{ textAlign: "right" }}>
-          <button type="button" style={styles.button} onClick={printClientSummaryOnly}>Print</button>
+          <button type="button" style={styles.button} onClick={() => window.print()}>Print</button>
           <button type="button" style={styles.primaryButton} onClick={openEmailDraft}>Email</button>
           <p><strong>Date Prepared:</strong><br />{new Date().toLocaleDateString()}</p>
           <p><strong>Prepared By:</strong><br />Loyd Richardson</p>
@@ -3594,10 +3576,9 @@ function renderAgentPage() {
       <div style={styles.nav}>
         <button type="button" style={styles.button} onClick={() => setView("quickRater")}>Return to Quick Rater</button>
         <button type="button" style={styles.button} onClick={() => setAgentTab("Agent Fact Finder / Quoter")}>Return to Fact Finder</button>
-        <button type="button" style={styles.primaryButton} onClick={printClientSummaryOnly}>Print / Save PDF</button>
+        <button type="button" style={styles.primaryButton} onClick={() => window.print()}>Print / Save PDF</button>
       </div>
     </section>
-    </>
   );
 })()}
 
@@ -3680,34 +3661,16 @@ function renderAgentPage() {
               <div key={item.id} style={{ border: "1px solid #d6dde8", borderRadius: 12, padding: 14, marginTop: 10 }}>
                 <strong>{fullName(item.client)}</strong>
                 <p>{item.client.phone || "No phone"} · {item.status || "No status"}</p>
-                <div style={styles.nav}>
-                  <button
-                    type="button"
-                    style={styles.button}
-                    onClick={() => {
-                      loadHousehold(item);
-                      setView("household");
-                    }}
-                  >
-                    Open Household
-                  </button>
-
-                  <button
-                    type="button"
-                    style={styles.primaryButton}
-                    onClick={() => openHouseholdQuickRater(item, loadHousehold, setView)}
-                  >
-                    Quick Rater
-                  </button>
-
-                  <button
-                    type="button"
-                    style={styles.button}
-                    onClick={() => openHouseholdSummary(item, loadHousehold, setAgentTab, setView)}
-                  >
-                    Client Summary
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  style={styles.button}
+                  onClick={() => {
+                    loadHousehold(item);
+                    setView("household");
+                  }}
+                >
+                  Open Household
+                </button>
               </div>
             ))}
           </section>
