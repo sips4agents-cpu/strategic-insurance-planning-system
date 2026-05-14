@@ -2161,28 +2161,31 @@ setMessage("Appointment created in SIPS. Sending to Google Calendar...");
 try {
   const response = await fetch("/api/calendar/create", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
       agents: [household.assignedAgent],
-      title: event.title,
-      description: event.description,
-      location: event.location,
-      start: event.start,
-      end: event.end,
+      title: `${household.client.firstName || ""} ${household.client.lastName || ""} Appointment`,
+      description: household.notes || "SIPS Intake Appointment",
+      location: appointmentLocation || "Phone Call",
+      start: startDate.toISOString(),
+      end: endDate.toISOString(),
     }),
   });
 
   const data = await response.json();
 
-  if (!response.ok || !data.success) {
-    setMessage(`Saved in SIPS, but Google Calendar failed: ${data.error || "Unknown API error"}`);
-    return;
+  if (response.ok && data.success) {
+    setMessage("Appointment created in SIPS and sent to Google Calendar.");
+  } else {
+    setMessage(`Saved in SIPS, but Google Calendar failed: ${data.error || "Unknown error"}`);
   }
+} catch (error) {
+  console.error(error);
 
-  setMessage("Appointment created in SIPS and sent to Google Calendar.");
- } catch (error) {
-    setMessage(`Saved in SIPS, but Google Calendar failed: ${error.message || "Network/API route error"}`);
-  }
+  setMessage("Appointment saved locally in SIPS, but Google Calendar sync failed.");
+}
 }
 
   function checkAgentStatus(agentName) {
