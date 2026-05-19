@@ -550,6 +550,46 @@ const ROLE_ACCESS = {
   Admin: new Set(NAV_ITEMS.map(([key]) => key)),
 };
 
+const SIPS_USERS = [
+  {
+    email: "admin@ainsurancepro.com",
+    password: "Admin2026!",
+    role: "Admin",
+    name: "Loyd Richardson",
+  },
+  {
+    email: "office@ainsurancepro.com",
+    password: "Office2026!",
+    role: "Office Manager",
+    name: "Christiana Grant",
+  },
+  {
+    email: "loyd@ainsurancepro.com",
+    password: "Loyd2026!",
+    role: "Admin",
+    name: "Loyd Richardson",
+  },
+  {
+    email: "blake@ainsurancepro.com",
+    password: "Agent2026!",
+    role: "Agent",
+    name: "Blake Richardson",
+  },
+  {
+    email: "william@ainsurancepro.com",
+    password: "Agent2026!",
+    role: "Agent",
+    name: "William Sykes",
+  },
+  {
+    email: "jimmie@ainsurancepro.com",
+    password: "Agent2026!",
+    role: "Agent",
+    name: "Jimmie Bassett",
+  },
+];
+
+
 function visibleNavItemsForRole(activeUserRole) {
   return NAV_ITEMS.filter(([key]) => ROLE_ACCESS[activeUserRole]?.has(key));
 }
@@ -1781,27 +1821,39 @@ function LeadCapturePage({ household, updatePerson, updateHousehold, saveIntake,
   );
 }
 
-function SidebarNav({ view, setView, message, activeUserRole, activeUserName, setActiveUserRole, setActiveUserName }) {
+function SidebarNav({ view, setView, message, activeUserRole, activeUserName, setActiveUserRole, setActiveUserName, canSwitchRoles, onLogout }) {
   const navItems = visibleNavItemsForRole(activeUserRole);
 
   return (
     <aside style={styles.sidebar}>
       <div style={styles.sidebarTitle}>SIPS Command Hub</div>
       <div style={styles.sidebarSub}>Simple roles: Agent sees only his work tools/data. Senior Agent and Admin have full access.</div>
-      <select style={{ ...styles.input, padding: "7px 8px", fontSize: 12 }} value={activeUserRole} onChange={(e) => { setActiveUserRole(e.target.value); setView(e.target.value === "Agent" ? "agent" : "admin"); }}>
-        <option value="Agent">Agent</option>
-        <option value="Office Manager">Office Manager</option>
-        <option value="Senior Agent">Senior Agent</option>
-        <option value="Admin">Admin</option>
-      </select>
-      {activeUserRole !== "Admin" ? (
-        <select style={{ ...styles.input, padding: "7px 8px", fontSize: 12 }} value={activeUserName} onChange={(e) => { setActiveUserName(e.target.value); if (activeUserRole === "Agent") setView("agent"); }}>
-          {AGENTS.filter((agent) => agent.name !== "Admin").map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
-        </select>
-      ) : null}
+      {canSwitchRoles ? (
+        <>
+          <select style={{ ...styles.input, padding: "7px 8px", fontSize: 12 }} value={activeUserRole} onChange={(e) => { setActiveUserRole(e.target.value); setView(e.target.value === "Agent" ? "agent" : "admin"); }}>
+            <option value="Agent">Agent</option>
+            <option value="Office Manager">Office Manager</option>
+            <option value="Senior Agent">Senior Agent</option>
+            <option value="Admin">Admin</option>
+          </select>
+          {activeUserRole !== "Admin" ? (
+            <select style={{ ...styles.input, padding: "7px 8px", fontSize: 12 }} value={activeUserName} onChange={(e) => { setActiveUserName(e.target.value); if (activeUserRole === "Agent") setView("agent"); }}>
+              {AGENTS.filter((agent) => agent.name !== "Admin").map((agent) => <option key={agent.name} value={agent.name}>{agent.name}</option>)}
+            </select>
+          ) : null}
+        </>
+      ) : (
+        <div style={{ padding: 10, borderRadius: 10, background: "rgba(255,255,255,.08)", fontSize: 12, lineHeight: 1.4 }}>
+          <strong>{activeUserName}</strong><br />
+          {activeUserRole}
+        </div>
+      )}
       {navItems.map(([key, label]) => (
         <button key={key} type="button" onClick={() => setView(key)} style={view === key ? styles.sideButtonActive : styles.sideButton}>{label}</button>
       ))}
+      <button type="button" onClick={onLogout} style={{ ...styles.sideButton, marginTop: 8 }}>
+        Logout
+      </button>
       {message ? <div style={{ marginTop: 14, padding: 12, borderRadius: 12, background: "rgba(255,255,255,.10)", fontSize: 13, lineHeight: 1.35 }}><strong>System Note</strong><br />{message}</div> : null}
     </aside>
   );
@@ -1813,6 +1865,10 @@ export default function Page() {
   const [selectedCompanyLogin, setSelectedCompanyLogin] = useState("");
   const [activeUserRole, setActiveUserRole] = useState("Admin");
   const [activeUserName, setActiveUserName] = useState("Loyd Richardson");
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState(null);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [households, setHouseholds] = useState([]);
   const [selectedHouseholdId, setSelectedHouseholdId] = useState("");
   const [events, setEvents] = useState([]);
@@ -1849,6 +1905,43 @@ export default function Page() {
     () => households.find((item) => item.id === selectedHouseholdId) || households[0] || null,
     [households, selectedHouseholdId]
   );
+
+function loginUser() {
+  const email = String(loginEmail || "").trim().toLowerCase();
+  const password = String(loginPassword || "");
+  const user = SIPS_USERS.find((item) => item.email.toLowerCase() === email && item.password === password);
+
+  if (!user) {
+    setMessage("Invalid login. Check email and password.");
+    return;
+  }
+
+  setLoggedIn(true);
+  setLoggedInUser(user);
+  setActiveUserRole(user.role);
+  setActiveUserName(user.name);
+  setMessage(`Logged in as ${user.name} (${user.role}).`);
+
+  if (user.role === "Agent") {
+    setView("agent");
+  } else if (user.role === "Office Manager") {
+    setView("initialIntake");
+  } else {
+    setView("admin");
+  }
+}
+
+function logoutUser() {
+  setLoggedIn(false);
+  setLoggedInUser(null);
+  setLoginPassword("");
+  setView("dashboard");
+  setMessage("Logged out.");
+}
+
+function canSwitchRoles() {
+  return loggedInUser?.role === "Admin" || loggedInUser?.role === "Senior Agent";
+}
 
 function canSeeView(key) {
   return ROLE_ACCESS[activeUserRole]?.has(key);
@@ -2165,13 +2258,13 @@ try {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      agents: [household.assignedAgent],
-      title: `${household.client.firstName || ""} ${household.client.lastName || ""} Appointment`,
-      description: household.notes || "SIPS Intake Appointment",
-      location: appointmentLocation || "Phone Call",
-      start: startDate.toISOString(),
-      end: endDate.toISOString(),
-    }),
+  agents: [household.assignedAgent || "Admin"],
+  title: event.title,
+  description: event.description,
+  location: event.location || appointmentLocation || "Office",
+  start: event.start,
+  end: event.end,
+}),
   });
 
   const data = await response.json();
@@ -3881,14 +3974,99 @@ function renderAccessRestricted() {
   return (
     <section style={styles.card}>
       <h2 style={{ marginTop: 0 }}>Access Restricted</h2>
-      <p>This page is not visible in the selected agent view. Switch to Senior Agent/Admin view to see this area.</p>
-      <button type="button" style={styles.primaryButton} onClick={() => { setActiveUserRole("Admin"); setView("permissions"); }}>
-        Open Role Access
-      </button>
+      <p>This page is not visible for your current role.</p>
+      {canSwitchRoles() ? (
+        <button type="button" style={styles.primaryButton} onClick={() => setView("permissions")}>
+          Open Role Access
+        </button>
+      ) : (
+        <button type="button" style={styles.primaryButton} onClick={() => setView(activeUserRole === "Agent" ? "agent" : "initialIntake")}>
+          Return to My Home
+        </button>
+      )}
     </section>
   );
 }
 
+if (!loggedIn) {
+  return (
+    <main style={{ ...styles.layout, alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <section style={{ ...styles.card, width: "100%", maxWidth: 460 }}>
+        <h1 style={{ marginTop: 0 }}>SIPS Login</h1>
+        <p style={{ marginTop: 0 }}>
+          Sign in to open your role-based dashboard.
+        </p>
+
+        <div style={{ display: "grid", gap: 12 }}>
+          <input
+            style={styles.input}
+            value={loginEmail}
+            onChange={(e) => setLoginEmail(e.target.value)}
+            placeholder="Email"
+          />
+
+          <input
+            type="password"
+            style={styles.input}
+            value={loginPassword}
+            onChange={(e) => setLoginPassword(e.target.value)}
+            placeholder="Password"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") loginUser();
+            }}
+          />
+
+          <button type="button" style={styles.primaryButton} onClick={loginUser}>
+            Login
+          </button>
+        </div>
+
+        {message ? <p style={{ fontWeight: 700 }}>{message}</p> : null}
+
+        <div style={{ marginTop: 16, padding: 12, border: "1px solid #d6dde8", borderRadius: 12, background: "#f8fafc", fontSize: 13, lineHeight: 1.5 }}>
+          <strong>Default test logins</strong><br />
+          Admin: admin@ainsurancepro.com / Admin2026!<br />
+          Office Manager: office@ainsurancepro.com / Office2026!<br />
+          Agents: blake@ainsurancepro.com, william@ainsurancepro.com, jimmie@ainsurancepro.com / Agent2026!
+        </div>
+      </section>
+    </main>
+  );
+}
+if (!loggedIn) {
+  return (
+    <main style={styles.layout}>
+      <section style={{ ...styles.mainPanel, maxWidth: 520, margin: "60px auto" }}>
+        <div style={styles.card}>
+          <h1 style={{ marginTop: 0 }}>SIPS Login</h1>
+
+          <input
+            style={styles.input}
+            placeholder="Email"
+            value={loginEmail}
+            onChange={(e) => setLoginEmail(e.target.value)}
+          />
+
+          <input
+            type="password"
+            style={{ ...styles.input, marginTop: 12 }}
+            placeholder="Password"
+            value={loginPassword}
+            onChange={(e) => setLoginPassword(e.target.value)}
+          />
+
+          <button
+            type="button"
+            style={{ ...styles.primaryButton, marginTop: 12, width: "100%" }}
+            onClick={loginUser}
+          >
+            Login
+          </button>
+        </div>
+      </section>
+    </main>
+  );
+}
 return (
   <main style={styles.layout}>
 
@@ -3901,10 +4079,20 @@ return (
         activeUserName={activeUserName}
         setActiveUserRole={setActiveUserRole}
         setActiveUserName={setActiveUserName}
+        canSwitchRoles={canSwitchRoles()}
+        onLogout={logoutUser}
       />
     )}
 
     <section style={styles.mainPanel}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 10 }}>
+        <div style={{ fontSize: 13 }}>
+          <strong>{activeUserName}</strong> · {activeUserRole}
+        </div>
+        <button type="button" style={styles.button} onClick={logoutUser}>
+          Logout
+        </button>
+      </div>
 
       {activeUserRole !== "Agent" && (
         <header style={styles.header}>
