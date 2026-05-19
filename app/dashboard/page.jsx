@@ -1906,6 +1906,22 @@ export default function Page() {
     [households, selectedHouseholdId]
   );
 
+  useEffect(() => {
+    try {
+      const savedUser = JSON.parse(localStorage.getItem("sipsUser") || "null");
+
+      if (savedUser?.email) {
+        setLoggedIn(true);
+        setLoggedInUser(savedUser);
+        setActiveUserRole(savedUser.role);
+        setActiveUserName(savedUser.name);
+        setView(savedUser.role === "Agent" ? "agent" : savedUser.role === "Office Manager" ? "initialIntake" : "admin");
+      }
+    } catch (error) {
+      localStorage.removeItem("sipsUser");
+    }
+  }, []);
+
 function loginUser() {
   const email = String(loginEmail || "").trim().toLowerCase();
   const password = String(loginPassword || "");
@@ -1957,18 +1973,11 @@ function clearIntakeForNextCall() {
   setMessage("Ready for next intake call.");
 }
 
-In function renderInitialIntake(), add this button beside Save Intake / Schedule Appointment:
-
-<button
-  type="button"
-  style={styles.button}
-  onClick={clearIntakeForNextCall}
->
-  Clear Intake / New Call
-</button>
 function logoutUser() {
+  localStorage.removeItem("sipsUser");
   setLoggedIn(false);
   setLoggedInUser(null);
+  setLoginEmail("");
   setLoginPassword("");
   setView("dashboard");
   setMessage("Logged out.");
@@ -2867,11 +2876,15 @@ try {
             type="button"
             style={styles.primaryButton}
             onClick={async () => {
-              saveIntake();
+              await saveIntake();
               await createCalendarEvent();
             }}
           >
             Schedule Appointment
+          </button>
+
+          <button type="button" style={styles.button} onClick={clearIntakeForNextCall}>
+            Clear Intake / New Call
           </button>
 
           <button type="button" style={styles.button} onClick={() => setView("agent")}>
@@ -4023,15 +4036,7 @@ function renderAccessRestricted() {
   );
 }
 
-if (!loggedIn) {useEffect(() => {
-  const savedUser = JSON.parse(localStorage.getItem("sipsUser") || "null");
-
-  if (savedUser) {
-    setActiveUserRole(savedUser.role);
-    setActiveUserName(savedUser.name);
-    setLoggedIn(true);
-  }
-}, []);
+if (!loggedIn) {
   return (
     <main style={{ ...styles.layout, alignItems: "center", justifyContent: "center", padding: 20 }}>
       <section style={{ ...styles.card, width: "100%", maxWidth: 460 }}>
