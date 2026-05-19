@@ -5,7 +5,7 @@
 // Do not import it as a module into another component unless you import the default export.
 // This file is already a Client Component and exports one default React page component.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const AGENTS = [
   { name: "Admin", initials: "ADMIN", color: "Purple" },
@@ -1915,7 +1915,14 @@ function loginUser() {
     setMessage("Invalid login. Check email and password.");
     return;
   }
-
+localStorage.setItem(
+  "sipsUser",
+  JSON.stringify({
+    role: user.role,
+    name: user.name,
+    email: user.email,
+  })
+);
   setLoggedIn(true);
   setLoggedInUser(user);
   setActiveUserRole(user.role);
@@ -1930,7 +1937,35 @@ function loginUser() {
     setView("admin");
   }
 }
+function clearIntakeForNextCall() {
+  setHousehold({
+    ...blankHousehold,
+    id: "",
+    assignedAgent: activeUserRole === "Agent" ? activeUserName : "Admin",
+    status: "New",
+    businessStatus: "New",
+    client: { ...blankPerson },
+    spouse: { ...blankPerson },
+    ancillary: { ...blankAncillary },
+  });
 
+  setSelectedHouseholdId("");
+  setAppointmentDate("");
+  setAppointmentTime("");
+  setAppointmentDuration("60");
+  setAppointmentLocation("Phone Call");
+  setMessage("Ready for next intake call.");
+}
+
+In function renderInitialIntake(), add this button beside Save Intake / Schedule Appointment:
+
+<button
+  type="button"
+  style={styles.button}
+  onClick={clearIntakeForNextCall}
+>
+  Clear Intake / New Call
+</button>
 function logoutUser() {
   setLoggedIn(false);
   setLoggedInUser(null);
@@ -3988,7 +4023,15 @@ function renderAccessRestricted() {
   );
 }
 
-if (!loggedIn) {
+if (!loggedIn) {useEffect(() => {
+  const savedUser = JSON.parse(localStorage.getItem("sipsUser") || "null");
+
+  if (savedUser) {
+    setActiveUserRole(savedUser.role);
+    setActiveUserName(savedUser.name);
+    setLoggedIn(true);
+  }
+}, []);
   return (
     <main style={{ ...styles.layout, alignItems: "center", justifyContent: "center", padding: 20 }}>
       <section style={{ ...styles.card, width: "100%", maxWidth: 460 }}>
